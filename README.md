@@ -2585,6 +2585,277 @@ The application is available at https://dashdot.example.com.
 
 <img src="images/screen-dashdot.png" alt="Dashdot screenshot"/>
 
+## Homer
+
+<img src="images/logo-homer.png" alt="Homer logo"/>
+
+**Homer** is a simple application that allows to generate a static homepage from a simple `yaml` configuration file.
+
+We will use it as a dashboard to list our services.
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_APP_PORT{{8080/tcp}}
+    TRAEFIK_ROUTER_APP(dashboard.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+
+    subgraph SERVER_DEVICE[MINI_PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph APP_CONTAINER[HOMER CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+
+                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
+                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
+            end
+
+        end
+    end
+```
+
+### Setting up
+
+First, create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/homer
+```
+
+Also create an _assets_ directory to hold the application assets and the main configuration file, it will be mounted in the container.
+
+```bash
+mkdir /opt/apps/homer/assets
+```
+
+By default, on first run, it installs in this directory some example configuration files and assets (favicons, ...), we have disabled this by setting the environment
+variable `INIT_ASSETS` to `0` (default `1`).
+
+Note that this _assets_ directory **must** have the same **gid** / **uid** that the container user have (default `1000:1000`), so make sure to execute :
+
+```bash
+chown -R 1000:1000 /opt/apps/homer/assets/
+```
+
+Then copy :
+
+- the _docker-compose.yml_ file from this project's _homer_ directory into the _/opt/apps/homer_ directory
+- the _config.yml_ file from this project's _homer_ directory into the _/opt/apps/homer/assets_ directory
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  homer:
+    image: b4bz/homer:latest
+    container_name: homer
+    volumes:
+      - ./assets/:/www/assets
+    user: 1000:1000
+    restart: unless-stopped
+    environment:
+      - INIT_ASSETS=0
+      - IPV6_DISABLE=1
+    networks:
+      - homer-net
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.homer.rule=Host(`dashboard.example.com`)"
+      - "traefik.http.routers.homer.entrypoints=websecure"
+      - "traefik.http.routers.homer.tls.certresolver=default"
+      - "traefik.http.routers.homer.middlewares=vpn-whitelist"
+      - "traefik.http.services.homer.loadbalancer.server.port=8080"
+      - "traefik.docker.network=traefik-net"
+
+networks:
+
+  homer-net:
+    name: homer-net
+
+  traefik-net:
+    name: traefik-net
+    external: true
+```
+
+Things to notice :
+
+- Homer's assets data is bound to a local directory named `assets`
+- It sets the `INIT_ASSETS` environment variable to `0` to avoid generating default example data
+- It sets the `IPV6_DISABLE` environment variable to `1`to disable listening on IPv6 (we don't use IPv6)
+- It sets a user with **uid** and **gid** `1000` to run the application in the container
+- It uses Traefik **labels** to :
+    - create a **service** which will point to our container application running on port `8080`
+    - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point to our service
+    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+    - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
+- It runs in its own network (`homer-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+
+#### Configuration file
+
+:page_facing_up: _config.yml_ :
+
+```yaml
+header: false
+footer: false
+
+# Optional theme customization
+theme: default
+colors:
+  light:
+    highlight-primary: "#3367d6"
+    highlight-secondary: "#4285f4"
+    highlight-hover: "#5a95f5"
+    background: "#f5f5f5"
+    card-background: "#ffffff"
+    text: "#363636"
+    text-header: "#ffffff"
+    text-title: "#303030"
+    text-subtitle: "#424242"
+    card-shadow: rgba(0, 0, 0, 0.1)
+    link: "#3273dc"
+    link-hover: "#363636"
+  dark:
+    highlight-primary: "#3367d6"
+    highlight-secondary: "#515185"
+    highlight-hover: "#50668b"
+    background: "#131313"
+    card-background: "#2b2b2b"
+    text: "#eaeaea"
+    text-header: "#ffffff"
+    text-title: "#fafafa"
+    text-subtitle: "#f5f5f5"
+    card-shadow: rgba(0, 0, 0, 0.4)
+    link: "#3273dc"
+    link-hover: "#ffdd57"
+
+services:
+  - name: "Admin tools"
+    icon: "fas fa-cloud"
+    items:
+      - name: "Dashdot"
+        logo: "https://getdashdot.com/img/logo512.png"
+        subtitle: "Minimal server monitoring"
+        tag: "dashboard"
+        url: "https://dashdot.example.com"
+      - name: "Traefik"
+        logo: "https://cdn.worldvectorlogo.com/logos/traefik-1.svg"
+        subtitle: "HTTP reverse proxy"
+        tag: "network"
+        url: "https://traefik.example.com"
+      - name: "Portainer"
+        logo: "https://cdn.worldvectorlogo.com/logos/portainer.svg"
+        subtitle: "Container management platform"
+        tag: "tool"
+        url: "https://portainer.example.com"
+      - name: "Uptime Kuma"
+        logo: "https://uptime.kuma.pet/img/icon.svg"
+        subtitle: "Application monitoring tool"
+        tag: "monitoring"
+        url: "https://kuma.example.com/status/dashboard"
+      - name: "WireGuard UI"
+        logo: "https://seeklogo.com/images/W/wireguard-logo-259B3D155A-seeklogo.com.png"
+        subtitle: "Simple yet fast and modern VPN"
+        tag: "network"
+        url: "https://wireguard-ui.example.com/status"
+      - name: "Pi-Hole"
+        logo: "https://pihole.example.com/admin/img/logo.svg"
+        subtitle: "Network-wide ad blocking"
+        tag: "network"
+        url: "https://pihole.example.com/admin"
+      - name: "Ackee"
+        logo: "https://s.electerious.com/images/ackee/icon.png"
+        subtitle: "Analytics tool that cares about privacy"
+        tag: "analytics"
+        url: "https://ackee.example.com"
+      - name: "Sablier"
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Circle-icons-hourglass.svg/240px-Circle-icons-hourglass.svg.png"
+        subtitle: "Workload scaling on demand"
+        tag: "tool"
+      - name: "Unbound"
+        logo: "https://i.imgur.com/cnsNS1O.png"
+        subtitle: "Validating, recursive, and caching DNS resolver"
+        tag: "network"
+      - name: "PhpMyAdmin"
+        logo: "https://icon-library.com/images/phpmyadmin-icon/phpmyadmin-icon-24.jpg"
+        subtitle: "MySQL database management"
+        tag: "tool"
+        url: "https://phpmyadmin.example.com"
+      - name: "Kopia"
+        logo: "https://www.myqnap.org/wp-content/uploads/kopia-logo.png"
+        subtitle: "Backup/restore tool"
+        tag: "tool"
+        url: "https://kopia.example.com"
+      - name: "Lychee"
+        logo: "https://avatars.githubusercontent.com/u/37916028?s=200&v=4"
+        subtitle: "Photo management tool"
+        tag: "tool"
+        url: "https://lychee.example.com"
+  - name: "Applications"
+    icon: "fas fa-globe"
+    items:
+      - name: "Motoclub GraphQL API"
+        logo: "https://cdn-icons-png.flaticon.com/512/705/705647.png"
+        subtitle: "GraphQL API for our motoclub mobile application"
+        tag: "app"
+        url: "https://ccteam.example.com/ccteam-gql/graphql"
+      - name: "Defrag-life"
+        logo: "https://cdn2.steamgriddb.com/file/sgdb-cdn/icon_thumb/946af3555203afdb63e571b873e419f6.png"
+        subtitle: "Quake 3 arena Defrag website"
+        tag: "app"
+        url: "https://quake.example.com"
+```
+
+This is simply the configuration file that is used by the application to display the dashboard page.
+
+### Run
+
+Finally, simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/homer/docker-compose.yml up -d
+```
+
+You should end-up with a running `homer` container.
+
+It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
+
+The application will be available at https://dashboard.example.com.
+
+<img src="images/screen-homer.png" alt="Homer dashboard screenshot"/>
+
 # Contributing
 
 You are invited to contribute fixes or updates.
