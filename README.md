@@ -31,6 +31,7 @@ It uses only **free** and **open source** software.
 4. [Network configuration](#network-configuration)
 5. [Reverse proxy](#reverse-proxy)
 6. [VPN and ad-blocking](#vpn-and-ad-blocking)
+6. [Test the network](#test-the-network)
 7. [Contributing](#contributing)
 8. [Acknowledgments](#acknowledgments)
 9. [License](#license)
@@ -39,7 +40,10 @@ It uses only **free** and **open source** software.
 
 ## Plan
 
-I started this project in late 2023 as a **home lab**, for learning, the goal was to have an environment :
+This project is based on my previous **home lab** setup running on a **Banana pi** board, it contains similar but maybe more up-to-date instructions.
+The old project can still be found [here](https://github.com/Yann39/self-hosted).
+
+The goal is still the same : learning, and have an environment :
 
 - **100% self-hosted** (privacy preserving, full control over data and software)
 - **Secure** (authentication, SSL/TLS, reverse proxy, firewall, ad blocking, DDOS protection, rate limiting, custom DNS resolver, ...)
@@ -262,8 +266,8 @@ By default, the Mni PC came with **Windows 11**, I simply installed **Debian 12*
     - _debian-12.5.0-amd64-netinst.iso_
 - Download **Rufus** or equivalent software to be able to write the image to a USB key
 - Simply select the image in **Rufus** and write it to the USB key with the default proposed options
-- Insert the USB key into the mini PC and start it, you mey need to access the bios to change the boot device priority, to boot on the USB key
-- Then follow the installation instructions, I personally installed the basic system without GUI (no desktop environment)
+- Insert the USB key into the mini PC and start it, you may need to access the bios to change the boot device priority, to boot on the USB key
+- Then follow the Debian installation instructions, I personally installed the basic system without GUI (no desktop environment)
 
 ## User
 
@@ -300,17 +304,17 @@ rather than letting it land around in your feet and having to connect a keyboard
 
 A solution is simply to access it as a remote computer via **SSH**, from your main computer.
 
-In the normal **Debian** images, SSH is not enabled by default, so you need to install openssh server to allow SSH connections :
+In the normal **Debian** images, SSH is not enabled by default, so you need to install **openssh** server to allow SSH connections :
 
 ```shell
 apt update
 apt install openssh-server
 ```
 
-Then simply use the `ssh` command from the client machine to establish a secure and authenticated SSH connection to the mini PC :
+Then simply use the `ssh` command from the client machine to establish a secure and authenticated SSH connection to the mini PC (here named `n100`) :
 
 ```shell
-ssh me@n100
+ssh username@n100
 ```
 
 Enter your password then you are ready to go !
@@ -330,13 +334,13 @@ Install **vim** (improved **vi**) :
 sudo apt install vim
 ```
 
-Install **curl** :
+Install **curl** (for transferring data through URLs) :
 
 ```shell
 sudo apt install curl
 ```
 
-Install **netstat** :
+Install **netstat** (to check network connections) :
 
 ```shell
 sudo apt install net-tools
@@ -609,6 +613,8 @@ every request goes through **Pi-Hole** and use the custom **DNS resolver** (**Un
 
 Of course Pi-Hole container have to expose port **53** to receive incoming DNS requests. Refer to [Pi-hole](#pi-hole) setup for more details.
 
+If you don't want all the traffic to go through Pi-Hole, just ignore the second point, then the traffic will go through Pi-Hole only when you are connected to the VPN.
+
 ## Dynamic DNS
 
 When connecting from outside our network (from the internet), we need to know the **public IP address** of our router to connect to.
@@ -675,6 +681,14 @@ A **CNAME record** is just a records which points a name to another name instead
 > [!NOTE]
 > Services that will be only accessible from the local network or through VPN do **not** need to have a subdomain defined at this level.
 > We will use Pi-Hole's **local DNS records** for that. See [Pi-Hole configuration](#pi-hole).
+
+However, while the VPN stuff is fully functional and to be able to do the configuration easily from your client machine,
+you may want to temporarily add CNAME records for the following subdomains (also remove the IP whitelisting middleware in the corresponding service configuration),
+else you will be blocked by IP whitelisting :
+
+- `wireguard-ui.example.com` : To configure the WireGuard VPN and create clients
+- `portainer.example.com` : To manage Docker containers (start/stop, check logs, etc.)
+- `pihole.example.com` : To configure the local DNS
 
 ## Port forwarding
 
@@ -993,19 +1007,18 @@ This config file :
 :page_facing_up: _docker-compose.yml_ :
 
 ```yaml
-version: "3.7"
-
 services:
 
   traefik:
     image: traefik:latest
     container_name: traefik
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock       # So that Traefik can listen to the Docker events
-      - ./traefik.yml:/etc/traefik/config.yml           # Traefik configuration
+      - /var/run/docker.sock:/var/run/docker.sock:ro    # So that Traefik can listen to the Docker events
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro       # Traefik configuration
       - ./acme.json:/acme.json                          # For Let's Encrypt certificate storage
       - ./credentials.txt:/credentials.txt:ro           # For Traefik dashboard credentials
     networks:
@@ -1199,7 +1212,7 @@ The Compose file will run a **WireGuard server**, which need to be configured.
 First, after WireGuard installation, it is recommended to change the permissions of the _wg0.conf_ file (holding the server configuration) :
 
 ```shell
-chmod 600 /etc/wireguard/wg0.conf
+sudo chmod 600 /opt/apps/wireguard/wireguard/wg0.conf
 ```
 
 else in the logs you will see a warning :
@@ -1405,15 +1418,15 @@ We simply need to associate domain names with the internal IP address of the min
 Go to _local DNS -> DNS records_ and add a **DNS record entry** for every subdomain that should be available through VPN :
 
 ```
-ackee.example.com                   192.168.0.17
-dashboard.example.com               192.168.0.17
-dashdot.example.com                 192.168.0.17
-kuma.example.com                    192.168.0.17
-phpmyadmin.example.com              192.168.0.17
-pihole.example.com                  192.168.0.17
-portainer.example.com               192.168.0.17
-traefik.example.com                 192.168.0.17
-wireguard-ui.example.com            192.168.0.17
+ackee.example.com                   192.168.0.16
+dashboard.example.com               192.168.0.16
+dashdot.example.com                 192.168.0.16
+kuma.example.com                    192.168.0.16
+phpmyadmin.example.com              192.168.0.16
+pihole.example.com                  192.168.0.16
+portainer.example.com               192.168.0.16
+traefik.example.com                 192.168.0.16
+wireguard-ui.example.com            192.168.0.16
 ```
 
 No need to add domains that are reachable from the internet as they will be reachable directly over HTTPS without going through our Pi-Hole.
@@ -1447,8 +1460,8 @@ forward-addr: 1.1.1.1@853#cloudflare-dns.com
 forward-addr: 1.0.0.1@853#cloudflare-dns.com
 ```
 
-So, if you want to run Unbound **without forwarding**, just remove the line that includes the _forward-records.conf_ file in the _unbound.conf_ file.
-Or don't create any of the 3 above files at all (and do not bind them in the container), and remove the includes from the _unbound.conf_ file.
+So, if you want to run Unbound **without forwarding**, just remove or comment the lines that includes the above files from the _unbound.conf_ file.
+Do not create any of these files at all and do not bind them in the container, just remove the includes from the _unbound.conf_ file.
 
 A DNS leak test should now show your IP address as DNS server.
 
@@ -1485,8 +1498,6 @@ It simply defines environment variables to be used in the Docker Compose file.
 :page_facing_up: _docker_compose.yaml_ :
 
 ```yaml
-version: "3.7"
-
 networks:
 
   wireguard_net:
@@ -1503,7 +1514,7 @@ networks:
 services:
 
   unbound:
-    image: "mvance/unbound-rpi:latest"
+    image: "mvance/unbound:latest"
     container_name: unbound
     restart: unless-stopped
     hostname: "unbound"
@@ -1670,9 +1681,9 @@ Unbound is not exposed, but you can reach other services :
 - WireGuard GUI at https://wireguard-ui.example.com
 - Pi-Hole at https://pihole.example.com
 
-## Test the network
+# Test the network
 
-### DNS resolution
+## DNS resolution
 
 Each service should be resolvable through its **subdomain name**.
 
@@ -1702,7 +1713,7 @@ Server :   pi.hole
 Address:  10.2.0.100
 
 Name :     myapp.example.com
-Address:  192.168.0.17
+Address:  192.168.0.16
 ```
 
 Then you can look for DNS leak using any online checker, to determine which DNS servers the browser is using to resolve domain names,
@@ -1712,7 +1723,7 @@ You could also use tools like **Wireshark** to look closely at DNS resolution or
 (in that case the "Protocol" column should be `WireGuard` for all queries). I will not go through a Wireshark tutorial, but it is a very
 useful and interesting tool for viewing what going on in your network.
 
-### Reachability
+## Reachability
 
 To verify that the network is set up correctly, we can simply try to access some services and see if we can reach them or not,
 from different device and connection type.
@@ -1725,14 +1736,14 @@ For example if we try to access a service that must be accessible only through V
 
 | Device | Connection | VPN status        | Public IP     | Remote address (request header) | Traefik       | Response                  |
 |--------|------------|-------------------|---------------|---------------------------------|---------------|---------------------------|
-| PC     | cable      | :red_circle: off  | 144.12.117.3  | 192.168.0.17                    | 192.168.0.11  | :heavy_check_mark: 200 OK |
-| PC     | cable      | :green_circle: on | 144.12.117.3  | 192.168.0.17                    | 192.168.0.11  | :heavy_check_mark: 200 OK |
-| Mobile | wifi       | :red_circle: off  | 144.12.117.3  | 192.168.0.17                    | 192.168.0.12  | :heavy_check_mark: 200 OK |
-| Mobile | wifi       | :green_circle: on | 144.12.117.3  | 192.168.0.17                    | 172.22.0.1    | :heavy_check_mark: 200 OK |
+| PC     | cable      | :red_circle: off  | 144.12.117.3  | 192.168.0.16                    | 192.168.0.11  | :heavy_check_mark: 200 OK |
+| PC     | cable      | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 192.168.0.11  | :heavy_check_mark: 200 OK |
+| Mobile | wifi       | :red_circle: off  | 144.12.117.3  | 192.168.0.16                    | 192.168.0.12  | :heavy_check_mark: 200 OK |
+| Mobile | wifi       | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 172.22.0.1    | :heavy_check_mark: 200 OK |
 | Mobile | 4G         | :red_circle: off  | 81.165.84.189 | 144.12.117.3                    | 81.165.84.189 | :x: 403 Forbidden         |
-| Mobile | 4G         | :green_circle: on | 144.12.117.3  | 192.168.0.17                    | 172.22.0.1    | :heavy_check_mark: 200 OK |
+| Mobile | 4G         | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 172.22.0.1    | :heavy_check_mark: 200 OK |
 
-- `192.168.0.17` is the mini PC's private IP address
+- `192.168.0.16` is the mini PC's private IP address
 - `144.12.117.3` is the router's public IP address
 - `192.168.0.11` is the desktop PC's local IP address
 - `192.168.0.12` is the mobile phone's local IP address
@@ -1747,12 +1758,12 @@ which shows that the `vpn-whitelist` **middleware** blocks any IP address that i
 
 > ```
 > level=debug msg="Authentication succeeded" middlewareType=BasicAuth middlewareName=auth@docker
-> level=debug msg="Accepting IP 192.168.0.17" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
+> level=debug msg="Accepting IP 192.168.0.16" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
 > level=debug msg="Accepting IP 172.22.0.1" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
 > level=debug msg="Rejecting IP 81.165.84.189: \"81.165.84.189\" matched none of the trusted IPs" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
 > ```
 
-### VPN connection speed
+## VPN connection speed
 
 To verify that the VPN is not killing the connection speed,
 you can first use an online **speed test**, this will confirm whether the connection speed is close to normal.
@@ -1764,7 +1775,7 @@ In my case I observed an abnormally slow connection (**~22 MB/s** download and u
 That was because of the WireGuard **MTU** (**Maximum Transmission Unit**) value,
 which need to be slightly adjusted.
 
-#### Configure MTU
+### Configure MTU
 
 By default, WireGuard sets an MTU value of `1450`, which may not be optimal for your connection.
 
@@ -1789,7 +1800,7 @@ However, if you know that you're going to be using IPv4 exclusively, then you co
 
 So just set that value as the MTU for the WireGuard server and peer.
 
-#### Measure speed with iPerf
+### Measure speed with iPerf
 
 Then you can test the connection speed between the WireGuard server and the peer, using the **iPerf** utility.
 
