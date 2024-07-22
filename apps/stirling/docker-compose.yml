@@ -1,0 +1,33 @@
+services:
+
+  stirling:
+    image: frooodle/s-pdf:latest
+    container_name: stirling
+    volumes:
+      - ./trainingData:/usr/share/tessdata
+      - ./extraConfigs:/configs
+    restart: unless-stopped
+    networks:
+      - stirling-net
+      - traefik-net
+    environment:
+      - DOCKER_ENABLE_SECURITY=false
+      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
+      - LANGS=en_GB
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.stirling.rule=Host(`stirling.example.com`)"
+      - "traefik.http.routers.stirling.entrypoints=websecure"
+      - "traefik.http.routers.stirling.tls.certresolver=default"
+      - "traefik.http.routers.stirling.middlewares=vpn-whitelist"
+      - "traefik.http.services.stirling.loadbalancer.server.port=8080"
+      - "traefik.docker.network=traefik-net"
+
+networks:
+
+  stirling-net:
+    name: stirling-net
+
+  traefik-net:
+    name: traefik-net
+    external: true
