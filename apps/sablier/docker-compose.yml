@@ -1,0 +1,26 @@
+services:
+
+  sablier:
+    image: acouvreur/sablier:latest
+    container_name: sablier
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    networks:
+      - sablier-net
+      - traefik-net
+    command:
+      - start
+      - --provider.name=docker
+      - --logging.level=trace
+    labels:
+      - traefik.enable=true
+
+networks:
+
+  sablier-net:
+    name: sablier-net
+
+  traefik-net:
+    name: traefik-net
+    external: true

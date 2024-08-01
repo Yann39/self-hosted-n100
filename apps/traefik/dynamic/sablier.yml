@@ -1,0 +1,13 @@
+http:
+  middlewares:
+    sablier:
+      plugin:
+        sablier:
+          names: dashdot
+          sablierUrl: http://sablier:10000
+          sessionDuration: 5m
+          dynamic:
+            displayName: Dashdot
+            refreshFrequency: 1s
+            showDetails: true
+            theme: hacker-terminal
