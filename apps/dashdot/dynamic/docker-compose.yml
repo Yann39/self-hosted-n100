@@ -10,6 +10,8 @@ services:
     networks:
       - dashdot-net
       - traefik-net
+    labels:
+      - "sablier.enable=true"
 
 networks:
 

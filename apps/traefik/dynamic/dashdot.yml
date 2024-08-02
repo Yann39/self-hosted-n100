@@ -3,7 +3,7 @@ http:
     dashdot:
       loadBalancer:
         servers:
-          url: http://dashdot:3001
+          - url: http://dashdot:3001
 
   routers:
     dashdot:
@@ -11,8 +11,8 @@ http:
       entryPoints:
         - websecure
       tls:
-        certresolver: default
+        certResolver: default
       service: dashdot
       middlewares:
         - vpn-whitelist@docker
-        - sablier@file
+        - dashdot@docker
