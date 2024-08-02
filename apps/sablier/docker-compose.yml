@@ -15,6 +15,7 @@ services:
       - --logging.level=trace
     labels:
       - "traefik.enable=true"
+      # Dashdot
       - "traefik.http.middlewares.dashdot.plugin.sablier.names=dashdot"
       - "traefik.http.middlewares.dashdot.plugin.sablier.sablierUrl=http://sablier:10000"
       - "traefik.http.middlewares.dashdot.plugin.sablier.sessionDuration=1m"
@@ -22,7 +23,14 @@ services:
       - "traefik.http.middlewares.dashdot.plugin.sablier.dynamic.displayName=Dashdot"
       - "traefik.http.middlewares.dashdot.plugin.sablier.dynamic.refreshFrequency=1s"
       - "traefik.http.middlewares.dashdot.plugin.sablier.dynamic.showDetails=true"
-      - "traefik.docker.network=traefik-net"
+      # Stirling
+      - "traefik.http.middlewares.stirling.plugin.sablier.names=stirling"
+      - "traefik.http.middlewares.stirling.plugin.sablier.sablierUrl=http://sablier:10000"
+      - "traefik.http.middlewares.stirling.plugin.sablier.sessionDuration=1m"
+      - "traefik.http.middlewares.stirling.plugin.sablier.dynamic.theme=hacker-terminal"
+      - "traefik.http.middlewares.stirling.plugin.sablier.dynamic.displayName=Stirling PDF"
+      - "traefik.http.middlewares.stirling.plugin.sablier.dynamic.refreshFrequency=1s"
+      - "traefik.http.middlewares.stirling.plugin.sablier.dynamic.showDetails=true"
 
 networks:
 
