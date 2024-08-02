@@ -1,6 +1,6 @@
 #http:
 #  middlewares:
-#    sablier:
+#    dashdot:
 #      plugin:
 #        sablier:
 #          names: dashdot
@@ -8,6 +8,17 @@
 #          sessionDuration: 5m
 #          dynamic:
 #            displayName: Dashdot
+#            refreshFrequency: 1s
+#            showDetails: true
+#            theme: hacker-terminal
+#    stirling:
+#      plugin:
+#        sablier:
+#          names: stirling
+#          sablierUrl: http://sablier:10000
+#          sessionDuration: 5m
+#          dynamic:
+#            displayName: Stirling PDF
 #            refreshFrequency: 1s
 #            showDetails: true
 #            theme: hacker-terminal

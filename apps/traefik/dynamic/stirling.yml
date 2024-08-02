@@ -1,0 +1,18 @@
+http:
+  services:
+    stirling:
+      loadBalancer:
+        servers:
+          - url: http://stirling:8080
+
+  routers:
+    stirling:
+      rule: 'Host(`stirling.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: stirling
+      middlewares:
+        - vpn-whitelist@docker
+        - stirling@docker

@@ -15,13 +15,16 @@ services:
       - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
       - LANGS=en_GB
     labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.stirling.rule=Host(`stirling.example.com`)"
-      - "traefik.http.routers.stirling.entrypoints=websecure"
-      - "traefik.http.routers.stirling.tls.certresolver=default"
-      - "traefik.http.routers.stirling.middlewares=vpn-whitelist"
-      - "traefik.http.services.stirling.loadbalancer.server.port=8080"
-      - "traefik.docker.network=traefik-net"
+      - "sablier.enable=true"
+
+      # The config below has been moved to dynamic config /apps/traefik/dynamic/stirling.yml as required by Sablier
+      #- "traefik.enable=true"
+      #- "traefik.http.routers.stirling.rule=Host(`stirling.example.com`)"
+      #- "traefik.http.routers.stirling.entrypoints=websecure"
+      #- "traefik.http.routers.stirling.tls.certresolver=default"
+      #- "traefik.http.routers.stirling.middlewares=vpn-whitelist"
+      #- "traefik.http.services.stirling.loadbalancer.server.port=8080"
+      #- "traefik.docker.network=traefik-net"
 
 networks:
 
