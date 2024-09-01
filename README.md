@@ -3472,6 +3472,83 @@ The application will be available at https://quake.example.com.
 
 <img src="images/screen-defrag-life.png" alt="Defrag-Life website screenshot"/>
 
+## CCTeam
+
+Create a directory to hold the app :
+
+```bash
+mkdir /opt/apps/ccteam
+cd /opt/apps/ccteam
+```
+
+Create the _Dockerfile_ and _docker-compose.yml_ files based on the files in the _ccteam_ folder in this project.
+
+In the same directory, create a _.env_ file to hold the environment variables :
+
+```env
+MARIADB_ROOT_PASSWORD=<root_password>
+MARIADB_DATABASE=<db_name>
+MARIADB_USER=<username>
+MARIADB_PASSWORD=<password>
+MAIL_SERVER_HOST=<mail_server_host>
+MAIL_SERVER_PORT=<mail_server_port>
+MAIL_SERVER_USERNAME=<mail_server_username>
+MAIL_SERVER_PASSWORD=<mail_server_password>
+JWT_SECRET=<jwt_secret>
+JWT_EXPIRATION_TIME=<jwt_expiration_time>
+```
+
+Move the application JAR file (_ccteam-graphql.jar_) into the current directory.
+
+Start :
+
+```bash
+sudo docker-compose up -d
+```
+
+This will create 2 containers :
+
+- A container holding the **MariaDB** database
+- A container holding the **Java** application (based on the provided _Dockerfile_), exposed on port **5001**
+
+Then the API is available at : https://ccteam.example.com/ccteam-gql/graphql
+
+You will get access denied as you need a valid **JWT token**, but it confirms that the service is running correctly :
+
+```json
+{
+  "errors": [
+    {
+      "cause": null,
+      "stackTrace": null,
+      "extensions": {
+        "errorCode": "no_token"
+      },
+      "errorType": "DataFetchingException",
+      "locations": null,
+      "message": "Full authentication is required to access this resource",
+      "path": null,
+      "suppressed": [],
+      "localizedMessage": "Full authentication is required to access this resource"
+    }
+  ],
+  "data": null
+}
+```
+
+# Backup
+
+## Image backup
+
+Run `fdisk -l` command to list disk partitions, it should be something like :
+
+```
+Device             Start        End   Sectors   Size Type
+/dev/nvme0n1p1      2048    1050623   1048576   512M EFI System
+/dev/nvme0n1p2   1050624  998215679 997165056 475.5G Linux filesystem
+/dev/nvme0n1p3 998215680 1000214527   1998848   976M Linux swap
+```
+
 # Contributing
 
 You are invited to contribute fixes or updates.
