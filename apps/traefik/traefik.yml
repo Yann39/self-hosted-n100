@@ -38,3 +38,6 @@ experimental:
       version: "v0.18.0"
 log:
   level: info
+
+accessLog:
+  format: json

@@ -975,6 +975,11 @@ That way :
 - Requests coming from the internet through VPN come with a `10.0.0.x` address, and are **accepted**.
 - Requests coming from the internet without VPN come with a public IP address and are **rejected**, as it does not match any whitelisted address.
 
+> [!NOTE]
+> A request from your own network to a name that resolves to your **public IP** goes through the NAT loopback of the router and reaches Traefik with the **public IP** as source : rejected as well.
+> So the private services must resolve to the LAN address of the mini PC for the devices that use them (Pi-Hole's local DNS records, see [Pi-hole](#pi-hole)), and a container that has to call
+> another one (Portainer or the Traefik plugin fetching a token from PocketID) must use the **internal** name (`http://pocketid:1411`), never the public URL.
+
 > [!WARNING]
 > Never whitelist a **Docker network range**
 > A container is not a trusted client, and with the [network segmentation](#network-segmentation) below, a whitelisted Docker range would let a compromised public container
@@ -1043,6 +1048,9 @@ certificatesResolvers:
 
 log:
   level: info
+
+accessLog:
+  format: json
 ```
 
 This config file :
@@ -1053,6 +1061,8 @@ This config file :
   that containers that do not have a `traefik.enable=true` label are ignored from the resulting routing configuration
 - defines a `default` **certificate resolver** for Let's Encrypt to automatically generate certificates
 - set log level to `info` (you can set it to `debug` when you need more information on what's going on)
+- writes the **access log** in JSON on the standard output, one line per request with the client IP, the router and the status code : the fastest way to understand why a request is rejected
+  (`sudo docker logs traefik`), and the input of CrowdSec later on
 
 #### Service definition :
 
@@ -1364,6 +1374,21 @@ by default it only answers "local" requests, and "local" for Pi-Hole is the Dock
 
 The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik labels anymore, the router is declared in a file of
 Traefik's **dynamic configuration** directory instead (see [Traefik routing](#traefik-routing) below), restricted to the local network and the VPN peers.
+
+> [!IMPORTANT]
+> Chicken and egg : the private services have **no public DNS record** (see [Domain and subdomains](#domain-and-subdomains)), so `pihole.example.com` can only be resolved
+> by Pi-Hole itself through a **local DNS record**... which is created in the web UI you cannot reach yet. Until it exists the browser gets `NXDOMAIN` (or, if a public record
+> for the name still exists, reaches Traefik through the NAT loopback of the router with the public IP as source and gets a `403`, see [IP whitelisting](#ip-whitelisting)).
+> Create the first record from the command line, it is applied immediately :
+>
+> ```bash
+> sudo docker exec pihole pihole-FTL --config dns.hosts '[ "192.168.0.16 pihole.example.com" ]'
+> sudo docker exec pihole nslookup pihole.example.com 127.0.0.1
+> ```
+>
+> Then make sure the device you use has Pi-Hole as DNS server (`192.168.0.16`, see [IP settings](#ip-settings)), flush its cache (`ipconfig /flushdns` on Windows) and restart the browser.
+> `--config dns.hosts` **replaces** the whole list : to add entries later from the command line, repeat the complete list, or simply use the web UI once it is reachable.
+
 I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy, with an OIDC middleware backed by **PocketID** (see [PocketID](#pocketid)),
 and the [network segmentation](#network-segmentation) keeps the container out of reach of the applications exposed to the internet.
 The image generates a random password at first start, remove it (or set yours) with :
@@ -1378,7 +1403,7 @@ In _Settings -> DNS_, untick every public upstream and add **Unbound** as custom
 Then we need to add **local DNS records** so that the domain names can be resolved from VPN or local network (remember the DNS requests of the VPN peers and of the configured devices go through Pi-Hole).
 We simply need to associate domain names with the internal IP address of the mini PC, so they can be handled by the reverse proxy.
 
-Go to _local DNS -> DNS records_ and add a **DNS record entry** for every subdomain that should be available through VPN :
+Go to _Settings -> Local DNS Records_ (or repeat the `pihole-FTL --config dns.hosts` command above with the complete list) and add a **DNS record entry** for every subdomain that must only be reachable from the local network or through VPN :
 
 ```
 ackee.example.com                   192.168.0.16
@@ -1389,6 +1414,7 @@ phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 portainer.example.com               192.168.0.16
 traefik.example.com                 192.168.0.16
+pocketid.example.com                192.168.0.16
 ```
 
 No need to add domains that are reachable from the internet as they will be reachable directly over HTTPS without going through our Pi-Hole.
@@ -2318,8 +2344,11 @@ Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
   and give the middleware a random 32 characters `Secret` (`openssl rand -hex 16`) : this one is not a PocketID secret, it is the key the plugin uses to encrypt its own session cookie.
   Traefik picks up the change without restart
 - for a service with native OIDC support, use the callback URL it documents and its own settings page. **Portainer** (_Settings -> Authentication -> OAuth -> Custom_) needs the client ID and secret,
-  the endpoints listed in https://pocketid.example.com/.well-known/openid-configuration (authorization, token and user info URLs), `openid profile email` as scopes,
-  and **PKCE disabled** on the PocketID side as Portainer does not support it
+  `openid profile email` as scopes, **PKCE disabled** on the PocketID side as Portainer does not support it, and three endpoints : the **authorization URL** is the public one
+  (`https://pocketid.example.com/authorize`, the browser follows it), but the **access token URL** and the **resource URL** must be the **internal** ones
+  (`http://pocketid:1411/api/oidc/token` and `http://pocketid:1411/api/oidc/userinfo`). These two calls are made by the Portainer container itself : through the public URL
+  they would loop through the NAT of the router and reach Traefik with the **public IP address** as source, rejected by the whitelist. That is what `INTERNAL_APP_URL` is for,
+  the discovery document served on the internal URL (`http://pocketid:1411/.well-known/openid-configuration`) lists them
 
 Finally, to protect a service with the middleware, add it to the `middlewares` list of its router, after the IP whitelist, as done for Pi-Hole :
 
