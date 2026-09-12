@@ -62,7 +62,6 @@ These are the tools we are going to run :
 |        <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>        | Sablier        | https://github.com/acouvreur/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>        | Traefik        | https://github.com/traefik/traefik             | Modern HTTP reverse proxy and load balancer          |
 |      <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>      | Wireguard      | https://github.com/WireGuard                   | Simple yet fast and modern VPN                       |
-|      <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>      | Wireguard UI   | https://github.com/ngoduykhanh/wireguard-ui    | Web user interface to manage WireGuard setup         |
 |        <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>         | Pi-hole        | https://github.com/pi-hole/pi-hole             | Network-wide ad blocking                             |
 |        <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>        | Unbound        | https://github.com/NLnetLabs/unbound           | Validating, recursive, and caching DNS resolver      |
 |    <img src="images/logo-uptime-kuma.svg" alt="Uptime Kuma logo" height="34"/>    | Uptime Kuma    | https://github.com/louislam/uptime-kuma        | Easy-to-use self-hosted monitoring tool              |
@@ -126,7 +125,7 @@ flowchart TB
     style PIHOLE_CONTAINER fill: #663535
     style UNBOUND_CONTAINER fill: #663535
     style MYAPP_CONTAINER fill: #663535
-    style WIREGUARD_CONTAINER fill: #663535
+    style WIREGUARD_HOST fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
     style VPN_CLIENT fill: #105040
@@ -207,10 +206,6 @@ flowchart TB
                 DOCKER_PIHOLE_DNS
             end
 
-            subgraph WIREGUARD_CONTAINER[WIREGUARD CONTAINER]
-                DOCKER_WIREGUARD_PORT51820
-            end
-
             subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
                 DOCKER_MYAPP_PORT5000
             end
@@ -221,10 +216,14 @@ flowchart TB
 
         end
 
+        subgraph WIREGUARD_HOST[WIREGUARD - on the host]
+            DOCKER_WIREGUARD_PORT51820
+        end
+
     end
 
     WIREGUARD_CLIENT_ENDPOINT ---> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS -->|Pi - Hole internal IP| DOCKER_PIHOLE_PORT53
+    WIREGUARD_CLIENT_DNS -->|10.0.0.1 = server tunnel address| DOCKER_PIHOLE_PORT53
     ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
@@ -606,15 +605,32 @@ flowchart LR
 
 ## IP settings
 
-The following changes to the IP settings are required if you want all your internet traffic to be redirected to your mini PC so that
-every request goes through **Pi-Hole** and use the custom **DNS resolver** (**Unbound**) :
+The following changes to the IP settings are required if you want the **DNS requests** of your whole local network to go through
+**Pi-Hole** and the custom **DNS resolver** (**Unbound**) (only the DNS requests : the ad blocking is done at DNS level, the traffic itself does not need to go through the mini PC) :
 
 - Assign a **static IP address** to the mini PC, for example `192.168.0.16` (I have local **DHCP** enabled)
-- Set **DNS** (primary and secondary) manually, to point to the mini PC address set up above (`192.168.0.16`)
+- Make the devices use the mini PC as **DNS server** (`192.168.0.16`), either through the router (the DNS server it hands out with DHCP), or manually on each device
 
 Of course Pi-Hole container have to expose port **53** to receive incoming DNS requests. Refer to [Pi-hole](#pi-hole) setup for more details.
 
-If you don't want all the traffic to go through Pi-Hole, just ignore the second point, then the traffic will go through Pi-Hole only when you are connected to the VPN.
+> [!WARNING]
+> Setting the mini PC as "DNS server" in the router configuration is **not always enough** : many ISP boxes
+> keep answering the DNS queries of the LAN devices themselves with the ISP resolvers, and the devices silently bypass Pi-Hole.
+> Always verify from a device which server actually answers :
+>
+> ```cmd
+> nslookup doubleclick.net
+> ```
+>
+> The answering server must be the mini PC (`192.168.0.16`), and a domain from the block lists must resolve to `0.0.0.0`.
+> If the router does not hand out the mini PC address, set the DNS manually on each device
+> (on Windows : _Settings -> Network -> Ethernet -> DNS server assignment -> Manual_). In that case :
+>
+> - leave the **alternate DNS empty** : Windows does not strictly respect the primary/secondary order, a public secondary DNS ends up bypassing Pi-Hole
+> - leave "**DNS over HTTPS**" **off** : Pi-Hole only speaks plain DNS on port `53`, and this leg never leaves your LAN anyway (the privacy part is Unbound resolving directly from the root servers)
+> - disable "secure DNS" / DNS-over-HTTPS in the **browsers** too, else they use their own resolver and bypass Pi-Hole
+
+If you don't want the whole network to use Pi-Hole, skip the second point, then only the VPN clients (and the devices you configure manually) will use it.
 
 ## Dynamic DNS
 
@@ -687,7 +703,6 @@ A **CNAME record** is just a records which points a name to another name instead
 > you may want to temporarily create subdomains and add CNAME records for the following subdomains
 > (also remove the IP whitelisting middleware in the corresponding service configuration), else you will be blocked by IP whitelisting :
 >
-> - `wireguard-ui.example.com` : To configure the WireGuard VPN and create clients
 > - `portainer.example.com` : To manage Docker containers (start/stop, check logs, etc.)
 > - `pihole.example.com` : To configure the local DNS
 
@@ -835,7 +850,7 @@ sudo mkdir /opt/apps/traefik
 
 Then copy the files from this project's _traefik_ directory into the _/opt/apps/traefik_ directory :
 
-- _docker_compose.yml_ : The Traefik service definition
+- _docker-compose.yml_ : The Traefik service definition
 - _traefik.yml_ : The Traefik static configuration
 - _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (restricted with **basic authentication**),
   see [Generate basic authentication credentials](#generate-basic-authentication-credentials)
@@ -1083,9 +1098,9 @@ This **Compose** file mainly :
 Finally, run the Compose file :
 
 ```bash
-sudo docker-compose -f /opt/apps/traefik/docker_compose.yml up -d
+sudo docker-compose -f /opt/apps/traefik/docker-compose.yml up -d
 # You may need to force recreate if you changed a config from an already running configuration
-sudo docker-compose -f /opt/apps/traefik/docker_compose.yml up -d --force-recreate
+sudo docker-compose -f /opt/apps/traefik/docker-compose.yml up -d --force-recreate
 ```
 
 You should end-up with a running `traefik` container.
@@ -1127,8 +1142,6 @@ It can also be used as a **DNS** server and has a built-in **DHCP** server.
 **Unbound** is a validating, recursive, caching **DNS resolver**, that has the ability to contact **DNS authority** servers directly
 in order to validate and cache the queries on your network and serve them to you directly,
 so you don’t have to rely on your ISP or third-party DNS resolvers (like Cloudflare or Google).
-
-We will also install **WireGuard-UI** which provide a GUI for easier WireGuard configuration and monitoring.
 
 So the idea is that every client in any network can use the VPN to reach our applications while taking advantage of Pi-Hole and Unbound :
 
@@ -1183,22 +1196,25 @@ flowchart TB
     UNBOUND -- DNS resolution --> INTERNET
 ```
 
-We will use a single **Compose** file to set up the 3 services as they are tightly linked.
+**WireGuard** runs directly on the host (kernel module, managed by `wg-quick`), **Pi-Hole** and **Unbound** run as two small **Compose** stacks.
+Everything about performance is in [VPN connection speed](#vpn-connection-speed).
 
 ### Installation
 
-First, create a folder to hold data and configuration :
+First, create the folders that will hold data and configuration :
 
 ```bash
-sudo mkdir /opt/apps/wireguard
+sudo mkdir -p /opt/apps/pihole /opt/apps/unbound
 ```
 
-Then from this project's _wireguard_ directory, copy into the _/opt/apps/wireguard_ directory :
-
-- the _.env_ file which holds some environment variables to be used in the Compose file
-- the _docker-compose.yml_ file which contains all the Docker services configuration
-
+Then from this project's _pihole_ and _unbound_ directories, copy the _docker-compose.yml_ files into _/opt/apps/pihole_ and _/opt/apps/unbound_ respectively.
 For more details about these files, see [Configuration files details](#configuration-files-details-1).
+
+WireGuard itself is a Debian package :
+
+```bash
+sudo apt install wireguard
+```
 
 Now let's take a look at the configuration for each service.
 
@@ -1208,197 +1224,97 @@ Now let's take a look at the configuration for each service.
 
 <img src="images/logo-wireguard-text.svg" alt="WireGuard logo" height="64"/>
 
-The Compose file will run a **WireGuard server**, which need to be configured.
+WireGuard runs **directly on the host** : the kernel module is part of Debian, `wg-quick` manages the interface, and the peers are managed in the configuration file
+(or with the `wg` command). Compared to running it in a container, this removes a few hops for every packet (Docker bridge, `veth` pair, a second NAT layer and the userland proxy)
+and makes the network stack much easier to observe and tune.
 
-First, after WireGuard installation, it is recommended to change the permissions of the _wg0.conf_ file (holding the server configuration) :
+Generate the keys (`wg genkey | tee private.key | wg pubkey > public.key`, on the server and on each peer) and create the configuration :
 
-```shell
-sudo chmod 600 /opt/apps/wireguard/wireguard/wg0.conf
+```bash
+sudo nano /etc/wireguard/wg0.conf
 ```
 
-else in the logs you will see a warning :
+:page_facing_up: _/etc/wireguard/wg0.conf_ (`enp1s0` is the LAN interface of the mini PC, `%i` is replaced by the interface name) :
 
-> Warning: `/config/wg_confs/wg0.conf' is world accessible
+```ini
+[Interface]
+Address = 10.0.0.1/24
+ListenPort = 51820
+MTU = 1420
+PrivateKey = <server private key>
+PostUp = iptables -N DOCKER-USER 2>/dev/null || true; iptables -C DOCKER-USER -i %i -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER 1 -i %i -j ACCEPT; iptables -C DOCKER-USER -o %i -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER 2 -o %i -j ACCEPT; iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -C POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE; iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu; iptables -t raw -C PREROUTING -i enp1s0 -p udp --dport 51820 -j NOTRACK 2>/dev/null || iptables -t raw -A PREROUTING -i enp1s0 -p udp --dport 51820 -j NOTRACK; iptables -t raw -C OUTPUT -o enp1s0 -p udp --sport 51820 -j NOTRACK 2>/dev/null || iptables -t raw -A OUTPUT -o enp1s0 -p udp --sport 51820 -j NOTRACK; tc qdisc replace dev %i root cake bandwidth 860mbit besteffort || true
+PostDown = iptables -D DOCKER-USER -i %i -j ACCEPT || true; iptables -D DOCKER-USER -o %i -j ACCEPT || true; iptables -D FORWARD -i %i -j ACCEPT || true; iptables -D FORWARD -o %i -j ACCEPT || true; iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE || true; iptables -t mangle -D FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu || true; iptables -t raw -D PREROUTING -i enp1s0 -p udp --dport 51820 -j NOTRACK || true; iptables -t raw -D OUTPUT -o enp1s0 -p udp --sport 51820 -j NOTRACK || true
 
-which means that the configuration file permissions are too broad as there’s a private key in there, so it is better to restrict it.
+[Peer]
+# desktop-home
+PublicKey = <peer public key>
+AllowedIPs = 10.0.0.2/32
 
-##### Global settings
-
-Then you can do the configuration using WireGuard UI (accessible at https://wireguard-ui.example.com) :
-
-In **Global Settings** menu :
-
-- set **Endpoint Address** to `wireguard.example.com`, this is the public IP address / hostname of the WireGuard server that every client will connect to
-- set **DNS Servers** to `10.2.0.100` (Pi hole address defined in Docker Compose) instead of `1.1.1.1` (Cloudflare) so that all clients traffic goes through Pi-Hole (and then
-  Unbound)
-- adapt the **MTU** (Maximum Transmission Unit) to the right value depending on your network (you will also have to tweak it on each pear configuration).
-  I had to set it to `1420`, see [VPN connection speed](#vpn-connection-speed) for more detail about finding best MTU value
-
-> [!CAUTION]
-> Setting a non-optimal value for MTU can lead to slow connection.
-
-In **WireGuard Server** menu :
-
-- set **Server Interface address** to `10.10.1.1/24` which is the IP range (CIDR) to be used by peers in the tunnel (every peer in the network will be able to get an IP
-  between `10.10.1.1` and `10.10.1.254`). You can use another address as you wish.
-
-##### Firewall rules
-
-We have to set some firewall rules as our WireGuard VPN is running in a Docker container, we need to :
-
-- allow packets to be routed through the WireGuard server, by setting up `FORWARD` rules
-- allow WireGuard clients to access the Internet, by configuring **NAT** (Network Address Translation) rules
-
-So basically we need to deal with 3 interfaces of our container :
-
-- `eth0@ifxx` : virtual interface that route packets from/to the Traefik Docker bridge network, handling incoming traffic from all peers
-- `eth1@ifxx` : virtual interface that route packets from/to the WireGuard container, for communication within the WireGuard container
-- `wg0` : the WireGuard interface
-
-> [!Note]
-> WireGuard typically requires a network interface for each peer, but as all incoming traffic from the WireGuard peers
-> are arriving at the container using the Traefik bridge network assigned IP address, then only one interface is handling incoming traffic from all WireGuard peers
-
-You can run the following commands to list network interfaces from the container, which may differ depending on your configuration :
-
-First get into the container :
-
-```shell
-sudo docker exec -it wireguard bash
+[Peer]
+# phone
+PublicKey = <peer public key>
+AllowedIPs = 10.0.0.3/32
 ```
 
-Then run :
+Then protect and enable it :
 
-```shell
-ip link show
+```bash
+sudo chmod 600 /etc/wireguard/wg0.conf
+sudo systemctl enable --now wg-quick@wg0
 ```
 
-You should get something like :
+The `PostUp` line looks scary, but each piece has a reason (and `wg-quick` runs the hooks with `set -e`, so anything that may legitimately fail has to be guarded with `|| true` or a `-C` check, else the interface is torn down) :
 
-> ```
-> 1: lo: <LOOPBACK,UP,LOWER_UP> ...
-> 5: wg0: <POINTOPOINT,NOARP,UP,LOWER_UP> ...
-> 19848: eth1@if19849: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-> 19850: eth0@if19851: <BROADCAST,MULTICAST,UP,LOWER_UP> ...
-> ```
+- `DOCKER-USER` **fast path** : Docker sets the `FORWARD` policy to `DROP` and inserts about a hundred rules (four per bridge network) that **every relayed packet** walks through.
+  The `DOCKER-USER` chain is evaluated first and is never flushed by Docker, so accepting the tunnel traffic there short-circuits the whole chain.
+  The plain `FORWARD` rules are a fallback in case `wg0` comes up before Docker at boot.
+- **NAT** : the peers' traffic leaves with the mini PC address (on my machine the rule was already set globally, keeping it here makes the file self-contained).
+- **TCPMSS clamp** : TCP inside the tunnel can carry `1380` bytes per segment at most, clamping the MSS on the SYN packets prevents fragmentation and black holes for the relayed connections.
+- `NOTRACK` : connection tracking is useless for the encrypted UDP flow (WireGuard authenticates every packet itself), this saves a lookup per packet.
+- `cake` : gives every flow inside the tunnel its own queue and keeps the latency low. Without it, the `fq_codel` queue of the physical interface sees the whole tunnel as a **single flow**,
+  so a big download can starve a video stream or a call. `860mbit` is what a gigabit link carries once the tunnel overhead is added, it costs nothing measurable.
 
-`ip a` or `ifconfig` will give you the ip address it points to :
+The **DNS** pushed to the peers is the tunnel address of the server, `10.0.0.1` : Docker publishes Pi-Hole's port `53` on **every** address of the host, including this one,
+so the peers reach Pi-Hole (then Unbound) without any extra route, and it also works in split tunnel mode since the address is inside the tunnel subnet.
 
-> ```
-> eth0      Link encap:Ethernet  HWaddr 02:43:AC:2C:00:08
-> inet addr:172.22.0.7  Bcast:172.22.255.255  Mask:255.255.0.0
-> UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-> [...]
-> 
-> eth1      Link encap:Ethernet  HWaddr 02:43:0B:03:00:04
-> inet addr:10.2.0.3  Bcast:10.2.0.255  Mask:255.255.255.0
-> UP BROADCAST RUNNING MULTICAST  MTU:1500  Metric:1
-> [...]
-> 
-> lo        Link encap:Local Loopback
-> inet addr:127.0.0.1  Mask:255.0.0.0
-> UP LOOPBACK RUNNING  MTU:65536  Metric:1
-> [...]
-> 
-> wg0       Link encap:UNSPEC  HWaddr 00-00-00-00-00-00-00-00-00-00-00-00-00-00-00-00
-> inet addr:10.10.1.1  P-t-P:10.10.1.1  Mask:255.255.255.0
-> UP POINTOPOINT RUNNING NOARP  MTU:1450  Metric:1
-> [...]
-> ```
+##### Peers configuration
 
-Well, in **WireGuard Server** menu :
+On each device, the client configuration looks like this :
 
-- set **Post Up Script**  to :
-  ```
-  iptables -A FORWARD -i %1 -j ACCEPT;
-  iptables -A FORWARD -o %1 -j ACCEPT;
-  iptables -t nat -A POSTROUTING -o eth+ -j MASQUERADE
-  ```
-- set **Post Down Script** to :
-  ```
-  iptables -D FORWARD -i %1 -j ACCEPT;
-  iptables -D FORWARD -o %1 -j ACCEPT;
-  iptables -t nat -D POSTROUTING -o eth+ -j MASQUERADE
-  ```
+```ini
+[Interface]
+PrivateKey = <peer private key>
+Address = 10.0.0.2/32
+DNS = 10.0.0.1
+MTU = 1420
 
-**Post Up** and **Post Down** defines steps to be run after the interface is turned on or off, respectively.
-In this case, **iptables** is used to set IP rules.
-The rules will then be cleared once the tunnel is down.
-
-> [!Note]
-> I used the old deprecated **iptables** to set firewall rules, but you may better use **nftables** which is the successor to iptables
-
-`%1` is a placeholder for the network interface connected to the WireGuard container, so here `wg0`.
-`eth+` is a pattern used in iptables to match network interfaces that start with the prefix `eth`, so it matches our 2 virtual interfaces.
-
-The first 2 rules allow packets to be forwarded between interfaces, for traffic originating from the WireGuard interface `wg0` (rule 1), and heading out of `wg0` (rule 2).
-These two rules allow forwarding so every traffic going in or out of the WireGuard interface can be forwarded (routed).
-The last rule translates incoming IPs to the IP on every `eth` interface, so basically **NAT**.
-
-You can see that iptables are applied by running :
-
-```shell
-iptable -L
+[Peer]
+PublicKey = <server public key>
+Endpoint = 192.168.0.16:51820
+# full tunnel : 0.0.0.0/1, 128.0.0.0/1 — split tunnel : 10.0.0.0/24
+AllowedIPs = 0.0.0.0/1, 128.0.0.0/1
+PersistentKeepalive = 25
 ```
 
-Result :
-> ```
-> Chain INPUT (policy ACCEPT)
-> target     prot opt source               destination
-> 
-> Chain FORWARD (policy ACCEPT)
-> target     prot opt source               destination
-> ACCEPT     all  --  anywhere             anywhere
-> ACCEPT     all  --  anywhere             anywhere
-> 
-> Chain OUTPUT (policy ACCEPT)
-> target     prot opt source               destination
-> ```
-
-And for the NAT table :
-
-```shell
-iptable -t nat -L
-```
-
-Result :
-> ```
-> Chain PREROUTING (policy ACCEPT)
-> target     prot opt source               destination
+> [!TIP]
+> A few things I learned the hard way about the peers configuration :
 >
-> Chain INPUT (policy ACCEPT)
-> target     prot opt source               destination
->
-> Chain OUTPUT (policy ACCEPT)
-> target     prot opt source               destination
->
-> Chain POSTROUTING (policy ACCEPT)
-> target     prot opt source               destination
-> MASQUERADE  all  --  anywhere             anywhere
-> ```
+> - At home, use the **LAN IP address** of the server as endpoint (`192.168.0.16:51820`), not the public hostname : going through the public IP from inside the LAN
+>   makes the router do **NAT loopback** (hairpin) in software, which cost me about half of the throughput (350/440 Mbit/s instead of 570/860).
+>   Easiest is to keep two tunnels on the device : a "home" one with the LAN endpoint and an "away" one with the public hostname.
+> - At home, a **full tunnel** brings nothing : the traffic leaves through the same router anyway, it only adds encryption and relaying work for the server
+>   (and costs about 40 % of the download speed, see [VPN connection speed](#vpn-connection-speed)).
+>   Use a **split tunnel** (`AllowedIPs` limited to the VPN subnet, here `10.0.0.0/24`, which contains the DNS address so that the DNS still goes through the tunnel), or simply no tunnel at all
+>   with the device DNS pointing to the mini PC : the ad blocking is done at DNS level, it is identical in all cases.
+> - `0.0.0.0/1, 128.0.0.0/1` also disables the **kill switch** and the **DNS leak protection** of the Windows client (only a `0.0.0.0/0` route enables them),
+>   so Windows silently falls back to the router DNS if Pi-Hole does not answer within about a second.
+> - Never point a client to an address the server holds on a **secondary interface** (Wi-Fi, USB adapter), see the warning below.
 
-##### Clients
-
-In **WireGuard Clients** settings, create a new client :
-
-- name :  `desktop-home` (for example)
-- e-mail : `your.email@example.com`
-
-It should propose IP allocation of `10.10.1.2/32` for first client, then `10.10.1.3/32`, and so on as we set server interface address to `10.10.1.1/24`.
-
-By default, allowed IPs is set to `0.0.0.0/0`, which will block untunneled traffic (block all traffic from taking a route that isn't the tunnel).
-Change it to `0.0.0.0/1, 128.0.0.0/1` to reroute all traffic to the WireGuard tunnel.
-Using `/1` instead of `/0` ensure that it takes precedence over the default `/0` route.
-
-Finally, to configure a VPN client :
-
-1. Export config file for your client
-2. Install WireGuard client on your client machine
-3. Load config file from client
-
-Do this for each client on every device you need.
-
-<img src="images/screen-wireguard-ui.png" alt="WireGuard-UI screenshot"/>
+> [!WARNING]
+> Connect the server to the LAN through **one interface only**. I had the Wi-Fi of the mini PC connected to the same network "just in case", plus a USB Ethernet adapter left over from a test.
+> Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic for the main address through the Wi-Fi or the USB adapter ;
+> NetworkManager detected its own Wi-Fi as an address conflict and dropped the USB adapter address for hours at each DHCP renewal ; and the client I had pointed to that address
+> lost its tunnel at random and got a fraction of the throughput when it worked. Disable the Wi-Fi (`sudo nmcli radio wifi off`) and unplug what you don't use.
 
 #### Pi-hole
 
@@ -1406,14 +1322,23 @@ Do this for each client on every device you need.
 
 The Compose file will run a **Pi-Hole** instance which need to be configured.
 
-First, we need to change **interface settings** to allow the traffic from other interfaces (especially for our VPN).
-By default, it allows only queries from local devices (from the same network as the Pi-Hole's network).
+First, Pi-Hole must accept the queries coming from other interfaces than its own Docker network (the VPN peers, the LAN) :
+by default it only answers "local" requests, and "local" for Pi-Hole is the Docker bridge network. The Compose file sets this once and for all with the
+`FTLCONF_dns_listeningMode: 'all'` environment variable (the equivalent of _Settings -> DNS -> Interface settings -> "Permit all origins"_ in the web UI).
 
-So, reach Pi-Hole at https://pihole.example.com and go to _Settings -> Interface settings_ and choose _"Permit all origins"_ instead of default _"Allow only local requests"_,
-so that the traffic from outside the Docker bridge network can be seen (indeed, "local" for Pi-Hole is the Docker bridge network,
-and thus it would allow only queries from inside that network).
+The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik labels anymore, the router is declared in a file of
+Traefik's **dynamic configuration** directory instead (see [Traefik routing](#traefik-routing) below), restricted to the local network and the VPN peers.
+I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy (a forward-auth middleware with **PocketID** in my case, not covered in this guide).
+The image generates a random password at first start, remove it (or set yours) with :
 
-Then we need to add **local DNS records** so that the domain names can be resolved from VPN or local network (remember we have routed all the traffic through Pi-Hole).
+```bash
+sudo docker exec -it pihole pihole setpassword
+```
+
+In _Settings -> DNS_, untick every public upstream and add **Unbound** as custom upstream DNS server : `10.2.0.200#53`
+(its static address in the `pihole-net` Docker network, see [Services definition](#services-definition)).
+
+Then we need to add **local DNS records** so that the domain names can be resolved from VPN or local network (remember the DNS requests of the VPN peers and of the configured devices go through Pi-Hole).
 We simply need to associate domain names with the internal IP address of the mini PC, so they can be handled by the reverse proxy.
 
 Go to _local DNS -> DNS records_ and add a **DNS record entry** for every subdomain that should be available through VPN :
@@ -1427,7 +1352,6 @@ phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 portainer.example.com               192.168.0.16
 traefik.example.com                 192.168.0.16
-wireguard-ui.example.com            192.168.0.16
 ```
 
 No need to add domains that are reachable from the internet as they will be reachable directly over HTTPS without going through our Pi-Hole.
@@ -1471,38 +1395,74 @@ A DNS leak test should now show your IP address as DNS server.
 > To remove the default forwarding to Cloudflare and make your unbound container a recursive-only server,
 > edit the _unbound.conf_ file and remove include of the _forward-records.conf_ file.
 
-Finally, if you want to activate **logging** for debugging purposes, edit the _/etc/unbound/unbound.conf_ configuration file :
+Then there are a few settings in _unbound.conf_ that are **essential** when Unbound runs in a container. I ran for months with a resolver that returned
+`SERVFAIL` for most names that were not already in cache (`login.live.com`, `www.apple.com`, the Twitch video servers, ...), cached names being served fine,
+which made streams randomly fail to start and Windows painfully slow at boot when the tunnel was up :
 
 ```
-verbosity: 1
-log-queries: yes
+server:
+    # the container has no IPv6 connectivity : without this, Unbound keeps trying the IPv6 addresses of the authoritative
+    # servers, burns its retry budget and ends up with SERVFAIL ("exceeded the maximum number of sends")
+    do-ip6: no
+    # 0x20 case randomization breaks with load balanced domains (Microsoft, Akamai, Twitch, ...) that answer differently
+    # on each query, Unbound then cannot validate its fallback ("0x20 failed, then got different replies in fallback")
+    use-caps-for-id: no
+    # 1 is plenty, 5 (debug) formats a huge amount of text for every single query, even when it ends up in /dev/null
+    verbosity: 1
+    # log the reason of each SERVFAIL to the container output (sudo docker logs unbound)
+    log-servfail: yes
+    logfile: ""
+    use-syslog: no
 ```
 
-But it's not recommended to increase verbosity for daily use, as Unbound logs a lot.
+A quick way to validate such changes without touching the running resolver is to start a **throwaway** Unbound with the modified file on the same Docker network,
+and to compare both on names that are not cached :
+
+```bash
+sudo docker run -d --name unbound-test --network wireguard_net -v /tmp/unbound-test.conf:/opt/unbound/etc/unbound/unbound.conf:ro mvance/unbound:latest
+dig @$(sudo docker inspect unbound-test --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}') login.live.com
+sudo docker logs unbound-test | grep SERVFAIL
+sudo docker rm -f unbound-test
+```
+
+With my original file 9 names out of 16 failed, with `do-ip6: no` alone all 16 succeeded, and `use-caps-for-id: no` on top made them faster.
+
+Do not enable `log-queries` for daily use, Unbound logs a lot.
 
 ### Configuration files details
 
-#### Environment variables
-
-:page_facing_up: _.env_ :
-
-```shell
-WIREGUARD_UI_USERNAME=<username>
-WIREGUARD_UI_PASSWORD=<password>
-PIHOLE_PASSWORD=<password>
-```
-
-It simply defines environment variables to be used in the Docker Compose file.
-
 #### Services definition
 
-:page_facing_up: _docker_compose.yaml_ :
+:page_facing_up: _pihole/docker-compose.yml_ :
 
 ```yaml
+services:
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      TZ: "Europe/Zurich"
+      FTLCONF_dns_listeningMode: 'all'
+    networks:
+      pihole-net:
+        ipv4_address: 10.2.0.100
+      traefik-net:
+    volumes:
+      - "./etc-pihole/:/etc/pihole/"
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+
 networks:
 
-  wireguard_net:
-    name: wireguard_net
+  pihole-net:
+    name: pihole-net
     ipam:
       driver: default
       config:
@@ -1511,7 +1471,28 @@ networks:
   traefik-net:
     name: traefik-net
     external: true
+```
 
+This **Compose** file :
+
+- defines the `pihole-net` **network** with the subnet `10.2.0.0/24` (shared with Unbound)
+- references the `traefik-net` Traefik network so that the web UI can be reached through the reverse proxy (the router itself is declared on the Traefik side, see below)
+- defines the `pihole` service :
+    - publishes port `53` (TCP and UDP) on **every address of the host**, which is what makes Pi-Hole reachable from the LAN (`192.168.0.16`)
+      and from the VPN peers (`10.0.0.1`) without any extra rule
+    - sets the timezone and `FTLCONF_dns_listeningMode: 'all'` (see [Pi-hole](#pi-hole))
+    - assigns the **static IP address** `10.2.0.100`
+    - binds the _/etc/pihole_ folder to keep the configuration and the databases
+    - adds the `NET_ADMIN`, `SYS_TIME` and `SYS_NICE` capabilities recommended by the Pi-Hole image (DHCP server, time synchronisation, scheduling priority)
+
+> [!NOTE]
+> Do not lower the MTU of the Docker networks "to fit the tunnel" (I had `com.docker.network.driver.mtu: "1280"` on all of them for a long time) : the containers don't need it,
+> MSS clamping and PMTU discovery take care of TCP through the tunnel and DNS answers fit anyway. A small bridge MTU only means more packets for the same data
+> and a dependency on ICMP for the inbound traffic, and back when WireGuard itself ran in a container it forced the kernel to fragment every single encrypted packet.
+
+:page_facing_up: _unbound/docker-compose.yml_ :
+
+```yaml
 services:
 
   unbound:
@@ -1522,165 +1503,60 @@ services:
     volumes:
       - "./unbound:/opt/unbound/etc/unbound/"
     networks:
-      wireguard_net:
+      pihole-net:
         ipv4_address: 10.2.0.200
 
-  wireguard:
-    depends_on: [ unbound, pihole ]
-    image: linuxserver/wireguard:latest
-    container_name: wireguard
-    cap_add:
-      - NET_ADMIN
-    volumes:
-      - ./wireguard:/config
-    ports:
-      - "51820:51820/udp"
-    restart: unless-stopped
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Europe/Zurich
-    sysctls:
-      - net.ipv4.conf.all.src_valid_mark=1
-    networks:
-      wireguard_net:
-        ipv4_address: 10.2.0.3
-      traefik-net:
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.wireguard-ui.rule=Host(`wireguard-ui.example.com`)"
-      - "traefik.http.routers.wireguard-ui.entrypoints=websecure"
-      - "traefik.http.routers.wireguard-ui.tls.certresolver=default"
-      - "traefik.http.routers.wireguard-ui.middlewares=vpn-whitelist"
-      - "traefik.http.services.wireguard-ui.loadbalancer.server.port=5000"
-      - "traefik.docker.network=traefik-net"
+networks:
 
-  wireguard-ui:
-    image: ngoduykhanh/wireguard-ui:latest
-    container_name: wireguard-ui
-    depends_on: [ unbound, wireguard ]
-    cap_add:
-      - NET_ADMIN
-    # use the network of the 'wireguard' service, this enables to show active clients in the status page
-    network_mode: service:wireguard
-    env_file: ./.env
-    environment:
-      - SENDGRID_API_KEY
-      - EMAIL_FROM_ADDRESS
-      - EMAIL_FROM_NAME
-      - SESSION_SECRET
-      - WGUI_USERNAME=$WIREGUARD_UI_USERNAME
-      - WGUI_PASSWORD=$WIREGUARD_UI_PASSWORD
-      - WG_CONF_TEMPLATE
-      - WGUI_MANAGE_START=true
-      - WGUI_MANAGE_RESTART=true
-    logging:
-      driver: json-file
-      options:
-        max-size: 50m
-    volumes:
-      - ./wireguard-ui-db:/app/db
-      - ./wireguard:/etc/wireguard
-
-  pihole:
-    depends_on: [ unbound ]
-    container_name: pihole
-    image: pihole/pihole:latest
-    restart: unless-stopped
-    hostname: pihole
-    env_file: ./.env
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.pihole.rule=Host(`pihole.example.com`)"
-      - "traefik.http.routers.pihole.entrypoints=websecure"
-      - "traefik.http.routers.pihole.tls.certresolver=default"
-      - "traefik.http.routers.pihole.middlewares=vpn-whitelist"
-      - "traefik.http.services.pihole.loadbalancer.server.port=80"
-      - "traefik.docker.network=traefik-net"
-    dns:
-      - 127.0.0.1
-      - 10.2.0.200 # Unbound IP
-    environment:
-      TZ: "Europe/Zurich"
-      WEBPASSWORD: $PIHOLE_PASSWORD
-      ServerIP: 10.2.0.100 # Internal IP of pi-hole
-      DNS1: 10.2.0.200 # Unbound IP
-      DNS2: 10.2.0.200 # If we don't specify two, it will auto pick google.
-    volumes:
-      - "./etc-pihole/:/etc/pihole/"
-      - "./etc-dnsmasq.d/:/etc/dnsmasq.d/"
-    # Recommended but not required (DHCP needs NET_ADMIN)
-    cap_add:
-      - NET_ADMIN
-    networks:
-      wireguard_net:
-        ipv4_address: 10.2.0.100
-      traefik-net:
+  pihole-net:
+    name: pihole-net
+    external: true
 ```
 
-This **Compose** file roughly :
+This **Compose** file only defines the `unbound` service, on the same (external) `pihole-net` network with the **static IP address** `10.2.0.200`,
+and binds the configuration folder so that _unbound.conf_ can be edited (see [Unbound](#unbound)). Unbound is not exposed at all, only Pi-Hole talks to it.
 
-- defines a `wireguard_net` **network** to hold our 4 WireGuard-related services, with the assigned subnet address `10.2.0.0/24` (**CIDR** notation)
-- reference the `traefik-net` Traefik network so that services can use it and be discoverable by Traefik
-- defines our 4 services (WireGuard, WireGuard UI, Pi-Hole, Unbound) :
-    - `unbound` service :
-        - defines a **volume** that binds the configuration folder to a local folder, in case we want to change default configuration
-        - assigns the **static IP address** `10.2.0.200` for the container inside the WireGuard network
-    - `wireguard` service :
-        - defines a **volume** to bind configuration file
-        - adds network capability `NET_ADMIN` to grant the container the ability to perform various network-related tasks
-          (like configuring network interfaces or changing routing tables) required be the service
-        - enables the `net.ipv4.conf.all.src_valid_mark` sysctl setting to activate source address validation, which helps in preventing IP spoofing attacks
-        - uses Traefik **labels** to :
-            - create a **service** which will point to our container application running on port `5000`
-            - create an HTTP **router** that will match `wireguard-ui.example.com` URL on our `websecure` **entrypoint** to point to our service
-            - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-            - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-        - assigns `the` **static IP address** `10.2.0.3` for the container inside the WireGuard network
-    - `wireguard-ui` service :
-        - add network capability `NET_ADMIN` to grant the container the ability to perform various network-related tasks
-          (like configuring network interfaces or changing routing tables) required be the service
-        - uses the network of the `wireguard` service
-        - references the _.env_ file containing some defined environment variables values
-        - defines JSON file logging with a max size of 50 MB
-    - `pihole` service :
-        - defines **volumes** to bind configuration files
-        - references the _.env_ file containing some defined environment variables values
-        - uses Traefik **labels** to :
-            - create a **service** which will point to our container application running on port `80`
-            - create an HTTP **router** that will match `pihole.example.com` URL on our `websecure` **entrypoint** to point to our service
-            - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-            - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-        - sets DNS to point to Unbound
-        - adds network capability `NET_ADMIN` to grant the container the ability to perform various network-related tasks
-          (like configuring network interfaces or changing routing tables) required be the service
-        - assigns the **static IP address** `10.2.0.100` for the container inside the WireGuard network
+#### Traefik routing
+
+:page_facing_up: _traefik/dynamic/pihole.yml_ (to copy into _/opt/apps/traefik/dynamic/_, the directory watched by the `file` provider of _traefik.yml_) :
+
+```yaml
+http:
+  services:
+    pihole:
+      loadBalancer:
+        servers:
+          - url: http://pihole:80
+
+  routers:
+    pihole:
+      rule: 'Host(`pihole.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: pihole
+      middlewares:
+        # restrict the web UI to the local network and the VPN peers, replace it with a forward-auth
+        # middleware (I use PocketID in front of it) if you prefer an authentication
+        - vpn-whitelist@docker
+```
+
+It declares the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-net` network) and the **router** matching
+`pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate, exactly what the Traefik labels used to do, but Traefik picks up the file
+without restarting anything. The `vpn-whitelist` middleware keeps the web UI private (local network and VPN peers only).
 
 ### Run
 
-Simply run the Compose file :
+Once the tunnel is up (see [WireGuard](#wireguard)), run the two Compose files :
 
 ```bash
-sudo docker-compose -f /opt/apps/wireguard/docker_compose.yml up -d
+sudo docker-compose -f /opt/apps/pihole/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/unbound/docker-compose.yml up -d
 ```
 
-You should end-up with **4** running containers :
-
-- `wireguard`
-- `wireguard-ui`
-- `pihole`
-- `unbound`
-
-It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file.
-
-Unbound is not exposed, but you can reach other services :
-
-- WireGuard server at https://wireguard.example.com
-- WireGuard GUI at https://wireguard-ui.example.com
-- Pi-Hole at https://pihole.example.com
+You should end up with the `wg0` interface (`sudo wg show`) and **2** running containers, `pihole` and `unbound`.
+Unbound is not exposed, Pi-Hole is reachable at https://pihole.example.com.
 
 # Test the network
 
@@ -1703,8 +1579,8 @@ When a user enters the URL in the browser, the browser need to know the IP addre
 7. Checks the **ISP resolving name server** which will call the **root DNS servers** (root server <--> TLD server <--> Authoritative Name Server)
    to find the IP address from the DNS server responsible for the domain name
 
-In our case every request from the **local network** is forwarded to **Pi-hole**, so the IP resolving will always go through **Pi-Hole** and **Unbound**.
-See [Network flow](#network-flow) later below for a more graphical representation of the network flow.
+In our case the requests from the **local network** should reach **Pi-hole** (directly, or through the router if it really forwards them, see [IP settings](#ip-settings)),
+so the IP resolving goes through **Pi-Hole** and **Unbound**. See [Network flow](#network-flow) later below for a more graphical representation of the network flow.
 
 You can first test that each service is resolvable using `nslookup` command, i.e. :
 
@@ -1716,6 +1592,9 @@ Address:  10.2.0.100
 Name :     myapp.example.com
 Address:  192.168.0.16
 ```
+
+If the answering server is the router instead of Pi-Hole, the router does not forward the queries (see [IP settings](#ip-settings)).
+If names resolve fine once cached but fail (`SERVFAIL`) or take a second the first time, the problem is on Unbound's side, see the settings in [Unbound](#unbound).
 
 Then you can look for DNS leak using any online checker, to determine which DNS servers the browser is using to resolve domain names,
 it should end up showing your **public IP address**, not Cloudflare or Google, etc. as we use **Unbound** (see [Unbound](#unbound) for configuration).
@@ -1766,148 +1645,97 @@ which shows that the `vpn-whitelist` **middleware** blocks any IP address that i
 
 ## VPN connection speed
 
-To verify that the VPN is not killing the connection speed,
-you can first use an online **speed test**, this will confirm whether the connection speed is close to normal.
+To verify that the VPN is not killing the connection speed, first run an online **speed test** with and without the tunnel, from a **wired** device
+(Wi-Fi adds its own variability). These are my results with a symmetric gigabit fiber line, from the home PC :
 
-In my case I observed an abnormally slow connection (**~22 MB/s** download and upload speed, even though I have a gigabit connection whose speed reaches **700+ MB/s** without VPN).
+| Test (home PC, Ethernet)                                 | Download / upload (Mbit/s) |
+|----------------------------------------------------------|----------------------------|
+| No VPN                                                   | 920 / 920                  |
+| Split tunnel (only the VPN subnet routed)                | 910 / 920                  |
+| Full tunnel, endpoint = LAN IP of the server             | 570 / 860                  |
+| Full tunnel, endpoint = public hostname (router hairpin) | 350 / 440                  |
 
-![Ookla test with MTU 1450](images/screen-ookla-test-mtu-1450.png)
-
-That was because of the WireGuard **MTU** (**Maximum Transmission Unit**) value,
-which need to be slightly adjusted.
+The upload is fine, the hairpin case is explained in [Peers configuration](#peers-configuration), and the download ceiling took me an evening of measurements to understand.
+Here is what I learned, so you don't have to.
 
 ### Configure MTU
 
-By default, WireGuard sets an MTU value of `1450`, which may not be optimal for your connection.
-
-Most of **Ethernet** connections have an MTU of `1500`.
-You can confirm this on your network by running the `ping` command with the right parameters :
+Most **Ethernet** connections have an MTU of `1500`. You can confirm this on your network by running the `ping` command with the right parameters :
 
 ```console
 ping www.google.com -f -l 1472
 ping www.google.com -f -l 1473
 ```
 
-If the MTU is too high, it will tell you that the packet needs to be fragmented (packets larger than
-the connection’s MTU size cannot be transmitted and will be fragmented into smaller packets), else ping will answer normally.
+`1472` will work and `1473` will warn that the packet needs to be fragmented, because the **IPv4 header** is `20` bytes and the **ICMP header** is `8` bytes (`1472 + 20 + 8 = 1500`).
 
-`1472` will work and `1473` will warn about fragmented packets,
-this is because the **IPv4 header** is `20` bytes and the **ICMP header** is `8` bytes (so `1472 + 20 + 8 = 1500`).
+WireGuard adds its own headers, `60` bytes on IPv4 and `80` bytes on IPv6, so the tunnel MTU must be `1500 - 80 = 1420` (the `wg-quick` default).
+Beware of tools defaulting to `1450` (WireGuard UI did) : that produces `1510` bytes packets that get fragmented, and a **fragmented tunnel is dramatically slow** (a few percent of the line rate).
+Set `1420` on the server and on every peer, and don't go lower : a smaller MTU only means more packets for the same data.
 
-But when going through WireGuard, it also sets additional bytes, which will result in a `60` bytes header, exceeding the value of `1500` (`1450 + 60 = 1510`).
+### Measure where the limit is
 
-The worst case (**IPv6**, which has a `40` bytes header compared to `20` bytes of IPv4) ends up being for WireGuard `1500 - 80` = `1420`.
-However, if you know that you're going to be using IPv4 exclusively, then you could go with `1440`.
-
-So just set that value as the MTU for the WireGuard server and peer.
-
-### Measure speed with iPerf
-
-Then you can test the connection speed between the WireGuard server and the peer, using the **iPerf** utility.
-
-1. Enter the WireGuard container :
-
-   ```bash
-   docker exec -it wireguard bash
-   ```
-
-2. Install iPerf (use `apk` as this is an Alpine Linux) :
-
-   ```bash 
-   apk add iperf
-   ```
-
-3. Install iPerf on the client machine (**Windows** in my case, so I just downloaded and extracted the _.exe_ file).
-
-4. Run iPerf in **server mode** on the WireGuard server :
-
-   ```bash 
-   iperf --server
-   ```
-
-5. Run iPerf in **client mode** on the client machine to execute the test :
-
-   ```bash 
-   iperf --client 10.2.0.3 --time 5 --reverse
-   ```
-    - `10.2.0.3` is our WireGuard server static IP address
-    - `--time 5` runs the test for 5 seconds
-    - `--reverse` runs a download test (omit it to test upload)
-
-> [!WARNING]
-> iperf 2 and iperf 3 are not compatible, so make sure to install the same major version on both side,
-> else you may get `iperf3: error - unable to connect to server: Connection refused`
-
-So here it the output with the default `1450` MTU :
-
-```console
-------------------------------------------------------------
-Client connecting to 10.2.0.3, TCP port 5001
-TCP window size:  208 KByte (default)
-------------------------------------------------------------
-[  3] local 10.10.1.2 port 52846 connected with 10.2.0.3 port 5001
-[ ID] Interval       Transfer     Bandwidth
-[  3]  0.0- 5.3 sec  14.9 MBytes  23.7 Mbits/sec
-```
-
-With `1420` MTU :
-
-```console
-------------------------------------------------------------
-Client connecting to 10.2.0.3, TCP port 5001
-TCP window size:  208 KByte (default)
-------------------------------------------------------------
-[  3] local 10.10.1.2 port 51999 connected with 10.2.0.3 port 5001
-[ ID] Interval       Transfer     Bandwidth
-[  3]  0.0- 5.0 sec   225 MBytes   378 Mbits/sec
-```
-
-And even better with `1400` MTU :
-
-```console
-------------------------------------------------------------
-Client connecting to 10.2.0.3, TCP port 5001
-TCP window size:  208 KByte (default)
-------------------------------------------------------------
-[  3] local 10.10.1.2 port 53401 connected with 10.2.0.3 port 5001
-[ ID] Interval       Transfer     Bandwidth
-[  3]  0.0- 5.0 sec   247 MBytes   414 Mbits/sec
-```
-
-Other values give roughly the same results.
-
-You can also run multiple tests in parallel, with the `-P` argument :
+Speed tests only give the end result. To know **which part** of the path limits, use **iPerf 3** between the peer and the server, in both directions, in **UDP** and in **TCP**.
+Install `iperf3` on the server (`sudo apt install iperf3`) and on the client (Windows builds are available on iperf.fr), run `iperf3 -s` on the client (allow it in the Windows firewall),
+then from the server, with the tunnel up (`10.0.0.2` being the tunnel address of the peer and `192.168.0.12` its LAN address) :
 
 ```bash
-iperf --client 10.2.0.3 --time 5 --reverse -P 3
+# reference : LAN, no tunnel, both directions
+iperf3 -c 192.168.0.12 -t 10 -P 4
+iperf3 -c 192.168.0.12 -t 10 -P 4 -R
+# through the tunnel, UDP at a fixed rate : does the path carry the packets at all ?
+iperf3 -c 10.0.0.2 -u -b 900M -l 1350 -t 10
+# through the tunnel, TCP : what does a real transfer get ?
+iperf3 -c 10.0.0.2 -t 10 -P 4
+iperf3 -c 10.0.0.2 -t 10 -P 4 -R
 ```
 
-```console
-------------------------------------------------------------
-Client connecting to 10.2.0.3, TCP port 5001
-TCP window size:  208 KByte (default)
-------------------------------------------------------------
-[  3] local 10.10.1.2 port 60001 connected with 10.2.0.3 port 5001
-[  5] local 10.10.1.2 port 60003 connected with 10.2.0.3 port 5001
-[  4] local 10.10.1.2 port 60002 connected with 10.2.0.3 port 5001
-[ ID] Interval       Transfer     Bandwidth
-[  3]  0.0- 5.0 sec  89.8 MBytes   150 Mbits/sec
-[  4]  0.0- 5.0 sec  90.1 MBytes   151 Mbits/sec
-[  5]  0.0- 5.0 sec  78.2 MBytes   131 Mbits/sec
-[SUM]  0.0- 5.0 sec   258 MBytes   432 Mbits/sec
+And while a test runs, watch the receive drops of the network card and the state of the TCP connections on the server :
+
+```bash
+ethtool -S enp1s0 | grep rx_missed      # before / after : frames the card dropped because its receive ring was full
+ss -ti dst 10.0.0.2                     # rtt, cwnd and retrans of the running connections
 ```
 
-And that way we can see that the **CPU load** on the mini PC reaches 100% and can limit the bandwidth :
+My results on the N100 :
 
-![CPU load during iPerf test](images/screen-cpu-load-iperf.png "CPU load during iPerf test")
+- LAN without tunnel : **940 Mbit/s** both ways, zero retransmission. Card, cable, router and PC are fine.
+- Tunnel, UDP : **900+ Mbit/s** both ways with **0.00 % loss** at line rate. The whole path, encryption on the N100 and decryption on the PC included, carries the full gigabit.
+- Tunnel, TCP, upload (peer to internet) : 860 to 930 Mbit/s.
+- Tunnel, TCP, download (internet to peer) : **550 to 600 Mbit/s**, whatever I tried, with `rx_missed` climbing on the server (50 to 1000 per second) while the CPU never went above 70 % on the busiest core.
 
-Anyway, we improved a lot ! A new online test confirms it :
+So the limit is neither the CPU nor WireGuard, it is the **network card**. The Realtek RTL8168H of this mini PC (`r8169` driver) has a **single queue**,
+a single interrupt handled by a single core, and a **receive ring of 256 descriptors** (hardware maximum), which holds about 3 ms of gigabit traffic.
+When the card receives *and* transmits at ~600 Mbit/s at the same time, which is exactly what relaying a download through the tunnel does, the ring overflows during the small
+scheduling gaps of the receive path, and the dropped frames make the TCP senders on the internet back off. "Polite" senders (speed test servers) settle around 560 Mbit/s,
+aggressive ones (public iPerf servers with 10 Gbit/s uplinks) push ~850 Mbit/s through at the price of tens of thousands of retransmissions.
+The upload is not affected because the plaintext sent out benefits from segmentation offload (far fewer packets to handle), and UDP is not affected because it does not react to drops.
 
-![Ookla test with MTU 1450](images/screen-ookla-test-mtu-1400.png "Ookla test with MTU 1450")
+For the record, here is what does **not** move that ceiling (I measured each one) : pinning the card interrupt to a dedicated core and steering the rest with RPS, interrupt coalescing
+(receive coalescing even multiplied the drops by 30), threaded NAPI with real-time priority, real-time `ksoftirqd`, a bigger NAPI budget, disabling Ethernet flow control, TSO/GSO,
+`cake` on the tunnel interface, an ingress shaper, a fast path in iptables. Some of them lower the CPU usage, none of them changes the size of the receive ring.
 
-> [!NOTE]
-> You can try other value to see what fits best in your network.
-> There are other parameters than can influence the connection speed (CPU load, distance, etc.), but I stopped investigation here as it's performing well enough for my use.
+What does help :
+
+- **Don't use a full tunnel at home**, see [Peers configuration](#peers-configuration) : a split tunnel, or no tunnel at all with the DNS pointing to Pi-Hole, gives the same ad blocking at 920 Mbit/s.
+  Away from home, the remote connection is the limit anyway.
+- If you really want line rate through the tunnel, the fix is hardware : a **multi-queue** network card (for example an Intel i226 on an M.2 A+E adapter, in place of the unused Wi-Fi card,
+  brings 4 queues and receive rings up to 4096 descriptors).
+
+### Network card settings
+
+Two settings of the `r8169` driver are worth changing anyway, they lower the CPU cost of the upload and of the LAN traffic. Put them as `post-up` commands of the interface
+in _/etc/network/interfaces_ so that they survive a reboot :
+
+```
+iface enp1s0 inet dhcp
+    # the driver keeps scatter-gather and TCP segmentation offload off by default because of old reports of transmit timeouts, they work fine on the RTL8168H
+    post-up ethtool -K enp1s0 sg on tso on gso on || true
+    # one interrupt per transmitted packet by default : coalesce them (but do NOT coalesce the receive side, it makes the receive drops worse)
+    post-up ethtool -C enp1s0 tx-usecs 120 tx-frames 16 || true
+```
+
+If `dmesg` ever shows `NETDEV WATCHDOG` for the interface, remove the first line.
 
 ## Network flow
 
@@ -2174,7 +2002,7 @@ flowchart TB
     style TRAEFIK_CONTAINER fill: #663535
     style PIHOLE_CONTAINER fill: #663535
     style UNBOUND_CONTAINER fill: #663535
-    style WIREGUARD_CONTAINER fill: #663535
+    style WIREGUARD_HOST fill: #663535
     style MYAPP_CONTAINER fill: #663535
     style PIHOLE_DNS_RECORDS fill: #806030
     style TRAEFIK_ROUTER fill: #806030
@@ -2186,7 +2014,7 @@ flowchart TB
     DDNS(myddns.ddns.net)
     ROUTER_PUBLIC_IP[public IP]
     ROUTER_PORT51820{{51820/tcp}}
-    WIREGUARD_PORT{{51820/tcp}}
+    WIREGUARD_PORT{{51820/udp}}
     ROUTER_DNS[DNS 1]
     DOCKER_PIHOLE_PORT53{{53/udp}}
     DOCKER_TRAEFIK_PORT443{{433/tcp}}
@@ -2226,10 +2054,6 @@ flowchart TB
                 DOCKER_MYAPP_PORT
             end
 
-            subgraph WIREGUARD_CONTAINER[WIREGUARD CONTAINER]
-                WIREGUARD_PORT
-            end
-
             subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
                 DOCKER_UNBOUND_PORT53
             end
@@ -2257,11 +2081,15 @@ flowchart TB
 
         end
 
+        subgraph WIREGUARD_HOST[WIREGUARD - on the host]
+            WIREGUARD_PORT
+        end
+
     end
 
     CLIENT((client)) --> VPN_CLIENT
     WIREGUARD_CLIENT_ENDPOINT --> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS -->|Pi - Hole internal IP| DOCKER_PIHOLE_PORT53
+    WIREGUARD_CLIENT_DNS -->|10.0.0.1 = server tunnel address, port 53 published by Docker| DOCKER_PIHOLE_PORT53
     VPN_CLIENT -->|" http://myapp.example.com "| BROWSER
     BROWSER((browser)) --> ROUTER_PUBLIC_IP
     DOMAIN -->|subdomain| SUBDOMAIN_MYAPP
@@ -2445,7 +2273,7 @@ Things to notice :
 Finally, simply run the Compose file :
 
 ```bash
-sudo docker-compose -f /opt/apps/portainer/docker_compose.yml up -d
+sudo docker-compose -f /opt/apps/portainer/docker-compose.yml up -d
 ```
 
 You should end-up with a running `portainer` container.
@@ -2786,11 +2614,6 @@ services:
         subtitle: "Application monitoring tool"
         tag: "monitoring"
         url: "https://kuma.example.com/status/dashboard"
-      - name: "WireGuard UI"
-        logo: "https://seeklogo.com/images/W/wireguard-logo-259B3D155A-seeklogo.com.png"
-        subtitle: "Simple yet fast and modern VPN"
-        tag: "network"
-        url: "https://wireguard-ui.example.com/status"
       - name: "Pi-Hole"
         logo: "https://pihole.example.com/admin/img/logo.svg"
         subtitle: "Network-wide ad blocking"
