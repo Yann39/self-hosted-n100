@@ -1,0 +1,19 @@
+http:
+  services:
+    pihole:
+      loadBalancer:
+        servers:
+          - url: http://pihole:80
+
+  routers:
+    pihole:
+      rule: 'Host(`pihole.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: pihole
+      middlewares:
+        # restrict the web UI to the local network and the VPN peers, replace it with a forward-auth
+        # middleware (I use PocketID in front of it) if you prefer an authentication
+        - vpn-whitelist@docker

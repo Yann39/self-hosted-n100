@@ -1,0 +1,35 @@
+services:
+
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    restart: unless-stopped
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+    environment:
+      TZ: "Europe/Zurich"
+      FTLCONF_dns_listeningMode: 'all'
+    networks:
+      pihole-net:
+        ipv4_address: 10.2.0.100
+      traefik-net:
+    volumes:
+      - "./etc-pihole/:/etc/pihole/"
+    cap_add:
+      - NET_ADMIN
+      - SYS_TIME
+      - SYS_NICE
+
+networks:
+
+  pihole-net:
+    name: pihole-net
+    ipam:
+      driver: default
+      config:
+        - subnet: 10.2.0.0/24
+
+  traefik-net:
+    name: traefik-net
+    external: true
