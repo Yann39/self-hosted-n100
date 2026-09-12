@@ -13,7 +13,7 @@ services:
     networks:
       pihole-net:
         ipv4_address: 10.2.0.100
-      traefik-net:
+      traefik-private-net:
     volumes:
       - "./etc-pihole/:/etc/pihole/"
     cap_add:
@@ -30,6 +30,6 @@ networks:
       config:
         - subnet: 10.2.0.0/24
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true

@@ -62,7 +62,7 @@ These are the tools we are going to run :
 |      <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>      | Portainer      | https://github.com/portainer/portainer         | Management platform for containerized applications   |
 |        <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>        | Sablier        | https://github.com/acouvreur/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>        | Traefik        | https://github.com/traefik/traefik             | Modern HTTP reverse proxy and load balancer          |
-|   <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>           | PocketID       | https://github.com/pocket-id/pocket-id         | Simple OIDC provider for passkey authentication      |
+|       <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>       | PocketID       | https://github.com/pocket-id/pocket-id         | Simple OIDC provider for passkey authentication      |
 |      <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>      | Wireguard      | https://github.com/WireGuard                   | Simple yet fast and modern VPN                       |
 |        <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>         | Pi-hole        | https://github.com/pi-hole/pi-hole             | Network-wide ad blocking                             |
 |        <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>        | Unbound        | https://github.com/NLnetLabs/unbound           | Validating, recursive, and caching DNS resolver      |
@@ -836,9 +836,9 @@ flowchart LR
     BASIC_AUTH --> DOCKER_TRAEFIK_PORT8080
 ```
 
-It handles HTTP to HTTPS redirection, IP whitelisting and basic authentication through custom **middlewares**.
+It handles HTTP to HTTPS redirection, IP whitelisting and authentication (through PocketID, or basic authentication) through custom **middlewares**.
 In this example `myapp1` is accessible from the internet, `myapp2` is accessible only through VPN,
-and Traefik (dashboard and APIs) is accessible only through VPN after basic authentication.
+and Traefik (dashboard and APIs) is accessible only through VPN after authentication.
 
 ### Installation
 
@@ -950,29 +950,65 @@ Indeed, even if we do not have defined public subdomains for these services, the
 (actually in that case Traefik will not route the request, but it is still better to have this additional security).
 
 Basically it involves creating a **Traefik middleware** for defining the IP whitelist and apply it to the needed services.
+It is declared once, in the dynamic configuration directory :
 
-So we need to allow 2 **IP ranges** :
-
-- The **local IP range** : IPs assigned to the devices on your local network (computers, mobile devices, ...)
-- The **Traefik Docker bridge network IP range** : IPs assigned by Docker to any container in the Traefik network
-
-For the Traefik Docker network IP range, you can either take the default assigned one, or assign a static subnet when creating the Traefik network, i.e. :
+:page_facing_up: _traefik/dynamic/vpn-whitelist.yml_ :
 
 ```yaml
-networks:
-  traefik-net:
-    name: traefik-net
-    ipam:
-      config:
-        - subnet: 172.22.0.0/16
+http:
+  middlewares:
+    vpn-whitelist:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/24" # your LAN
+          - "10.0.0.0/24" # Wireguard subnet
 ```
+
+So we allow exactly 2 **IP ranges** :
+
+- the **local IP range** : IPs assigned to the devices on your local network (computers, mobile devices, ...)
+- the **WireGuard subnet** : the VPN peers keep their tunnel address when they reach Traefik, as WireGuard runs on the host and the peers' traffic is not NATed towards the containers
 
 That way :
 
-- Requests coming from the local network will come with a local address assigned by the router DHCP, and will be **accepted**.
-- Requests coming from the internet through VPN will go through Pi-Hole and will be redirected to Traefik (Pi-hole's local DNS records)
-  and thus come with a Traefik Docker network assigned IP address, and will be **accepted**.
-- Requests coming from the internet without VPN will come with a public IP address and will be **rejected** as it will not match any whitelisted address.
+- Requests coming from the local network come with a local address assigned by the router DHCP, and are **accepted**.
+- Requests coming from the internet through VPN come with a `10.0.0.x` address, and are **accepted**.
+- Requests coming from the internet without VPN come with a public IP address and are **rejected**, as it does not match any whitelisted address.
+
+> [!WARNING]
+> Never whitelist a **Docker network range**
+> A container is not a trusted client, and with the [network segmentation](#network-segmentation) below, a whitelisted Docker range would let a compromised public container
+> walk straight into the private services.
+
+Then it just needs to be referenced in the `middlewares` list of every router that must stay private (`vpn-whitelist@file`), as you will see in the services definitions.
+Keep in mind that it only protects the requests that go **through Traefik** : what a container can reach directly on the Docker networks is the job of the network segmentation.
+
+### Network segmentation
+
+Every service behind the reverse proxy must share a Docker network with Traefik to be reachable by name, but containers on the same network can also talk
+**to each other** directly, without going through Traefik and its middlewares. With a single shared network, a vulnerability in one of the applications exposed
+to the internet (an old PHP website, a photo gallery, an API) gives an attacker a foothold from which every other container is one HTTP request away :
+Pi-Hole's admin interface, Portainer (and through it the Docker socket, i.e. root on the host), the Traefik dashboard, ...
+The IP whitelist does not help there, it never sees this traffic.
+
+So Traefik sits on two networks, and nothing else is allowed to be on both :
+
+| Network               | Who                                                                                                           | Reachable from                               |
+|-----------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Portainer, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ... | local network and VPN only (`vpn-whitelist`) |
+| `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, ...                               | anyone                                       |
+
+A compromised public container can then only see Traefik and the other public applications, never the private ones. A few rules go with it :
+
+- a public application never joins `traefik-private-net`, a private one never joins `traefik-public-net`, and no application joins both
+- the databases stay on the private network of their own stack (`lychee-net`, `defrag-life-net`, ...), never on a Traefik network
+- containers holding the **Docker socket** (Portainer, Sablier) are private by construction
+- PocketID stays private : a public application that would authenticate through it does so with the browser, through the public URL and Traefik, it does not need a shared network
+
+> [!NOTE]
+> To migrate an existing setup that used a single `traefik-net` network : update the Traefik Compose file and run it (`docker-compose up -d` creates both networks and recreates Traefik),
+> then update every other stack (`traefik-private-net` or `traefik-public-net` depending on its exposure) and run `docker-compose up -d` on each : the containers are recreated on their new network,
+> the volumes are untouched. Once nothing is attached to the old network anymore, remove it with `docker network rm traefik-net`. Don't forget the stacks that are not in this repository.
 
 ### Configuration files details
 
@@ -1034,11 +1070,13 @@ services:
       - "443:443"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro    # So that Traefik can listen to the Docker events
-      - ./traefik.yml:/etc/traefik/traefik.yml:ro       # Traefik configuration
+      - ./traefik.yml:/etc/traefik/traefik.yml:ro       # Traefik static configuration
+      - ./dynamic:/etc/traefik/dynamic:ro               # Traefik dynamic configuration
       - ./acme.json:/acme.json                          # For Let's Encrypt certificate storage
       - ./credentials.txt:/credentials.txt:ro           # For Traefik dashboard credentials
     networks:
-      - traefik-net
+      - traefik-private-net         # private : services reachable from the local network and the VPN only
+      - traefik-public-net  # public : services exposed to the internet
     environment:
       MYPROVIDER_ACCESS_TOKEN: <access_token_here>
     labels:
@@ -1064,26 +1102,29 @@ services:
       - "traefik.http.routers.api.tls=true"
       - "traefik.http.routers.api.tls.certresolver=default"
 
-      # Secure dashboard/API behind VPN and pocketID auth (or basic authentication)
+      # Secure dashboard/API behind VPN and PocketID authentication (or basic authentication)
       - "traefik.http.routers.dashboard.middlewares=vpn-whitelist@file,traefik-auth@file"
       - "traefik.http.routers.api.middlewares=vpn-whitelist@file,traefik-auth@file"
       # - "traefik.http.middlewares.auth.basicauth.usersfile=/credentials.txt" # only if you use basic auth
 
 networks:
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
+
+  traefik-public-net:
+    name: traefik-public-net
 ```
 
 This **Compose** file mainly :
 
 - exposes ports `80` and `443` to receive incoming HTTP/HTTPS requests
-- defines a `traefik-net` **network** (which will have to be shared with the services that will use Traefik)
+- defines two **networks** : `traefik-private-net` for the services that must stay private (reachable from the local network and the VPN only) and `traefik-public-net` for the services exposed to the internet, see [Network segmentation](#network-segmentation)
 - defines an environment variable to hold the DNS provider access token to be able to issue Let's Encrypt certificates through **DNS challenge**
 - defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our service
 - defines `httpsonly` **router** and **middleware** responsible for automatically redirecting HTTP requests to HTTPS
 - configures `dashboard` and `api` routers to use secure HTTPS endpoint with our certificate resolver to generate related Let's Encrypt certificates
-- secures dashboard and API endpoints using middlewares to allow only requests coming from the VPN and to require authentication (either PocketID or basic authentication)
+- secures dashboard and API endpoints with the `vpn-whitelist` middleware (requests from the local network and the VPN only) and the `traefik-auth` middleware (authentication through [PocketID](#pocketid), basic authentication being the alternative)
 
 > [!CAUTION]
 > The order in which the middlewares are defined in relation to a router is important, they will be applied in the same order as their declaration.
@@ -1323,7 +1364,8 @@ by default it only answers "local" requests, and "local" for Pi-Hole is the Dock
 
 The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik labels anymore, the router is declared in a file of
 Traefik's **dynamic configuration** directory instead (see [Traefik routing](#traefik-routing) below), restricted to the local network and the VPN peers.
-I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy, with an OIDC middleware backed by **PocketID** (see [PocketID](#pocketid)).
+I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy, with an OIDC middleware backed by **PocketID** (see [PocketID](#pocketid)),
+and the [network segmentation](#network-segmentation) keeps the container out of reach of the applications exposed to the internet.
 The image generates a random password at first start, remove it (or set yours) with :
 
 ```bash
@@ -1446,7 +1488,7 @@ services:
     networks:
       pihole-net:
         ipv4_address: 10.2.0.100
-      traefik-net:
+      traefik-private-net:
     volumes:
       - "./etc-pihole/:/etc/pihole/"
     cap_add:
@@ -1463,8 +1505,8 @@ networks:
       config:
         - subnet: 10.2.0.0/24
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
 ```
 
@@ -1494,7 +1536,7 @@ http:
 This **Compose** file :
 
 - defines the `pihole-net` **network** with the subnet `10.2.0.0/24` (shared with Unbound)
-- references the `traefik-net` Traefik network so that the web UI can be reached through the reverse proxy (the router itself is declared on the Traefik side, see below)
+- references the `traefik-private-net` Traefik network so that the web UI can be reached through the reverse proxy (the router itself is declared on the Traefik side, see below)
 - defines the `pihole` service :
     - publishes port `53` (TCP and UDP) on **every address of the host**, which is what makes Pi-Hole reachable from the LAN (`192.168.0.16`)
       and from the VPN peers (`10.0.0.1`) without any extra rule
@@ -1503,7 +1545,7 @@ This **Compose** file :
     - binds the _/etc/pihole_ folder to keep the configuration and the databases
     - adds the `NET_ADMIN`, `SYS_TIME` and `SYS_NICE` capabilities recommended by the Pi-Hole image (DHCP server, time synchronisation, scheduling priority)
 - it uses Traefik dynamic config file to :
-    - define the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-net` network)
+    - define the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-private-net` network)
     - define the **router** matching `pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate
     - restrict the web UI to the local network and the VPN peers with the `vpn-whitelist` middleware
     - add a forward-auth middleware `pihole-auth` in front of it (I use PocketID) to require authentication (see [PocketID](#pocketid))
@@ -1564,7 +1606,7 @@ http:
         - pihole-auth@file
 ```
 
-It declares the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-net` network) and the **router** matching
+It declares the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-private-net` network) and the **router** matching
 `pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate, exactly what the Traefik labels used to do, but Traefik picks up the file
 without restarting anything. The `vpn-whitelist` middleware keeps the web UI private (local network and VPN peers only).
 The `pihole-auth` middleware is a forward-auth middleware (I use PocketID) to require authentication (see [PocketID](#pocketid)).
@@ -2290,7 +2332,7 @@ Finally, to protect a service with the middleware, add it to the `middlewares` l
 > [!NOTE]
 > The `pocketid` router is itself behind the `vpn-whitelist` middleware because every service I protect with it is only reachable from the local network or the VPN.
 > If one day a **public** service is put behind the middleware, the login page must be reachable from the internet too : remove the whitelist from the `pocketid` router only,
-> the login page is designed to be public (passkeys cannot be brute-forced or phished).
+> the login page is designed to be public (passkeys cannot be brute-forced or phished). PocketID itself stays on the private network (see [Network segmentation](#network-segmentation)).
 
 ### Details
 
@@ -2311,15 +2353,15 @@ services:
       - /opt/apps/pocketid/encryption_key:/opt/pocket-id/encryption_key:ro
     networks:
       - pocketid-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   pocketid-net:
     name: pocketid-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
 ```
 
@@ -2381,7 +2423,7 @@ Things to notice :
 
 - PocketID's data (SQLite database, uploaded logos) lives in the _data_ folder, and the **encryption key** is mounted read-only from the host
 - the settings come from the _.env_ file (see [Environment variables](#environment-variables))
-- it runs in its own **network** (`pocketid-net`) but must also share the same network as Traefik (`traefik-net`), both to be reachable by the reverse proxy
+- it runs in its own **network** (`pocketid-net`) but must also share the same network as Traefik (`traefik-private-net`), both to be reachable by the reverse proxy
   and so that the plugin can talk to it directly by container name
 - the Traefik dynamic config file :
     - creates a **service** which will point to our container application running on port `1411`
@@ -2514,7 +2556,7 @@ services:
     restart: unless-stopped
     networks:
       - portainer-net
-      - traefik-net
+      - traefik-private-net
 
 volumes:
   portainer-vol:
@@ -2525,8 +2567,8 @@ networks:
   portainer-net:
     name: portainer-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
 ```
 
@@ -2560,7 +2602,7 @@ Things to notice :
     - create an HTTP **router** that will match `portainer.example.com` URL on our `websecure` **entrypoint** to point to our service
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
     - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own **network** (`portainer-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+- It runs in its own **network** (`portainer-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
 
 ### Run
 
@@ -2663,15 +2705,15 @@ services:
       - /:/mnt/host:ro
     networks:
       - dashdot-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   dashdot-net:
     name: dashdot-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
 ```
 
@@ -2707,7 +2749,7 @@ Things to notice :
     - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
     - assign the `sablier-dashdot` **middleware** so that on-demand stop/start of the container can be done through Sablier
-- It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+- It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
 
 ### Run
 
@@ -2831,15 +2873,15 @@ services:
       - IPV6_DISABLE=1
     networks:
       - homer-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   homer-net:
     name: homer-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
 ```
 
@@ -2876,7 +2918,7 @@ Things to notice :
     - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point to our service
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
     - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own network (`homer-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+- It runs in its own network (`homer-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
 
 #### Configuration file
 
@@ -3121,15 +3163,15 @@ services:
       - ./darkwolf/:/var/www/html/themes/darkwolf/
     networks:
       - phpmyadmin-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   phpmyadmin-net:
     name: phpmyadmin-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
 ```
 
@@ -3163,7 +3205,7 @@ Things to notice :
     - create an HTTP **router** that will match `phpmyadmin.example.com` URL on our `websecure` **entrypoint** to point to our service
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
     - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own **network** (`phpmyadmin-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+- It runs in its own **network** (`phpmyadmin-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
 - The `phpmyadmin` network will have to be added to any MySQL/MariaDB database container that we want to make reachable from PhpMyAdmin
 - We set the environment variable `PMA_ARBITRARY` to `1` to tell PhpMyAdmin to allow connection to any arbitrary database server (we will be able to specify the server on login
   screen)
@@ -3287,7 +3329,7 @@ services:
     restart: unless-stopped
     networks:
       - lychee-net
-      - traefik-net
+      - traefik-public-net
 
   lychee-db:
     container_name: lychee-db
@@ -3313,8 +3355,8 @@ networks:
   lychee-net:
     name: lychee-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-public-net:
+    name: traefik-public-net
     external: true
 ```
 
@@ -3346,7 +3388,7 @@ Things to notice :
     - create a **service** which will point to our container application running on port `80`
     - create an HTTP **router** that will match `lychee.example.com` URL on our `websecure` **entrypoint** to point to our service
     - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own network (`lychee-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+- It runs in its own network (`lychee-net`) but must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as it is exposed to the internet (see [Network segmentation](#network-segmentation))
 
 ### Run
 
@@ -3522,7 +3564,7 @@ services:
     restart: unless-stopped
     networks:
       - defrag-life-net
-      - traefik-net
+      - traefik-public-net
 
   php-fpm:
     build:
@@ -3563,8 +3605,8 @@ networks:
   defrag-life-net:
     name: defrag-life-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-public-net:
+    name: traefik-public-net
     external: true
 
   phpmyadmin-net:
@@ -3610,7 +3652,7 @@ Then we use Traefik dynamic config file to :
   - create an HTTP **router** that will match `quake.example.com` URL on our `websecure` **entrypoint** to point to our service
   - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
 
-All services will run in a `defrag-life-net` **network**, but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered,
+All services run in a `defrag-life-net` **network** ; the `nginx` front must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as the website is exposed to the internet (see [Network segmentation](#network-segmentation)),
 and `phpmyadmin-net` so that the database is reachable from PhpMyAdmin, see [PhpMyAdmin](#phpmyadmin).
 
 #### Environment variables

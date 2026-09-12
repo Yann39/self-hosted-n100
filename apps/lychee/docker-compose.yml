@@ -27,7 +27,7 @@ services:
     restart: unless-stopped
     networks:
       - lychee-net
-      - traefik-net
+      - traefik-public-net
 
   lychee-db:
     container_name: lychee-db
@@ -53,6 +53,6 @@ networks:
   lychee-net:
     name: lychee-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-public-net:
+    name: traefik-public-net
     external: true

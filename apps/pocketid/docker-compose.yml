@@ -10,13 +10,13 @@ services:
       - /opt/apps/pocketid/encryption_key:/opt/pocket-id/encryption_key:ro
     networks:
       - pocketid-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   pocketid-net:
     name: pocketid-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true

@@ -8,13 +8,13 @@ services:
       - /:/mnt/host:ro
     networks:
       - dashdot-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   dashdot-net:
     name: dashdot-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true

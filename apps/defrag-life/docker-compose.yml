@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     networks:
       - defrag-life-net
-      - traefik-net
+      - traefik-public-net
 
   php-fpm:
     build:
@@ -50,8 +50,8 @@ networks:
   defrag-life-net:
     name: defrag-life-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-public-net:
+    name: traefik-public-net
     external: true
 
   phpmyadmin-net:
