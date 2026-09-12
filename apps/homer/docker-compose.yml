@@ -12,13 +12,13 @@ services:
       - IPV6_DISABLE=1
     networks:
       - homer-net
-      - traefik-net
+      - traefik-private-net
 
 networks:
 
   homer-net:
     name: homer-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true

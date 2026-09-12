@@ -9,7 +9,7 @@ services:
     restart: unless-stopped
     networks:
       - portainer-net
-      - traefik-net
+      - traefik-private-net
 
 volumes:
   portainer-vol:
@@ -20,6 +20,6 @@ networks:
   portainer-net:
     name: portainer-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true

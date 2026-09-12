@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     networks:
       - sablier-net
-      - traefik-net
+      - traefik-private-net
     command:
       - start
       - --provider.name=docker
@@ -19,6 +19,6 @@ networks:
   sablier-net:
     name: sablier-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true
