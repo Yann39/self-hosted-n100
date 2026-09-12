@@ -1,17 +1,17 @@
 http:
   services:
-    pihole:
+    portainer:
       loadBalancer:
         servers:
-          - url: http://pihole:80
+          - url: http://portainer:9000
 
   routers:
-    pihole:
-      rule: 'Host(`pihole.example.com`)'
+    portainer:
+      rule: 'Host(`portainer.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: pihole
+      service: portainer
       middlewares:
         - vpn-whitelist@file

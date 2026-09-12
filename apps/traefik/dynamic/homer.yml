@@ -1,17 +1,17 @@
 http:
   services:
-    pihole:
+    homer:
       loadBalancer:
         servers:
-          - url: http://pihole:80
+          - url: http://homer:8080
 
   routers:
-    pihole:
-      rule: 'Host(`pihole.example.com`)'
+    homer:
+      rule: 'Host(`dashboard.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: pihole
+      service: homer
       middlewares:
         - vpn-whitelist@file

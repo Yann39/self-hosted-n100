@@ -1,0 +1,7 @@
+http:
+  middlewares:
+    vpn-whitelist:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/24" # your LAN
+          - "10.0.0.0/24" # Wireguard subnet
