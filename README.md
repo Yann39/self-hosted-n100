@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.0.1-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-23_Jul_2024-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.1.0-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-12_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
@@ -32,9 +32,10 @@ It uses only **free** and **open source** software.
 5. [Reverse proxy](#reverse-proxy)
 6. [VPN and ad-blocking](#vpn-and-ad-blocking)
 7. [Test the network](#test-the-network)
-8. [Contributing](#contributing)
-9. [Acknowledgments](#acknowledgments)
-10. [License](#license)
+8. [Install services](#install-services)
+9. [Contributing](#contributing)
+10. [Acknowledgments](#acknowledgments)
+11. [License](#license)
 
 # Overview
 
@@ -61,6 +62,7 @@ These are the tools we are going to run :
 |      <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>      | Portainer      | https://github.com/portainer/portainer         | Management platform for containerized applications   |
 |        <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>        | Sablier        | https://github.com/acouvreur/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>        | Traefik        | https://github.com/traefik/traefik             | Modern HTTP reverse proxy and load balancer          |
+|   <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>           | PocketID       | https://github.com/pocket-id/pocket-id         | Simple OIDC provider for passkey authentication      |
 |      <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>      | Wireguard      | https://github.com/WireGuard                   | Simple yet fast and modern VPN                       |
 |        <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>         | Pi-hole        | https://github.com/pi-hole/pi-hole             | Network-wide ad blocking                             |
 |        <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>        | Unbound        | https://github.com/NLnetLabs/unbound           | Validating, recursive, and caching DNS resolver      |
@@ -70,8 +72,6 @@ These are the tools we are going to run :
 |          <img src="images/logo-ackee.png" alt="Ackee logo" height="32"/>          | Ackee          | https://github.com/electerious/Ackee           | Analytics tool that cares about privacy              |
 |         <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>         | Lychee         | https://github.com/LycheeOrg/Lychee            | Free photo-management tool                           |
 |     <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>     | PhpMyAdmin     | https://github.com/phpmyadmin/phpmyadmin       | Web user interface to manage MySQL databases         |
-|          <img src="images/logo-kopia.png" alt="Kopia logo" height="32"/>          | Kopia          | https://github.com/kopia/kopia                 | Fast and secure open-source backup/restore tool      |
-|   <img src="images/logo-stirling-pdf.svg" alt="Stirling-PDF logo" height="32"/>   | Stirling       | https://github.com/stirling-tools/stirling-pdf | Web-based PDF manipulation tool                      |
 
 And also some personal applications :
 
@@ -216,7 +216,7 @@ flowchart TB
 
         end
 
-        subgraph WIREGUARD_HOST[WIREGUARD - on the host]
+        subgraph WIREGUARD_HOST[WIREGUARD\non the host]
             DOCKER_WIREGUARD_PORT51820
         end
 
@@ -1064,13 +1064,10 @@ services:
       - "traefik.http.routers.api.tls=true"
       - "traefik.http.routers.api.tls.certresolver=default"
 
-      # IP whitelist for services to be accessible only through VPN and from the local network, have to be applied on each service configuration that need it
-      - "traefik.http.middlewares.vpn-whitelist.ipwhitelist.sourcerange=192.168.0.0/24, 172.18.0.0/16"
-
-      # Secure dashboard/API with authentication
-      - "traefik.http.routers.dashboard.middlewares=auth"
-      - "traefik.http.routers.api.middlewares=auth"
-      - "traefik.http.middlewares.auth.basicauth.usersfile=/credentials.txt"
+      # Secure dashboard/API behind VPN and pocketID auth (or basic authentication)
+      - "traefik.http.routers.dashboard.middlewares=vpn-whitelist@file,traefik-auth@file"
+      - "traefik.http.routers.api.middlewares=vpn-whitelist@file,traefik-auth@file"
+      # - "traefik.http.middlewares.auth.basicauth.usersfile=/credentials.txt" # only if you use basic auth
 
 networks:
 
@@ -1086,9 +1083,7 @@ This **Compose** file mainly :
 - defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our service
 - defines `httpsonly` **router** and **middleware** responsible for automatically redirecting HTTP requests to HTTPS
 - configures `dashboard` and `api` routers to use secure HTTPS endpoint with our certificate resolver to generate related Let's Encrypt certificates
-- secures dashboard and API endpoints by defining a `auth` middleware that will handle basic authentication (from _credentials.txt_ file)
-- defines a `vpn-whitelist` **middleware** responsible for whitelisting IPs, so that it can be used by services that will be exposed to the internet to allow only local traffic and
-  VPN traffic
+- secures dashboard and API endpoints using middlewares to allow only requests coming from the VPN and to require authentication (either PocketID or basic authentication)
 
 > [!CAUTION]
 > The order in which the middlewares are defined in relation to a router is important, they will be applied in the same order as their declaration.
@@ -1328,7 +1323,7 @@ by default it only answers "local" requests, and "local" for Pi-Hole is the Dock
 
 The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik labels anymore, the router is declared in a file of
 Traefik's **dynamic configuration** directory instead (see [Traefik routing](#traefik-routing) below), restricted to the local network and the VPN peers.
-I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy (a forward-auth middleware with **PocketID** in my case, not covered in this guide).
+I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy, with an OIDC middleware backed by **PocketID** (see [PocketID](#pocketid)).
 The image generates a random password at first start, remove it (or set yours) with :
 
 ```bash
@@ -1565,14 +1560,14 @@ http:
         certResolver: default
       service: pihole
       middlewares:
-        # restrict the web UI to the local network and the VPN peers, replace it with a forward-auth
-        # middleware (I use PocketID in front of it) if you prefer an authentication
         - vpn-whitelist@docker
+        - pihole-auth@file
 ```
 
 It declares the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-net` network) and the **router** matching
 `pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate, exactly what the Traefik labels used to do, but Traefik picks up the file
 without restarting anything. The `vpn-whitelist` middleware keeps the web UI private (local network and VPN peers only).
+The `pihole-auth` middleware is a forward-auth middleware (I use PocketID) to require authentication (see [PocketID](#pocketid)).
 
 ### Run
 
@@ -2174,6 +2169,265 @@ If in any way the request arrives to Traefik with an unauthorized IP address, it
 
 # Install services
 
+## PocketID
+
+<img src="images/logo-pocketid.svg" alt="PocketID logo" height="128"/>
+
+We will use **PocketID** to add a single sign-on in front of the services that don't have a proper authentication of their own (Pi-Hole, the Traefik dashboard),
+and as identity provider for the services that support OpenID Connect natively (Portainer).
+
+PocketID is a small self-hosted **OpenID Connect** (OIDC) provider with a twist : users don't have passwords, they authenticate with **passkeys** only
+(a hardware key, or the passkey manager of the phone, the browser or a password manager). Nothing to remember, nothing to phish, and one login for every service.
+
+There are two ways to plug a service on it :
+
+- services that speak OIDC natively (Portainer, ...) get their own **OIDC client** in PocketID and show a "login with PocketID" button
+- services that don't (Pi-Hole, the Traefik dashboard) are put behind the [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth) **Traefik plugin** :
+  a middleware that redirects the browser to PocketID, checks the token it comes back with and keeps a session cookie, so that the service behind never sees an unauthenticated request
+
+Here is an overview of the network flow when a service is protected by the middleware :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_APP_PORT{{80/tcp}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    TRAEFIK_ROUTER_APP(pihole.example.com)
+    TRAEFIK_ROUTER_POCKETID(pocketid.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    TRAEFIK_MIDDLEWARE_OIDC(OIDC auth\npihole-auth)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph APP_CONTAINER[PI-HOLE CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
+                    TRAEFIK_ROUTER_APP
+                    TRAEFIK_ROUTER_POCKETID
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                    TRAEFIK_MIDDLEWARE_OIDC
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
+                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
+                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+                TRAEFIK_MIDDLEWARE_OIDC -->|authenticated| DOCKER_APP_PORT
+                TRAEFIK_MIDDLEWARE_OIDC -.->|not authenticated : browser redirected to the login page| TRAEFIK_ROUTER_POCKETID
+                TRAEFIK_MIDDLEWARE_OIDC -.->|token validation through the Docker network| DOCKER_POCKETID_PORT
+                TRAEFIK_ROUTER_POCKETID --> DOCKER_POCKETID_PORT
+            end
+
+        end
+    end
+```
+
+### Setting up
+
+Create the folders and the **encryption key** (PocketID encrypts its secrets at rest with it : keep that file with your backups, without it the database is unusable).
+The container runs as user `1000:1001` (see the _.env_ file), so give it the ownership of the data folder and of the key :
+
+```bash
+sudo mkdir -p /opt/apps/pocketid/data
+openssl rand -base64 32 | sudo tee /opt/apps/pocketid/encryption_key > /dev/null
+sudo chown -R 1000:1001 /opt/apps/pocketid/data /opt/apps/pocketid/encryption_key
+sudo chmod 600 /opt/apps/pocketid/encryption_key
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _pocketid_ directory into the _/opt/apps/pocketid_ directory, and adapt the _.env_ file to your domain
+- copy the _pocketid.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- declare the `traefik-oidc-auth` **plugin** in the _traefik.yml_ static configuration (see below) and restart Traefik, plugins are downloaded when it starts
+
+Run the Compose file (see [Run](#run-2)), then open https://pocketid.example.com : on first start the setup page (`/setup`) creates the **administrator** account and registers its first **passkey**.
+
+Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
+
+- for a service put behind the Traefik middleware, the callback URL is the service URL followed by `/oidc/callback` (the default `CallbackUri` of the plugin), for example `https://pihole.example.com/oidc/callback`,
+  and **PKCE** enabled. Copy the generated client ID and secret into the `ClientId` / `ClientSecret` fields of the corresponding middleware in _pocketid.yml_,
+  and give the middleware a random 32 characters `Secret` (`openssl rand -hex 16`) : this one is not a PocketID secret, it is the key the plugin uses to encrypt its own session cookie.
+  Traefik picks up the change without restart
+- for a service with native OIDC support, use the callback URL it documents and its own settings page. **Portainer** (_Settings -> Authentication -> OAuth -> Custom_) needs the client ID and secret,
+  the endpoints listed in https://pocketid.example.com/.well-known/openid-configuration (authorization, token and user info URLs), `openid profile email` as scopes,
+  and **PKCE disabled** on the PocketID side as Portainer does not support it
+
+Finally, to protect a service with the middleware, add it to the `middlewares` list of its router, after the IP whitelist, as done for Pi-Hole :
+
+```yaml
+      middlewares:
+        - vpn-whitelist@file
+        - pihole-auth@file
+```
+
+> [!NOTE]
+> The `pocketid` router is itself behind the `vpn-whitelist` middleware because every service I protect with it is only reachable from the local network or the VPN.
+> If one day a **public** service is put behind the middleware, the login page must be reachable from the internet too : remove the whitelist from the `pocketid` router only,
+> the login page is designed to be public (passkeys cannot be brute-forced or phished).
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  pocketid:
+    image: ghcr.io/pocket-id/pocket-id:v2
+    container_name: pocketid
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - /opt/apps/pocketid/encryption_key:/opt/pocket-id/encryption_key:ro
+    networks:
+      - pocketid-net
+      - traefik-net
+
+networks:
+
+  pocketid-net:
+    name: pocketid-net
+
+  traefik-net:
+    name: traefik-net
+    external: true
+```
+
+:page_facing_up: _pocketid.yml_ :
+
+```yaml
+http:
+  services:
+    pocketid:
+      loadBalancer:
+        servers:
+          - url: http://pocketid:1411
+
+  routers:
+    pocketid:
+      rule: 'Host(`pocketid.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: pocketid
+      middlewares:
+        - vpn-whitelist@file
+
+  middlewares:
+    traefik-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    pihole-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+```
+
+:page_facing_up: _traefik.yml_ (plugin declaration, in the static configuration) :
+
+```yaml
+experimental:
+  plugins:
+    traefik-oidc-auth:
+      moduleName: "github.com/sevensolutions/traefik-oidc-auth"
+      version: "v0.18.0"
+```
+
+Things to notice :
+
+- PocketID's data (SQLite database, uploaded logos) lives in the _data_ folder, and the **encryption key** is mounted read-only from the host
+- the settings come from the _.env_ file (see [Environment variables](#environment-variables))
+- it runs in its own **network** (`pocketid-net`) but must also share the same network as Traefik (`traefik-net`), both to be reachable by the reverse proxy
+  and so that the plugin can talk to it directly by container name
+- the Traefik dynamic config file :
+    - creates a **service** which will point to our container application running on port `1411`
+    - creates an HTTP **router** that will match `pocketid.example.com` URL on our `websecure` **entrypoint** to point to our service
+    - assigns the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+    - adds a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
+    - defines one **middleware per protected service** (`traefik-auth` for the Traefik dashboard, `pihole-auth` for Pi-Hole), each with its own OIDC client and session,
+      all pointing to PocketID through the **internal** URL `http://pocketid:1411/` : the token exchange stays inside the Docker network instead of looping through the reverse proxy
+- the plugin itself is declared once in the static configuration, Traefik downloads it from its plugin catalog at start
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+APP_URL=https://pocketid.example.com
+INTERNAL_APP_URL=http://pocketid:1411
+ENCRYPTION_KEY_FILE=/opt/pocket-id/encryption_key
+# These variables are optional but recommended to review:
+TRUST_PROXY=true
+MAXMIND_LICENSE_KEY=
+PUID=1000
+PGID=1001
+```
+
+- `APP_URL` is the public URL, it is also the OIDC **issuer** written in every token, so it must match the router's host exactly
+- `INTERNAL_APP_URL` is the URL the other containers use to reach PocketID (the Traefik plugin in our case), so that the OIDC discovery works from inside the Docker network
+- `ENCRYPTION_KEY_FILE` points to the key mounted read-only in the container
+- `TRUST_PROXY` makes PocketID take the client IP addresses from the headers set by Traefik (audit log, rate limiting), which is required behind a reverse proxy
+- `MAXMIND_LICENSE_KEY` is optional, with a free MaxMind licence key the audit log shows where the logins come from
+- `PUID` / `PGID` are the user and group the application runs as, hence the ownership of the data folder and of the key
+
+### Run
+
+Finally, simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/pocketid/docker-compose.yml up -d
+```
+
+You should end-up with a running `pocketid` container.
+
+It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
+
+The application is available at https://pocketid.example.com, where the first visit creates the administrator account and its passkey (see [Setting up](#setting-up)).
+
 ## Portainer
 
 <img src="images/logo-portainer.svg" alt="Docker logo" height="148"/>
@@ -2629,8 +2883,11 @@ Things to notice :
 :page_facing_up: _config.yml_ :
 
 ```yaml
+---
 header: false
-footer: false
+footer: '<p>Created with <span class="has-text-danger">❤️</span> with <a href="https://bulma.io/">bulma</a>, <a href="https://vuejs.org/">vuejs</a> & <a href="https://fontawesome.com/">font awesome</a> // Fork me on <a href="https://github.com/bastienwirtz/homer"><i class="fab fa-github-alt"></i></a></p>' # set false if you want to hide it.
+
+columns: 3
 
 # Optional theme customization
 theme: default
@@ -2650,8 +2907,8 @@ colors:
     link-hover: "#363636"
   dark:
     highlight-primary: "#3367d6"
-    highlight-secondary: "#515185"
-    highlight-hover: "#50668b"
+    highlight-secondary: "#2b2b2b"
+    highlight-hover: "#131313"
     background: "#131313"
     card-background: "#2b2b2b"
     text: "#eaeaea"
@@ -2662,63 +2919,56 @@ colors:
     link: "#3273dc"
     link-hover: "#ffdd57"
 
+links:
+  - name: "GitHub"
+    icon: "fab fa-github"
+    url: "https://github.com/Yann39"
+    target: "_blank"
+
 services:
   - name: "Admin tools"
-    icon: "fas fa-cloud"
+    icon: "fas fa-shield"
     items:
       - name: "Dashdot"
-        logo: "https://getdashdot.com/img/logo512.png"
+        logo: "assets/logos/logo-dashdot.png"
         subtitle: "Minimal server monitoring"
-        tag: "dashboard"
+        tag: "monitoring"
         url: "https://dashdot.example.com"
       - name: "Traefik"
-        logo: "https://cdn.worldvectorlogo.com/logos/traefik-1.svg"
+        logo: "assets/logos/logo-traefik.svg"
         subtitle: "HTTP reverse proxy"
         tag: "network"
         url: "https://traefik.example.com"
       - name: "Portainer"
-        logo: "https://cdn.worldvectorlogo.com/logos/portainer.svg"
+        logo: "assets/logos/logo-portainer.svg"
         subtitle: "Container management platform"
         tag: "tool"
         url: "https://portainer.example.com"
-      - name: "Uptime Kuma"
-        logo: "https://uptime.kuma.pet/img/icon.svg"
-        subtitle: "Application monitoring tool"
-        tag: "monitoring"
-        url: "https://kuma.example.com/status/dashboard"
       - name: "Pi-Hole"
-        logo: "https://pihole.example.com/admin/img/logo.svg"
+        logo: "assets/logos/logo-pihole.svg"
         subtitle: "Network-wide ad blocking"
         tag: "network"
         url: "https://pihole.example.com/admin"
+      - name: "Uptime Kuma"
+        logo: "assets/logos/logo-uptime-kuma.svg"
+        subtitle: "Application monitoring tool"
+        tag: "monitoring"
+        url: "https://kuma.example.com/status/dashboard"
       - name: "Ackee"
-        logo: "https://s.electerious.com/images/ackee/icon.png"
+        logo: "assets/logos/logo-ackee.png"
         subtitle: "Analytics tool that cares about privacy"
         tag: "analytics"
         url: "https://ackee.example.com"
-      - name: "Sablier"
-        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/32/Circle-icons-hourglass.svg/240px-Circle-icons-hourglass.svg.png"
-        subtitle: "Workload scaling on demand"
-        tag: "tool"
-      - name: "Unbound"
-        logo: "https://i.imgur.com/cnsNS1O.png"
-        subtitle: "Validating, recursive, and caching DNS resolver"
-        tag: "network"
       - name: "PhpMyAdmin"
-        logo: "https://icon-library.com/images/phpmyadmin-icon/phpmyadmin-icon-24.jpg"
+        logo: "assets/logos/logo-phpmyadmin.svg"
         subtitle: "MySQL database management"
         tag: "tool"
         url: "https://phpmyadmin.example.com"
-      - name: "Lychee"
-        logo: "https://avatars.githubusercontent.com/u/37916028?s=200&v=4"
-        subtitle: "Photo management tool"
-        tag: "tool"
-        url: "https://lychee.example.com"
   - name: "Applications"
     icon: "fas fa-globe"
     items:
       - name: "Motoclub GraphQL API"
-        logo: "https://cdn-icons-png.flaticon.com/512/705/705647.png"
+        logo: "assets/logos/logo-ccteam.svg"
         subtitle: "GraphQL API for our motoclub mobile application"
         tag: "app"
         url: "https://ccteam.example.com/ccteam-gql/graphql"
@@ -2727,6 +2977,41 @@ services:
         subtitle: "Quake 3 arena Defrag website"
         tag: "app"
         url: "https://quake.example.com"
+      - name: "Lychee"
+        logo: "https://avatars.githubusercontent.com/u/37916028?s=200&v=4"
+        subtitle: "Photo management tool"
+        tag: "app"
+        url: "https://lychee.example.com"
+      - name: "Homebox"
+        logo: "https://homebox.software/_astro/lilbox.CmeGTiwj_Z1HYzg2.svg"
+        subtitle: "Home inventory management"
+        tag: "app"
+        url: "https://homebox.example.com"
+      - name: "Omnitools"
+        logo: "https://getumbrel.github.io/umbrel-apps-gallery/omnitools/icon.svg"
+        subtitle: "Various user-friendly utilities"
+        tag: "tool"
+        url: "https://omnitools.example.com"
+  - name: "Internal"
+    icon: "fas fa-microchip"
+    items:
+      - name: "Wireguard"
+        logo: "assets/logos/logo-wireguard.svg"
+        subtitle: "Simple yet fast and modern VPN"
+        tag: "network"
+      - name: "Sablier"
+        logo: "https://avatars.githubusercontent.com/u/183561550?s=200&v=4"
+        subtitle: "Workload scaling on demand"
+        tag: "tool"
+      - name: "Unbound"
+        logo: "https://i.imgur.com/cnsNS1O.png"
+        subtitle: "Validating, recursive, and caching DNS resolver"
+        tag: "network"
+      - name: "Pocket ID"
+        logo: "assets/logos/logo-pocket-id.svg"
+        subtitle: "Simple OIDC provider"
+        tag: "authentication"
+        url: "https://pocketid.example.com"
 ```
 
 This is simply the configuration file that is used by the application to display the dashboard page.
@@ -3461,6 +3746,7 @@ Mainly :
 - Blog post about WireGuard performance tuning :
     - https://www.procustodibus.com/blog/2022/12/wireguard-performance-tuning/
 - Lots of **Google** searches
+- Recently some AI for WireGuard tweaks, mainly Claude (Opus/Fable)
 
 Of course every upstream project (especially the ones with good documentation :grin:) also deserve credit :beer:
 
