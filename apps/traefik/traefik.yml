@@ -8,6 +8,9 @@ entryPoints:
   websecure:
     address: ':443'
 
+  wireguard:
+    address: ':51820/udp'
+
 providers:
   docker:
     watch: true
@@ -28,8 +31,7 @@ certificatesResolvers:
 experimental:
   plugins:
     sablier:
-      moduleName: "github.com/acouvreur/sablier"
-      version: "v1.7.0"
-
+      moduleName: "github.com/sablierapp/sablier-traefik-plugin"
+      version: "v1.1.0"
 log:
   level: info

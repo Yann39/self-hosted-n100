@@ -1,0 +1,15 @@
+http:
+  services:
+    defrag-life:
+      loadBalancer:
+        servers:
+          - url: http://defrag-life:80
+
+  routers:
+    defrag-life:
+      rule: 'Host(`quake.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: defrag-life

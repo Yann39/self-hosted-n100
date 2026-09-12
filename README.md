@@ -1473,6 +1473,29 @@ networks:
     external: true
 ```
 
+:page_facing_up: _traefik/dynamic/pihole.yml_ :
+
+```yaml
+http:
+  services:
+    pihole:
+      loadBalancer:
+        servers:
+          - url: http://pihole:80
+
+  routers:
+    pihole:
+      rule: 'Host(`pihole.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: pihole
+      middlewares:
+        - vpn-whitelist@file
+        - pihole-auth@file
+```
+
 This **Compose** file :
 
 - defines the `pihole-net` **network** with the subnet `10.2.0.0/24` (shared with Unbound)
@@ -1484,6 +1507,11 @@ This **Compose** file :
     - assigns the **static IP address** `10.2.0.100`
     - binds the _/etc/pihole_ folder to keep the configuration and the databases
     - adds the `NET_ADMIN`, `SYS_TIME` and `SYS_NICE` capabilities recommended by the Pi-Hole image (DHCP server, time synchronisation, scheduling priority)
+- it uses Traefik dynamic config file to :
+    - define the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-net` network)
+    - define the **router** matching `pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate
+    - restrict the web UI to the local network and the VPN peers with the `vpn-whitelist` middleware
+    - add a forward-auth middleware `pihole-auth` in front of it (I use PocketID) to require authentication (see [PocketID](#pocketid))
 
 > [!NOTE]
 > Do not lower the MTU of the Docker networks "to fit the tunnel" (I had `com.docker.network.driver.mtu: "1280"` on all of them for a long time) : the containers don't need it,
@@ -2221,8 +2249,6 @@ Then simply copy the _docker-compose.yml_ file from this project's _portainer_ d
 :page_facing_up: _docker-compose.yml_ :
 
 ```yaml
-version: "3.7"
-
 services:
 
   portainer:
@@ -2235,14 +2261,6 @@ services:
     networks:
       - portainer-net
       - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.example.com`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=default"
-      - "traefik.http.routers.portainer.middlewares=vpn-whitelist"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "traefik.docker.network=traefik-net"
 
 volumes:
   portainer-vol:
@@ -2258,10 +2276,32 @@ networks:
     external: true
 ```
 
+:page_facing_up: _portainer.yml_ :
+
+```yaml
+http:
+  services:
+    portainer:
+      loadBalancer:
+        servers:
+          - url: http://portainer:9000
+
+  routers:
+    portainer:
+      rule: 'Host(`portainer.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: portainer
+      middlewares:
+        - vpn-whitelist@file
+```
+
 Things to notice :
 
 - Portainer's data is bound to a **Docker volume** named `portainer-vol`
-- It uses Traefik **labels** to :
+- It uses Traefik dynamic config file to :
     - create a **service** which will point to our container application running on port `9000`
     - create an HTTP **router** that will match `portainer.example.com` URL on our `websecure` **entrypoint** to point to our service
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
@@ -2348,7 +2388,9 @@ Create a folder to hold the configuration :
 sudo mkdir /opt/apps/dashdot
 ```
 
-Then simply copy the _docker-compose.yml_ file from this project's _dashdot_ directory into the _/opt/apps/dashdot_ directory.
+Then :
+- copy the _docker-compose.yml_ file from this project's _dashdot_ directory into the _/opt/apps/dashdot_ directory
+- copy the _dashdot.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
 
 ### Details
 
@@ -2368,14 +2410,6 @@ services:
     networks:
       - dashdot-net
       - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.dashdot.rule=Host(`dashdot.example.com`)"
-      - "traefik.http.routers.dashdot.entrypoints=websecure"
-      - "traefik.http.routers.dashdot.tls.certresolver=default"
-      - "traefik.http.routers.dashdot.middlewares=vpn-whitelist"
-      - "traefik.http.services.dashdot.loadbalancer.server.port=3001"
-      - "traefik.docker.network=traefik-net"
 
 networks:
 
@@ -2387,15 +2421,38 @@ networks:
     external: true
 ```
 
+:page_facing_up: _dashdot.yml_ :
+
+```yaml
+http:
+  services:
+    dashdot:
+      loadBalancer:
+        servers:
+          - url: http://dashdot:3001
+
+  routers:
+    dashdot:
+      rule: 'Host(`dashdot.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: dashdot
+      middlewares:
+        - vpn-whitelist@file
+        - sablier-dashdot@file
+```
+
 Things to notice :
 
 - Dashdot's data is bound to the current directory (read-only)
-- It uses Traefik **labels** to :
+- It uses Traefik dynamic config file to :
     - create a **service** which will point to our container application running on port `3001`
     - create an HTTP **router** that will match `dashdot.example.com` URL on our `websecure` **entrypoint** to point to our service
     - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-    - create a **middleware** to whitelist an IP range via the `sourceRange` option which sets the allowed IPs to be the local and VPN client IPs (by using **CIDR** notation)
+    - assign the `sablier-dashdot` **middleware** so that on-demand stop/start of the container can be done through Sablier
 - It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
 
 ### Run
@@ -2497,6 +2554,7 @@ Then copy :
 
 - the _docker-compose.yml_ file from this project's _homer_ directory into the _/opt/apps/homer_ directory
 - the _config.yml_ file from this project's _homer_ directory into the _/opt/apps/homer/assets_ directory
+- the _homer.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
 
 ### Details
 
@@ -2520,14 +2578,6 @@ services:
     networks:
       - homer-net
       - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.homer.rule=Host(`dashboard.example.com`)"
-      - "traefik.http.routers.homer.entrypoints=websecure"
-      - "traefik.http.routers.homer.tls.certresolver=default"
-      - "traefik.http.routers.homer.middlewares=vpn-whitelist"
-      - "traefik.http.services.homer.loadbalancer.server.port=8080"
-      - "traefik.docker.network=traefik-net"
 
 networks:
 
@@ -2539,13 +2589,35 @@ networks:
     external: true
 ```
 
+:page_facing_up: _homer.yml_ :
+
+```yaml
+http:
+  services:
+    homer:
+      loadBalancer:
+        servers:
+          - url: http://homer:8080
+
+  routers:
+    homer:
+      rule: 'Host(`dashboard.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: homer
+      middlewares:
+        - vpn-whitelist@file
+```
+
 Things to notice :
 
 - Homer's assets data is bound to a local directory named `assets`
 - It sets the `INIT_ASSETS` environment variable to `0` to avoid generating default example data
 - It sets the `IPV6_DISABLE` environment variable to `1`to disable listening on IPv6 (we don't use IPv6)
 - It sets a user with **uid** and **gid** `1000` to run the application in the container
-- It uses Traefik **labels** to :
+- It uses Traefik dynamic config file to :
     - create a **service** which will point to our container application running on port `8080`
     - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point to our service
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
@@ -2749,7 +2821,7 @@ Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ 
 
 #### Service definition
 
-_docker-compose.yml_ :
+:page_facing_up: _docker-compose.yml_ :
 
 ```yaml
 services:
@@ -2765,14 +2837,6 @@ services:
     networks:
       - phpmyadmin-net
       - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.phpmyadmin.rule=Host(`phpmyadmin.example.com`)"
-      - "traefik.http.routers.phpmyadmin.entrypoints=websecure"
-      - "traefik.http.routers.phpmyadmin.tls.certresolver=default"
-      - "traefik.http.routers.phpmyadmin.middlewares=vpn-whitelist"
-      - "traefik.http.services.phpmyadmin.loadbalancer.server.port=80"
-      - "traefik.docker.network=traefik-net"
 
 networks:
 
@@ -2784,10 +2848,32 @@ networks:
     external: true
 ```
 
+:page_facing_up: _phpmyadmin.yml_ :
+
+```yaml
+http:
+  services:
+    phpmyadmin:
+      loadBalancer:
+        servers:
+          - url: http://phpmyadmin:80
+
+  routers:
+    phpmyadmin:
+      rule: 'Host(`phpmyadmin.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: phpmyadmin
+      middlewares:
+        - vpn-whitelist@file
+```
+
 Things to notice :
 
 - We mount a _theme_ directory to use a custom theme (dark theme named `darkwolf`), so just copy the theme data from official repository https://www.phpmyadmin.net/themes/
-- It uses Traefik **labels** to :
+- It uses Traefik dynamic config file to :
     - create a **service** which will point to our container application running on port `80`
     - create an HTTP **router** that will match `phpmyadmin.example.com` URL on our `websecure` **entrypoint** to point to our service
     - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
@@ -2816,12 +2902,12 @@ The application is available at https://phpmyadmin.example.com.
 
 <img src="images/screen-phpmyadmin.png" alt="PhpMyAdmin screenshot"/>
 
-## Stirling
+## Lychee
 
-<img src="images/logo-stirling-pdf.svg" alt="Stirling-PDF logo" height="128"/>
+<img src="images/logo-lychee.png" alt="Lychee logo" height="128"/>
 
-**Stirling-PDF** is a robust, locally hosted web-based PDF manipulation tool.
-It enables you to carry out various operations on PDF files, including splitting, merging, converting, reorganizing, adding images, rotating, compressing, and more.
+**Lychee** is a robust, locally hosted web-based photo management tool.
+It enables you to carry out various operations on photos, including uploading, organizing, sharing, and more.
 
 ```mermaid
 flowchart LR
@@ -2834,17 +2920,16 @@ flowchart LR
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{433/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_APP_PORT{{8080/tcp}}
-    TRAEFIK_ROUTER_APP(stirling.example.com)
+    DOCKER_APP_PORT{{80/tcp}}
+    TRAEFIK_ROUTER_APP(lychee.example.com)
     TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
-    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI_PC]
         subgraph CONTAINER_ENGINE[DOCKER]
-            subgraph APP_CONTAINER[HOMER CONTAINER]
+            subgraph APP_CONTAINER[LYCHEE CONTAINER]
                 DOCKER_APP_PORT
             end
 
@@ -2858,10 +2943,8 @@ flowchart LR
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_REDIRECT
-                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
 
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
                 TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
                 TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
@@ -2876,10 +2959,12 @@ flowchart LR
 First, create a folder to hold the configuration :
 
 ```bash
-sudo mkdir /opt/apps/stirling
+sudo mkdir /opt/apps/lychee
 ```
 
-Then copy the _docker-compose.yml_ file from this project's _homer_ directory into the _/opt/apps/stirling_ directory.
+Then copy :
+- the _docker-compose.yml_ file from this project's _lychee_ directory into the _/opt/apps/lychee_ directory.
+- the _lychee.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory.
 
 ### Details
 
@@ -2890,68 +2975,109 @@ Then copy the _docker-compose.yml_ file from this project's _homer_ directory in
 ```yaml
 services:
 
-  stirling:
-    image: frooodle/s-pdf:latest
-    container_name: stirling
+  lychee:
+    image: lycheeorg/lychee:latest
+    container_name: lychee
     volumes:
-      - ./trainingData:/usr/share/tessdata
-      - ./extraConfigs:/configs
+      - ./lychee/conf:/conf
+      - ./lychee/uploads:/uploads
+      - ./lychee/sym:/sym
+      - ./lychee/logs:/logs
+    environment:
+      - PHP_TZ=UTC
+      - TIMEZONE=UTC
+      - DB_CONNECTION=mysql
+      - DB_HOST=lychee-db
+      - DB_PORT=3306
+      - DB_DATABASE=lychee
+      - DB_USERNAME=$MYSQL_USERNAME
+      - DB_PASSWORD=$MYSQL_PASSWORD
+      - STARTUP_DELAY=30
+      - ADMIN_USER=$ADMIN_USER
+      - ADMIN_PASSWORD=$ADMIN_PASSWORD
+      - APP_URL=https://lychee.example.com
+      - TRUSTED_PROXIES=*
+    depends_on:
+      - lychee-db
     restart: unless-stopped
     networks:
-      - stirling-net
+      - lychee-net
       - traefik-net
+
+  lychee-db:
+    container_name: lychee-db
+    image: mariadb:latest
+    restart: unless-stopped
     environment:
-      - DOCKER_ENABLE_SECURITY=false
-      - INSTALL_BOOK_AND_ADVANCED_HTML_OPS=false
-      - LANGS=en_GB
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.stirling.rule=Host(`stirling.example.com`)"
-      - "traefik.http.routers.stirling.entrypoints=websecure"
-      - "traefik.http.routers.stirling.tls.certresolver=default"
-      - "traefik.http.routers.stirling.middlewares=vpn-whitelist"
-      - "traefik.http.services.stirling.loadbalancer.server.port=8080"
-      - "traefik.docker.network=traefik-net"
+      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE=lychee
+      - MYSQL_USER=$MYSQL_USERNAME
+      - MYSQL_PASSWORD=$MYSQL_PASSWORD
+    volumes:
+      - lychee-db-vol:/var/lib/mysql
+    networks:
+      - lychee-net
+
+volumes:
+
+  lychee-db-vol:
+    name: lychee-db-vol
 
 networks:
 
-  stirling-net:
-    name: stirling-net
+  lychee-net:
+    name: lychee-net
 
   traefik-net:
     name: traefik-net
     external: true
 ```
 
+:page_facing_up: _lychee.yml_ :
+
+```yaml
+http:
+  services:
+    lychee:
+      loadBalancer:
+        servers:
+          - url: http://lychee:80
+
+  routers:
+    lychee:
+      rule: 'Host(`lychee.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: lychee
+```
+
 Things to notice :
 
-- It binds some volumes for extra OCR languages (_trainingData_) and configuration (_extraConfigs_)
-- It sets some environment variables :
-  - `DOCKER_ENABLE_SECURITY` to `false` to tell docker to NOT download security jar (required for auth login, but we don't use it)
-  - `INSTALL_BOOK_AND_ADVANCED_HTML_OPS ` to `false` as we don't need pdf to/from book and advanced html conversion
-  - `LANGS` to `en_GB` to use english font libraries for document conversions
-- It uses Traefik **labels** to :
-    - create a **service** which will point to our container application running on port `8080`
-    - create an HTTP **router** that will match `stirling.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+- It binds some volumes for configuration, uploads, symbolic links and logs
+- It sets some environment variables for timezone, database connection, admin user and password, application URL and trusted proxies
+- It uses Traefik dynamic config file to :
+    - create a **service** which will point to our container application running on port `80`
+    - create an HTTP **router** that will match `lychee.example.com` URL on our `websecure` **entrypoint** to point to our service
     - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own network (`stirling-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
+- It runs in its own network (`lychee-net`) but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered
 
 ### Run
 
 Finally, simply run the Compose file :
 
 ```bash
-sudo docker-compose -f /opt/apps/stirling/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/lychee/docker-compose.yml up -d
 ```
 
-You should end-up with a running `stirling` container.
+You should end-up with a running `lychee` container.
 
 It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
 
-The application will be available at https://stirling.example.com.
+The application will be available at https://lychee.example.com.
 
-<img src="images/screen-stirling.png" alt="Stirling-PDF homepage screenshot"/>
+<img src="images/screen-lychee.png" alt="Lychee homepage screenshot"/>
 
 ## Defrag-life
 
@@ -3042,7 +3168,7 @@ First, create a folder to hold the configuration :
 sudo mkdir /opt/apps/defrag-life
 ```
 
-Also create a _data_ directory to hold the application files (PHP, HTML, CSS, Javascript files) :
+Also create a _data_ directory to hold the application files (PHP, HTML, CSS, JavaScript files) :
 
 ```bash
 mkdir /opt/apps/defrag-life/data
@@ -3050,13 +3176,15 @@ mkdir /opt/apps/defrag-life/data
 
 and copy inside that folder the content from https://github.com/Yann39/defrag-life.
 
-Then copy the files from this project's _defrag-life_ directory into the _/opt/apps/defrag-life_ directory :
+Then copy the following files from this project's _defrag-life_ directory into the _/opt/apps/defrag-life_ directory :
 
 - _Dockerfile_ : The file responsible for building image of PHP-FPM
 - _docker-compose.yml_ : The definition of the services
 - _.env_ : The environment variables (for database connection)
 - _default.conf_ : The Nginx configuration
 - _www\.conf_ : The PHP-FPM pool configuration
+
+And copy the _defrag-life.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory.
 
 ### Details
 
@@ -3110,19 +3238,13 @@ services:
     networks:
       - defrag-life-net
       - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.defrag-life.rule=Host(`quake.example.com`)"
-      - "traefik.http.routers.defrag-life.entrypoints=websecure"
-      - "traefik.http.routers.defrag-life.tls.certresolver=default"
-      - "traefik.http.services.defrag-life.loadbalancer.server.port=80"
-      - "traefik.docker.network=traefik-net"
 
   php-fpm:
     build:
       context: .
       dockerfile: ./Dockerfile
     container_name: defrag-life-php
+    restart: unless-stopped
     networks:
       - defrag-life-net
     volumes:
@@ -3165,14 +3287,30 @@ networks:
     external: true
 ```
 
+:page_facing_up: _defrag-life.yml_ :
+
+```yaml
+http:
+  services:
+    defrag-life:
+      loadBalancer:
+        servers:
+          - url: http://defrag-life:80
+
+  routers:
+    defrag-life:
+      rule: 'Host(`quake.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: defrag-life
+```
+
 Here we define 3 services :
 - `nginx` : the HTTP server which will speak with the PHP-FPM service to interpret PHP files (whenever the server gets a PHP script request, it utilizes a proxy,
   FastCGI connection to pass that request on to the PHP-FPM service)
   - It defines 2 volumes to bind the website files and the Nginx configuration file (see [Nginx configuration file](#nginx-configuration-file))
-  - It uses Traefik **labels** to :
-    - create a **service** which will point to our container application running on port `80`
-    - create an HTTP **router** that will match `quake.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
 - `php-fpm` : the PHP-FPM service responsible for processing PHP scripts
   - It uses our own Dockerfile, see [Dockerfile](#dockerfile)
   - It defines 2 volumes to bind the website files and the PHP-FPM pool configuration file (see [PHP-FPM configuration file](#php-fpm-configuration-file))
@@ -3181,6 +3319,11 @@ Here we define 3 services :
   - It uses our _.env_ file to retrieve environment variables values for database connection
   - It defines a named volume `defrag-life-db-vol` that will hold the database data
   - It will run by default on port `3306`
+
+Then we use Traefik dynamic config file to :
+  - create a **service** which will point to our container application running on port `80`
+  - create an HTTP **router** that will match `quake.example.com` URL on our `websecure` **entrypoint** to point to our service
+  - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
 
 All services will run in a `defrag-life-net` **network**, but must also share the same network as Traefik (`traefik-net`) so it can be auto discovered,
 and `phpmyadmin-net` so that the database is reachable from PhpMyAdmin, see [PhpMyAdmin](#phpmyadmin).

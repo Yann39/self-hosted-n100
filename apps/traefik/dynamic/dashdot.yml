@@ -14,5 +14,5 @@ http:
         certResolver: default
       service: dashdot
       middlewares:
-        - vpn-whitelist@docker
-        - dashdot@docker
+        - vpn-whitelist@file
+        - sablier-dashdot@file

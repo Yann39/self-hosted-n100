@@ -1,17 +1,17 @@
 http:
   services:
-    pihole:
+    phpmyadmin:
       loadBalancer:
         servers:
-          - url: http://pihole:80
+          - url: http://phpmyadmin:80
 
   routers:
-    pihole:
-      rule: 'Host(`pihole.example.com`)'
+    phpmyadmin:
+      rule: 'Host(`phpmyadmin.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: pihole
+      service: phpmyadmin
       middlewares:
         - vpn-whitelist@file
