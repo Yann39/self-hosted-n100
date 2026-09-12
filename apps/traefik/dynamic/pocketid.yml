@@ -1,0 +1,39 @@
+http:
+  services:
+    pocketid:
+      loadBalancer:
+        servers:
+          - url: http://pocketid:1411
+
+  routers:
+    pocketid:
+      rule: 'Host(`pocketid.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: pocketid
+      middlewares:
+        - vpn-whitelist@file
+
+  middlewares:
+    traefik-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    pihole-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
