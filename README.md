@@ -126,11 +126,13 @@ flowchart TB
     style PIHOLE_CONTAINER fill: #663535
     style UNBOUND_CONTAINER fill: #663535
     style MYAPP_CONTAINER fill: #663535
+    style CROWDSEC_CONTAINER fill: #663535
     style WIREGUARD_HOST fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
     style VPN_CLIENT fill: #105040
     style PIHOLE_DNS_RECORDS fill: #806030
+    style CROWDSEC_COMMUNITY fill: #4d683b
     DOMAIN(example.com)
     SUBDOMAIN_WIREGUARD(wireguard.example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
@@ -143,7 +145,7 @@ flowchart TB
     DOCKER_MYAPP_PORT5000{{5000/tcp}}
     DOCKER_PIHOLE_PORT80{{80/tcp}}
     DOCKER_PIHOLE_PORT53{{53/udp}}
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
     DOCKER_UNBOUND_PORT53{{53/udp}}
@@ -155,6 +157,10 @@ flowchart TB
     DOCKER_PIHOLE_DNS[DNS 1 & 2]
     PIHOLE_DNS_PIHOLE[pihole\n.example.com]
     PIHOLE_DNS_TRAEFIK[traefik\n.example.com]
+    CROWDSEC_BOUNCER(CrowdSec bouncer)
+    CROWDSEC_ENGINE[Security engine\n+ local API]
+    ACCESS_LOG[(access log)]
+    CROWDSEC_COMMUNITY[CrowdSec\ncommunity blocklist]
 
     subgraph VPN_CLIENT[VPN CLIENT]
         WIREGUARD_CLIENT_ENDPOINT[Endpoint]
@@ -190,8 +196,10 @@ flowchart TB
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
                     REDIRECT(HTTPS redirect)
                     IP_WHITELISTING(IP whitelist)
-                    BASIC_AUTH(Basic auth)
+                    AUTH(PocketID auth)
                 end
+                CROWDSEC_BOUNCER
+                ACCESS_LOG
                 DOCKER_TRAEFIK_PORT80
                 DOCKER_TRAEFIK_PORT443
                 DOCKER_TRAEFIK_PORT8080
@@ -215,6 +223,10 @@ flowchart TB
                 DOCKER_UNBOUND_PORT53
             end
 
+            subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
+                CROWDSEC_ENGINE
+            end
+
         end
 
         subgraph WIREGUARD_HOST[WIREGUARD\non the host]
@@ -224,23 +236,28 @@ flowchart TB
     end
 
     WIREGUARD_CLIENT_ENDPOINT ---> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS -->|10.0.0.1 = server tunnel address| DOCKER_PIHOLE_PORT53
+    WIREGUARD_CLIENT_DNS ------------------->|10.0.0.1\nserver tunnel address| DOCKER_PIHOLE_PORT53
     ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
-    DNS_ISP ---->|Server static IP| DOCKER_PIHOLE_PORT53
+    DNS_ISP ------>|Server static IP| DOCKER_PIHOLE_PORT53
     PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
     PIHOLE_DNS_PIHOLE --->|Server internal IP| DOCKER_TRAEFIK_PORT443
-    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+    DOCKER_TRAEFIK_PORT443 --> CROWDSEC_BOUNCER
+    CROWDSEC_BOUNCER -->|IP not banned| TRAEFIK_ROUTER
     DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+    CROWDSEC_BOUNCER -.->|every request logged| ACCESS_LOG
+    ACCESS_LOG -.->|reads, detects attacks| CROWDSEC_ENGINE
+    CROWDSEC_ENGINE -.->|decisions| CROWDSEC_BOUNCER
+    CROWDSEC_ENGINE <-....->|signals / community blocklist| CROWDSEC_COMMUNITY
     TRAEFIK_ROUTER_MYAPP --> REDIRECT
     TRAEFIK_ROUTER_PIHOLE --> REDIRECT
     TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| REDIRECT
-    IP_WHITELISTING --> BASIC_AUTH
+    IP_WHITELISTING --> AUTH
     IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
     REDIRECT --> IP_WHITELISTING
     REDIRECT ----> DOCKER_MYAPP_PORT5000
-    BASIC_AUTH --> DOCKER_TRAEFIK_PORT8080
+    AUTH --> DOCKER_TRAEFIK_PORT8080
     DOCKER_PIHOLE_DNS ---> DOCKER_UNBOUND_PORT53
     UNBOUND_CONTAINER <--> ROOT_DNS_SERVERS
 ```
@@ -254,6 +271,9 @@ so that we reroute the entire Internet traffic through **Pi-hole** and thus take
 In this example **Traefik** (_traefik.example.com_) and **Pi-Hole** (_pihole.example.com_) are only accessible
 through VPN and from the local network thanks to local DNS records and IP whitelisting,
 while **Myapp** (_myapp.example.com_) is also accessible from the internet publicly.
+
+On top of that, **CrowdSec** watches the Traefik access log and its bouncer, plugged on the HTTPS entrypoint, rejects the IP addresses flagged as malicious
+(by our own scenarios or by the community blocklist) before they reach any service, see [CrowdSec](#crowdsec).
 
 You will find more details on how all this has been implemented later in this guide.
 
@@ -785,7 +805,7 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
     DOCKER_MYAPP1_PORT{{exposed port}}
@@ -812,7 +832,7 @@ flowchart LR
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
                     REDIRECT(HTTPS redirect)
                     IP_WHITELISTING(IP whitelist)
-                    BASIC_AUTH(Basic auth)
+                    AUTH(PocketID auth)
                 end
                 DOCKER_TRAEFIK_PORT80
                 DOCKER_TRAEFIK_PORT443
@@ -830,11 +850,11 @@ flowchart LR
     TRAEFIK_ROUTER_MYAPP1 --> REDIRECT
     TRAEFIK_ROUTER_MYAPP2 --> REDIRECT
     REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-    IP_WHITELISTING --> BASIC_AUTH
+    IP_WHITELISTING --> AUTH
     IP_WHITELISTING ---> DOCKER_MYAPP2_PORT
     REDIRECT --> IP_WHITELISTING
     REDIRECT ---> DOCKER_MYAPP1_PORT
-    BASIC_AUTH --> DOCKER_TRAEFIK_PORT8080
+    AUTH --> DOCKER_TRAEFIK_PORT8080
 ```
 
 It handles HTTP to HTTPS redirection, IP whitelisting and authentication (through PocketID, or basic authentication) through custom **middlewares**.
@@ -1891,53 +1911,31 @@ For the following examples, we will consider that the **user** enters http://mya
 Here is what happen when you try to reach a service which is **open to the internet**, without using any VPN,
 from your local network holding your homelab (on the left), or from any other location (on the right) :
 
-<table>
+<table width="100%">
 <tr>
-<td>
-<img width="450px" height="1px" alt="1px blank image just for spacing">
+<td width="50%" valign="top">
 
 ```mermaid
 flowchart TB
-    style HOSTING_PROVIDER fill: #4d683b
-    style DDNS_PROVIDER fill: #69587b
     style INTERNET_SERVICE_PROVIDER fill: #205566
     style SERVER_DEVICE fill: #665151
     style CONTAINER_ENGINE fill: #664343
     style TRAEFIK_CONTAINER fill: #663535
     style PIHOLE_CONTAINER fill: #663535
-    style UNBOUND_CONTAINER fill: #663535
     style MYAPP_CONTAINER fill: #663535
+    style PIHOLE_DNS_RECORDS fill: #806030
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
-    DOMAIN(example.com)
-    SUBDOMAIN_MYAPP(myapp.example.com)
-    DDNS(myddns.ddns.net)
-    ROUTER_PUBLIC_IP[public IP]
-    ROUTER_PORT80{{80/tcp}}
-    ROUTER_PORT443{{443/tcp}}
     ROUTER_DNS[DNS]
     DOCKER_PIHOLE_PORT53{{53/udp}}
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_MYAPP_PORT{{port/tcp}}
-    DOCKER_UNBOUND_PORT53{{53/udp}}
     TRAEFIK_ROUTER_MYAPP(myapp.example.com)
     TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
-    ROOT_DNS_SERVERS[Root DNS servers]
-
-    subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
-        DOMAIN
-        SUBDOMAIN_MYAPP
-    end
-
-    subgraph DDNS_PROVIDER[DYNAMIC DNS PROVIDER]
-        DDNS
-    end
+    PIHOLE_DNS_MYAPP(myapp.example.com)
 
     subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
-        ROUTER_PUBLIC_IP
-        ROUTER_PORT80
-        ROUTER_PORT443
         ROUTER_DNS
     end
 
@@ -1947,12 +1945,11 @@ flowchart TB
                 DOCKER_MYAPP_PORT
             end
 
-            subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
-                DOCKER_UNBOUND_PORT53
-            end
-
             subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
                 DOCKER_PIHOLE_PORT53
+                subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
+                    PIHOLE_DNS_MYAPP
+                end
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
@@ -1973,46 +1970,29 @@ flowchart TB
     end
 
     CLIENT((client)) --->|" http://myapp.example.com "| BROWSER
-    BROWSER((browser)) -->|HTTP| ROUTER_PUBLIC_IP
-    DOMAIN <-->|subdomain| SUBDOMAIN_MYAPP
-    SUBDOMAIN_MYAPP <-->|CNAME| DDNS
-    DDNS <-->|DynDNS| ROUTER_PUBLIC_IP
-    ROUTER_PUBLIC_IP --> ROUTER_PORT80
-    ROUTER_PUBLIC_IP --> ROUTER_PORT443
-    ROUTER_PORT443 -->|port forward| DOCKER_TRAEFIK_PORT443
-    ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
-    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
     BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
     LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER_DNS
     ROUTER_DNS <-->|mini PC static IP| DOCKER_PIHOLE_PORT53
-    DOCKER_PIHOLE_PORT53 <-->|DNS| DOCKER_UNBOUND_PORT53
-    UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
+    PIHOLE_DNS_MYAPP -->|mini PC internal IP| DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
+    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
     linkStyle 0 stroke-width: 4px, stroke: red
-    linkStyle 1 stroke-width: 4px, stroke: red
+    linkStyle 1 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 4 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 4 stroke-width: 4px, stroke: red
     linkStyle 5 stroke-width: 4px, stroke: red
+    linkStyle 6 stroke-width: 4px, stroke: red
+    linkStyle 7 stroke-width: 4px, stroke: red
     linkStyle 8 stroke-width: 4px, stroke: red
     linkStyle 9 stroke-width: 4px, stroke: red
-    linkStyle 10 stroke-width: 4px, stroke: red
-    linkStyle 11 stroke-width: 4px, stroke: red
-    linkStyle 12 stroke-width: 4px, stroke: red
-    linkStyle 13 stroke-width: 4px, stroke: red
-    linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 18 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
 ```
 
 </td>
-<td>
-<img width="450px" height="1px" alt="1px blank image just for spacing">
+<td width="50%" valign="top">
 
 ```mermaid
 flowchart TB
@@ -2034,7 +2014,7 @@ flowchart TB
     ROUTER_PORT80{{80/tcp}}
     ROUTER_PORT443{{443/tcp}}
     ROUTER2_DNS[DNS]
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_MYAPP_PORT{{port/tcp}}
     TRAEFIK_ROUTER_MYAPP(myapp.example.com)
@@ -2128,10 +2108,11 @@ flowchart TB
 </tr>
 </table>
 
-Once the **resolving name server** got the **IP address** through **DNS resolver** (yellow dotted line),
-the request reaches the mini PC on port **80** (HTTP) after being **port forwarded** by the **ISP router**,
-to be handled by the **reverse proxy**, and is then redirected to port **443** (HTTPS) thanks to the **HTTPS redirect middleware**,
-which finally route it to the target application (red line)
+From the **local network** (left), Pi-Hole answers with its **local DNS record** (yellow dotted line), so the browser gets the mini PC's **internal IP**
+and reaches the **reverse proxy** directly on the LAN, without going through the public IP (no port forwarding, no NAT loopback).
+From **any other location** (right), the name is resolved publicly through the client's **DNS resolver** and the request reaches the mini PC on port **80** (HTTP)
+after being **port forwarded** by the **ISP router**.
+In both cases the reverse proxy redirects the request to port **443** (HTTPS) thanks to the **HTTPS redirect middleware**, which finally routes it to the target application (red line).
 
 ### With VPN
 
@@ -2158,11 +2139,11 @@ flowchart TB
     SUBDOMAIN_WIREGUARD(wireguard.example.com)
     DDNS(myddns.ddns.net)
     ROUTER_PUBLIC_IP[public IP]
-    ROUTER_PORT51820{{51820/tcp}}
+    ROUTER_PORT51820{{51820/udp}}
     WIREGUARD_PORT{{51820/udp}}
     ROUTER_DNS[DNS 1]
     DOCKER_PIHOLE_PORT53{{53/udp}}
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_MYAPP_PORT{{port/tcp}}
     DOCKER_UNBOUND_PORT53{{53/udp}}
@@ -2234,7 +2215,7 @@ flowchart TB
 
     CLIENT((client)) --> VPN_CLIENT
     WIREGUARD_CLIENT_ENDPOINT --> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS -->|10.0.0.1 = server tunnel address, port 53 published by Docker| DOCKER_PIHOLE_PORT53
+    WIREGUARD_CLIENT_DNS -->|10.0.0.1 = server tunnel address| DOCKER_PIHOLE_PORT53
     VPN_CLIENT -->|" http://myapp.example.com "| BROWSER
     BROWSER((browser)) --> ROUTER_PUBLIC_IP
     DOMAIN -->|subdomain| SUBDOMAIN_MYAPP
@@ -2814,7 +2795,7 @@ flowchart LR
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{9000/tcp}}
     TRAEFIK_ROUTER_APP(portainer.example.com)
@@ -2962,7 +2943,7 @@ flowchart LR
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3001/tcp}}
     TRAEFIK_ROUTER_APP(dashdot.example.com)
@@ -3109,7 +3090,7 @@ flowchart LR
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{8080/tcp}}
     TRAEFIK_ROUTER_APP(dashboard.example.com)
@@ -3420,7 +3401,7 @@ flowchart LR
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
     TRAEFIK_ROUTER_APP(phpmyadmin.example.com)
@@ -3570,7 +3551,7 @@ flowchart LR
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
     TRAEFIK_ROUTER_APP(lychee.example.com)
@@ -3764,7 +3745,7 @@ flowchart LR
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{433/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_NGINX_PORT{{80/tcp}}
     DOCKER_PHP_PORT{{9000/tcp}}
