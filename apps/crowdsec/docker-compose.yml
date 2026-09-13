@@ -1,0 +1,26 @@
+services:
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    # Holds BOUNCER_KEY_traefik : registers the Traefik bouncer with this key at start (same value in traefik/.env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      # Hub items installed at start : Traefik log parser + HTTP scenarios, known CVE exploits, private IP ranges whitelist
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve"
+      PARSERS: "crowdsecurity/whitelists"
+    volumes:
+      - ./acquis.yml:/etc/crowdsec/acquis.yaml:ro   # acquis.yaml is the path expected by CrowdSec's config.yaml
+      - ./config:/etc/crowdsec
+      - ./data:/var/lib/crowdsec/data
+      - /opt/apps/traefik/logs:/var/log/traefik:ro
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true

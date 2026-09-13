@@ -13,11 +13,11 @@ services:
       - ./dynamic:/etc/traefik/dynamic:ro               # Traefik dynamic configuration
       - ./acme.json:/acme.json                          # For Let's Encrypt certificate storage
       - ./credentials.txt:/credentials.txt:ro           # For Traefik dashboard credentials
+      - ./logs:/var/log/traefik                          # Access log, shared (read-only) with CrowdSec
     networks:
       - traefik-private-net # private : services reachable from the local network and the VPN only
       - traefik-public-net  # public : services exposed to the internet
-    environment:
-      MYPROVIDER_ACCESS_TOKEN: <access_token_here>
+    env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"
 

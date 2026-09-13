@@ -1,0 +1,6 @@
+# Log sources read by the CrowdSec agent : the Traefik access log (bind mount shared with the Traefik container).
+# A glob pattern, so that the file is picked up when it appears (Traefik may start after CrowdSec) or is recreated by logrotate.
+filenames:
+  - /var/log/traefik/*.log
+labels:
+  type: traefik
