@@ -1,0 +1,20 @@
+http:
+  middlewares:
+    crowdsec:
+      plugin:
+        crowdsec-bouncer-traefik-plugin:
+          enabled: true
+          logLevel: INFO
+          # stream mode : the plugin pulls the decisions from the CrowdSec local API every updateIntervalSeconds
+          # and answers from its cache, nothing is called on the request path
+          crowdsecMode: stream
+          updateIntervalSeconds: 60
+          crowdsecLapiScheme: http
+          crowdsecLapiHost: crowdsec:8080
+          # Dynamic files are Go templates : the key is read from the CROWDSEC_BOUNCER_KEY variable of the Traefik container (traefik/.env),
+          # same value as BOUNCER_KEY_traefik in crowdsec/.env
+          crowdsecLapiKey: '{{ env "CROWDSEC_BOUNCER_KEY" }}'
+          # never block the local network and the VPN peers, whatever the decisions say
+          clientTrustedIPs:
+            - 192.168.0.0/24
+            - 10.0.0.0/24

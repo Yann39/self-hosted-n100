@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.1.0-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-12_Sept_2026-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.1.1-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-13_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
@@ -63,6 +63,7 @@ These are the tools we are going to run :
 |        <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>        | Sablier        | https://github.com/acouvreur/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>        | Traefik        | https://github.com/traefik/traefik             | Modern HTTP reverse proxy and load balancer          |
 |       <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>       | PocketID       | https://github.com/pocket-id/pocket-id         | Simple OIDC provider for passkey authentication      |
+|       <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="32"/>       | CrowdSec       | https://github.com/crowdsecurity/crowdsec      | Collaborative intrusion prevention, bans attackers   |
 |      <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>      | Wireguard      | https://github.com/WireGuard                   | Simple yet fast and modern VPN                       |
 |        <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>         | Pi-hole        | https://github.com/pi-hole/pi-hole             | Network-wide ad blocking                             |
 |        <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>        | Unbound        | https://github.com/NLnetLabs/unbound           | Validating, recursive, and caching DNS resolver      |
@@ -852,6 +853,7 @@ Then copy the files from this project's _traefik_ directory into the _/opt/apps/
 
 - _docker-compose.yml_ : The Traefik service definition
 - _traefik.yml_ : The Traefik static configuration
+- _.env_ : The secrets read by the service (DNS provider token, CrowdSec bouncer key), to fill in
 - _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (restricted with **basic authentication**),
   see [Generate basic authentication credentials](#generate-basic-authentication-credentials)
 
@@ -930,10 +932,9 @@ First, check that your DNS provider is supported by Traefik to automate the DNS 
 Then :
 
 1. Create an **access token** / **API key** from your provider interface
-2. Add the necessary **environment variables** required by your provider, to the Traefik service configuration, i.e. :
-   ```yaml
-   environment:
-     MYPROVIDER_ACCESS_TOKEN: <access_token_here>
+2. Add the necessary **environment variables** required by your provider to the _.env_ file next to the Compose file (loaded with `env_file`), i.e. :
+   ```shell
+   MYPROVIDER_ACCESS_TOKEN=<access_token_here>
    ```
 
 The corresponding certificate resolver configuration would be :
@@ -1031,11 +1032,18 @@ entryPoints:
 
   websecure:
     address: ':443'
+    http:
+      middlewares:
+        # Every request on 443 is checked against the CrowdSec decisions first (see the CrowdSec section)
+        - crowdsec@file
 
 providers:
   docker:
     watch: true
     exposedByDefault: false
+  file:
+    directory: /etc/traefik/dynamic
+    watch: true
 
 certificatesResolvers:
   default:
@@ -1046,11 +1054,29 @@ certificatesResolvers:
       dnsChallenge:
         provider: <your_provider_here>
 
+experimental:
+  plugins:
+    sablier:
+      moduleName: "github.com/sablierapp/sablier-traefik-plugin"
+      version: "v1.1.0"
+    traefik-oidc-auth:
+      moduleName: "github.com/sevensolutions/traefik-oidc-auth"
+      version: "v0.18.0"
+    crowdsec-bouncer-traefik-plugin:
+      moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+      version: "v1.7.1"
 log:
   level: info
 
 accessLog:
+  # One JSON line per request, written to a file shared (read-only) with the CrowdSec container
+  filePath: /var/log/traefik/access.log
   format: json
+  fields:
+    headers:
+      names:
+        # Request headers are dropped from the log by default, the User-Agent is needed by the CrowdSec scenarios
+        User-Agent: keep
 ```
 
 This config file :
@@ -1061,8 +1087,10 @@ This config file :
   that containers that do not have a `traefik.enable=true` label are ignored from the resulting routing configuration
 - defines a `default` **certificate resolver** for Let's Encrypt to automatically generate certificates
 - set log level to `info` (you can set it to `debug` when you need more information on what's going on)
-- writes the **access log** in JSON on the standard output, one line per request with the client IP, the router and the status code : the fastest way to understand why a request is rejected
-  (`sudo docker logs traefik`), and the input of CrowdSec later on
+- writes the **access log** as JSON lines in _/var/log/traefik/access.log_ (a folder bound in the Compose file), one line per request with the client IP, the router and the status code :
+  the fastest way to understand why a request is rejected, and the input of [CrowdSec](#crowdsec). Request headers are dropped from the log by default, the `User-Agent` is kept for the CrowdSec scenarios
+- declares the Traefik **plugins** used by the middlewares (Sablier, OIDC authentication, CrowdSec bouncer), downloaded when Traefik starts
+- sets the `crowdsec` middleware on the `websecure` **entrypoint**, so that every HTTPS request is checked against the CrowdSec decisions before reaching any router
 
 #### Service definition :
 
@@ -1084,11 +1112,11 @@ services:
       - ./dynamic:/etc/traefik/dynamic:ro               # Traefik dynamic configuration
       - ./acme.json:/acme.json                          # For Let's Encrypt certificate storage
       - ./credentials.txt:/credentials.txt:ro           # For Traefik dashboard credentials
+      - ./logs:/var/log/traefik                         # Access log, shared (read-only) with CrowdSec
     networks:
-      - traefik-private-net         # private : services reachable from the local network and the VPN only
+      - traefik-private-net # private : services reachable from the local network and the VPN only
       - traefik-public-net  # public : services exposed to the internet
-    environment:
-      MYPROVIDER_ACCESS_TOKEN: <access_token_here>
+    env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"
 
@@ -1129,8 +1157,9 @@ networks:
 This **Compose** file mainly :
 
 - exposes ports `80` and `443` to receive incoming HTTP/HTTPS requests
+- binds the _logs_ folder where the access log is written, shared read-only with the [CrowdSec](#crowdsec) container
 - defines two **networks** : `traefik-private-net` for the services that must stay private (reachable from the local network and the VPN only) and `traefik-public-net` for the services exposed to the internet, see [Network segmentation](#network-segmentation)
-- defines an environment variable to hold the DNS provider access token to be able to issue Let's Encrypt certificates through **DNS challenge**
+- loads its secrets from the _.env_ file (see [Environment variables](#environment-variables-)) : the DNS provider access token used to issue Let's Encrypt certificates through **DNS challenge**, and the CrowdSec bouncer key
 - defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our service
 - defines `httpsonly` **router** and **middleware** responsible for automatically redirecting HTTP requests to HTTPS
 - configures `dashboard` and `api` routers to use secure HTTPS endpoint with our certificate resolver to generate related Let's Encrypt certificates
@@ -1138,6 +1167,21 @@ This **Compose** file mainly :
 
 > [!CAUTION]
 > The order in which the middlewares are defined in relation to a router is important, they will be applied in the same order as their declaration.
+
+#### Environment variables :
+
+:page_facing_up: _.env_ :
+
+```shell
+# Access token / API key of your DNS provider, used by the Let's Encrypt DNS challenge (variable name depends on the provider, see Traefik documentation)
+MYPROVIDER_ACCESS_TOKEN=<access_token_here>
+# Key of the CrowdSec bouncer (same value as BOUNCER_KEY_traefik in crowdsec/.env), read by traefik/dynamic/crowdsec.yml
+CROWDSEC_BOUNCER_KEY=<bouncer_key>
+```
+
+- `MYPROVIDER_ACCESS_TOKEN` is the token of your DNS provider, its name depends on the provider (see [DNS challenge](#dns-challenge))
+- `CROWDSEC_BOUNCER_KEY` is read by the `crowdsec` middleware in _dynamic/crowdsec.yml_ through a template (dynamic configuration files are Go templates, `{{ env "..." }}` reads a variable of the Traefik container),
+  so that no secret sits in a configuration file. Same value as `BOUNCER_KEY_traefik` in _crowdsec/.env_ (see [CrowdSec](#crowdsec))
 
 ### Run
 
@@ -1415,9 +1459,19 @@ pihole.example.com                  192.168.0.16
 portainer.example.com               192.168.0.16
 traefik.example.com                 192.168.0.16
 pocketid.example.com                192.168.0.16
+lychee.example.com                  192.168.0.16
+quake.example.com                   192.168.0.16
 ```
 
-No need to add domains that are reachable from the internet as they will be reachable directly over HTTPS without going through our Pi-Hole.
+Add the **public** services as well (Lychee, Defrag-life, ...), even though they have a public DNS record. Without a local record, a device at home resolves them to the
+**public IP** and the traffic loops through the **NAT loopback** of the router : it costs about half of the throughput (measured in [VPN connection speed](#vpn-connection-speed)),
+and Traefik sees the requests coming from your public IP address instead of the device's one, so they are treated like internet traffic by the IP whitelist and by [CrowdSec](#crowdsec)
+(a misbehaving device at home could get your whole household banned from your own sites). With a local record, everything stays on the LAN.
+
+> [!NOTE]
+> Consequence for the VPN peers away from home : they use Pi-Hole through the tunnel, so these names resolve to `192.168.0.16` for them too, which is only reachable
+> with a **full tunnel** or with `192.168.0.0/24` added to `AllowedIPs`. Do that on the *away* profile only : on the *home* profile, routing the LAN subnet through the tunnel would send
+> the traffic to your printer or TV through the mini PC.
 
 You can also configure rate limiting (default to **1000 queries per minute**), domain whitelisting, DNS settings, etc. but I will not go through all Pi-Hole configuration, the
 default should work just fine.
@@ -2498,6 +2552,248 @@ You should end-up with a running `pocketid` container.
 It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
 
 The application is available at https://pocketid.example.com, where the first visit creates the administrator account and its passkey (see [Setting up](#setting-up)).
+
+## CrowdSec
+
+<img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="128"/>
+
+We will use **CrowdSec** to detect and block the attackers knocking on the reverse proxy : scanners looking for `/.env` or `/wp-login.php`, brute force attempts, known exploits, bad bots.
+
+CrowdSec is an open source, collaborative **intrusion prevention system** : a **security engine** reads logs, matches them against **scenarios** from a community hub
+and takes **decisions** (ban an IP address for a few hours), and a **bouncer** enforces them where the traffic enters. In return for the signals it shares, the engine also receives the
+**community blocklist** : IP addresses currently attacking other CrowdSec users are blocked before they even try anything here.
+
+In our setup the only door open to the internet is Traefik, so everything happens there :
+
+- the **security engine** runs in a container on the private Traefik network and reads the Traefik **access log** through a shared folder (no Docker socket involved)
+- the **bouncer** is a Traefik **plugin**, declared as a middleware on the `websecure` entrypoint : every HTTPS request is checked against the current decisions before reaching any router,
+  private services included (harmless : the local network and the VPN peers are trusted and never blocked)
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style CROWDSEC_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    style HUB fill: #4d683b
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{80/tcp}}
+    DOCKER_CROWDSEC_PORT{{8080/tcp\nlocal API}}
+    TRAEFIK_ROUTER_APP(lychee.example.com)
+    TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer\non the websecure entrypoint)
+    TRAEFIK_MIDDLEWARE_OTHERS(router middlewares)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    HUB((CrowdSec hub\nand community))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_CROWDSEC
+                    TRAEFIK_MIDDLEWARE_OTHERS
+                end
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                TRAEFIK_MIDDLEWARE_CROWDSEC -->|IP not banned| TRAEFIK_ROUTER_APP
+                TRAEFIK_MIDDLEWARE_CROWDSEC -.->|IP banned : 403| INCOMING_REQUEST
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_OTHERS
+            end
+
+            subgraph APP_CONTAINER[APP CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
+                DOCKER_CROWDSEC_PORT
+            end
+
+            ACCESS_LOG[(access.log)]
+            TRAEFIK_MIDDLEWARE_OTHERS --> DOCKER_APP_PORT
+            TRAEFIK_CONTAINER -->|writes| ACCESS_LOG
+            ACCESS_LOG -->|reads| CROWDSEC_CONTAINER
+            TRAEFIK_MIDDLEWARE_CROWDSEC <-.->|pulls the decisions every minute| DOCKER_CROWDSEC_PORT
+        end
+    end
+
+    CROWDSEC_CONTAINER <-->|scenarios, signals, community blocklist| HUB
+```
+
+### Setting up
+
+Create the folders, and a random key that will be shared between the security engine and the bouncer :
+
+```bash
+sudo mkdir -p /opt/apps/crowdsec /opt/apps/traefik/logs
+openssl rand -base64 48
+```
+
+Then :
+
+- copy the _.env_, _docker-compose.yml_ and _acquis.yml_ files from this project's _crowdsec_ directory into the _/opt/apps/crowdsec_ directory, and put the key in `BOUNCER_KEY_traefik` of the _.env_ file
+- put the **same** key in `CROWDSEC_BOUNCER_KEY` of Traefik's _.env_ file, and copy the _crowdsec.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- update Traefik : the access log now goes to a file with the `User-Agent` header kept, the plugin is declared and the `crowdsec@file` middleware is set on the `websecure` entrypoint
+  in _traefik.yml_ (see [Static configuration file](#static-configuration-file-)), and the _logs_ folder is bound in Traefik's _docker-compose.yml_ (see [Service definition](#service-definition-))
+- copy the _logrotate_ file from this project's _traefik_ directory to _/etc/logrotate.d/traefik_ : the access log is rotated daily and kept 7 days, Traefik reopens it on the `USR1` signal
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _crowdsec/docker-compose.yml_ :
+
+```yaml
+services:
+
+  crowdsec:
+    image: crowdsecurity/crowdsec:latest
+    container_name: crowdsec
+    restart: unless-stopped
+    # Holds BOUNCER_KEY_traefik : registers the Traefik bouncer with this key at start (same value in traefik/.env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      # Hub items installed at start : Traefik log parser + HTTP scenarios, known CVE exploits, private IP ranges whitelist
+      COLLECTIONS: "crowdsecurity/traefik crowdsecurity/http-cve"
+      PARSERS: "crowdsecurity/whitelists"
+    volumes:
+      - ./acquis.yml:/etc/crowdsec/acquis.yaml:ro   # acquis.yaml is the path expected by CrowdSec's config.yaml
+      - ./config:/etc/crowdsec
+      - ./data:/var/lib/crowdsec/data
+      - /opt/apps/traefik/logs:/var/log/traefik:ro
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+```
+
+:page_facing_up: _crowdsec/.env_ :
+
+```shell
+# Key shared with the Traefik bouncer (same value as CROWDSEC_BOUNCER_KEY in traefik/.env), generate it with : openssl rand -base64 48
+BOUNCER_KEY_traefik=<bouncer_key>
+```
+
+:page_facing_up: _crowdsec/acquis.yml_ :
+
+```yaml
+# Log sources read by the CrowdSec agent : the Traefik access log (bind mount shared with the Traefik container).
+# A glob pattern, so that the file is picked up when it appears (Traefik may start after CrowdSec) or is recreated by logrotate.
+filenames:
+  - /var/log/traefik/*.log
+labels:
+  type: traefik
+```
+
+:page_facing_up: _traefik/dynamic/crowdsec.yml_ :
+
+```yaml
+http:
+  middlewares:
+    crowdsec:
+      plugin:
+        crowdsec-bouncer-traefik-plugin:
+          enabled: true
+          logLevel: INFO
+          # stream mode : the plugin pulls the decisions from the CrowdSec local API every updateIntervalSeconds
+          # and answers from its cache, nothing is called on the request path
+          crowdsecMode: stream
+          updateIntervalSeconds: 60
+          crowdsecLapiScheme: http
+          crowdsecLapiHost: crowdsec:8080
+          # Dynamic files are Go templates : the key is read from the CROWDSEC_BOUNCER_KEY variable of the Traefik container (traefik/.env),
+          # same value as BOUNCER_KEY_traefik in crowdsec/.env
+          crowdsecLapiKey: '{{ env "CROWDSEC_BOUNCER_KEY" }}'
+          # never block the local network and the VPN peers, whatever the decisions say
+          clientTrustedIPs:
+            - 192.168.0.0/24
+            - 10.0.0.0/24
+```
+
+:page_facing_up: _traefik/logrotate_ (to copy to _/etc/logrotate.d/traefik_) :
+
+```
+# Rotation of the Traefik access log (copy this file to /etc/logrotate.d/traefik on the host).
+# Traefik reopens its log files when it receives the USR1 signal, no restart needed.
+/opt/apps/traefik/logs/access.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 root root
+    postrotate
+        /usr/bin/docker kill --signal=USR1 traefik >/dev/null 2>&1 || true
+    endscript
+}
+```
+
+Things to notice :
+
+- the security engine only joins `traefik-private-net` : the bouncer reaches its **local API** at `crowdsec:8080` by name, nothing is published on the host
+- `COLLECTIONS` and `PARSERS` are installed from the hub at the first start : `crowdsecurity/traefik` (the access log parser and the base HTTP scenarios), `crowdsecurity/http-cve`
+  (known exploits) and `crowdsecurity/whitelists` (private IP ranges are never banned, so a misbehaving device at home cannot lock you out)
+- `BOUNCER_KEY_traefik` (from the _.env_ file) registers the `traefik` bouncer with the given key at start, no manual `cscli bouncers add` needed ; the middleware reads the same key
+  from Traefik's own _.env_ file through a template, so that the key never appears in a configuration file
+- the **volumes** hold the acquisition file (which log to read, and which parser applies to it â€” mounted as _/etc/crowdsec/acquis.yaml_, the path CrowdSec expects), the configuration (hub items, local API and community API credentials, all created automatically)
+  and the data (SQLite database of alerts and decisions, downloaded blocklists) ; the Traefik _logs_ folder is mounted **read-only**
+- the middleware runs in **stream** mode : it pulls the decisions from the local API every `updateIntervalSeconds` and answers from its cache, nothing is called on the request path.
+  If the local API becomes unreachable, the plugin keeps serving with the decisions it already has and logs errors
+- `clientTrustedIPs` makes the bouncer skip the local network and the VPN peers entirely, in addition to the CrowdSec side whitelist
+- as the middleware sits on the **entrypoint**, it runs before the routers and their own middlewares (IP whitelist, authentication) for every request on `443`, present and future services alike
+
+> [!NOTE]
+> Your own **public IP** is not a private range. If some of your traffic reached Traefik through the NAT loopback of the router (a name resolving to the public IP, see [IP whitelisting](#ip-whitelisting)),
+> a noisy test could ban you from your own services : `cscli decisions delete --ip <your_public_ip>` lifts it. With local DNS records for the private **and** the public services (see [Pi-hole](#pi-hole)), the devices at home never take that path.
+>
+> The engine shares the alerts it raises (attacking IP address and scenario) with CrowdSec's central API, that is what feeds the community blocklist everybody benefits from.
+> If you don't want that, remove the `api.server.online_client` section from _config.yaml_.
+
+### Run
+
+Start the security engine first, so that the bouncer finds its local API, then recreate Traefik (the static configuration changed, and the plugin is downloaded at that moment) :
+
+```bash
+sudo docker-compose -f /opt/apps/crowdsec/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/traefik/docker-compose.yml up -d --force-recreate
+```
+
+You should end-up with a running `crowdsec` container. Check that everything talks to everything :
+
+```bash
+sudo docker exec crowdsec cscli bouncers list          # the "traefik" bouncer, with a recent "last pull"
+sudo docker exec crowdsec cscli collections list       # crowdsecurity/traefik and http-cve installed
+sudo docker exec crowdsec cscli metrics                # "Acquisition Metrics" : lines read and parsed from access.log (browse a site first)
+sudo docker logs traefik 2>&1 | grep -i crowdsec       # plugin loaded, no error
+```
+
+To test the bouncer independently of the scenarios, ban an outside address (your phone on 4G for example) for a few minutes and try to reach a public service from it :
+
+```bash
+sudo docker exec crowdsec cscli decisions add --ip <phone_public_ip> --duration 5m --reason "bouncer test"
+sudo docker exec crowdsec cscli decisions list
+sudo docker exec crowdsec cscli decisions delete --ip <phone_public_ip>
+```
+
+The phone must get a `403` from Traefik while the decision is active. To test the scenarios, from the same phone request a dozen pages a scanner would try
+(`/.env`, `/wp-login.php`, `/phpmyadmin/`, `/.git/config`, ...) on a public service : after a few of them `cscli alerts list` shows a `http-probing` or `http-sensitive-files` alert
+and the phone is banned for four hours (the default duration) — lift it with `cscli decisions delete`.
 
 ## Portainer
 
@@ -3817,7 +4113,7 @@ Mainly :
 - Blog post about WireGuard performance tuning :
     - https://www.procustodibus.com/blog/2022/12/wireguard-performance-tuning/
 - Lots of **Google** searches
-- Recently some AI for WireGuard tweaks, mainly Claude (Opus/Fable)
+- Recently some AI for WireGuard and CrowdSec tweaks, mainly Claude (Opus/Fable)
 
 Of course every upstream project (especially the ones with good documentation :grin:) also deserve credit :beer:
 
