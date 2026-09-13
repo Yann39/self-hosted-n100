@@ -55,24 +55,25 @@ The goal is still the same : learning, and have an environment :
 
 These are the tools we are going to run :
 
-|                                       Logo                                        | Name           | Repository                                     | Description                                          |
-|:---------------------------------------------------------------------------------:|----------------|------------------------------------------------|------------------------------------------------------|
-|         <img src="images/logo-docker.svg" alt="Docker logo" height="24"/>         | Docker         | https://github.com/docker                      | Help to build, share, and run container applications |
-| <img src="images/logo-docker-compose.png" alt="Docker Compose logo" height="38"/> | Docker Compose | https://github.com/docker/compose              | Run multi-container applications with Docker         |
-|      <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>      | Portainer      | https://github.com/portainer/portainer         | Management platform for containerized applications   |
-|        <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>        | Sablier        | https://github.com/acouvreur/sablier           | Workload scaling on demand                           |
-|        <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>        | Traefik        | https://github.com/traefik/traefik             | Modern HTTP reverse proxy and load balancer          |
-|       <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>       | PocketID       | https://github.com/pocket-id/pocket-id         | Simple OIDC provider for passkey authentication      |
-|       <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="32"/>       | CrowdSec       | https://github.com/crowdsecurity/crowdsec      | Collaborative intrusion prevention, bans attackers   |
-|      <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>      | Wireguard      | https://github.com/WireGuard                   | Simple yet fast and modern VPN                       |
-|        <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>         | Pi-hole        | https://github.com/pi-hole/pi-hole             | Network-wide ad blocking                             |
-|        <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>        | Unbound        | https://github.com/NLnetLabs/unbound           | Validating, recursive, and caching DNS resolver      |
-|    <img src="images/logo-uptime-kuma.svg" alt="Uptime Kuma logo" height="34"/>    | Uptime Kuma    | https://github.com/louislam/uptime-kuma        | Easy-to-use self-hosted monitoring tool              |
-|          <img src="images/logo-homer.png" alt="Homer logo" height="30"/>          | Homer          | https://github.com/bastienwirtz/homer          | Static application dashboard                         |
-|        <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>        | Dashdot        | https://github.com/MauriceNino/dashdot         | Minimal server dashboard and monitoring              |
-|          <img src="images/logo-ackee.png" alt="Ackee logo" height="32"/>          | Ackee          | https://github.com/electerious/Ackee           | Analytics tool that cares about privacy              |
-|         <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>         | Lychee         | https://github.com/LycheeOrg/Lychee            | Free photo-management tool                           |
-|     <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>     | PhpMyAdmin     | https://github.com/phpmyadmin/phpmyadmin       | Web user interface to manage MySQL databases         |
+|                                        Logo                                         | Name            | Repository                                      | Description                                          |
+|:-----------------------------------------------------------------------------------:|-----------------|-------------------------------------------------|------------------------------------------------------|
+|          <img src="images/logo-docker.svg" alt="Docker logo" height="24"/>          | Docker          | https://github.com/docker                       | Help to build, share, and run container applications |
+|  <img src="images/logo-docker-compose.png" alt="Docker Compose logo" height="38"/>  | Docker Compose  | https://github.com/docker/compose               | Run multi-container applications with Docker         |
+|       <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>       | Portainer       | https://github.com/portainer/portainer          | Management platform for containerized applications   |
+|         <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>         | Sablier         | https://github.com/acouvreur/sablier            | Workload scaling on demand                           |
+|         <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>         | Traefik         | https://github.com/traefik/traefik              | Modern HTTP reverse proxy and load balancer          |
+|        <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>        | PocketID        | https://github.com/pocket-id/pocket-id          | Simple OIDC provider for passkey authentication      |
+|        <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="32"/>        | CrowdSec        | https://github.com/crowdsecurity/crowdsec       | Collaborative intrusion prevention, bans attackers   |
+| <img src="images/logo-crowdsec-web-ui.svg" alt="CrowdSec Web UI logo" height="32"/> | CrowdSec Web UI | https://github.com/TheDuffman85/crowdsec-web-ui | Web dashboard for CrowdSec alerts and decisions      |
+|       <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>       | Wireguard       | https://github.com/WireGuard                    | Simple yet fast and modern VPN                       |
+|         <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>          | Pi-hole         | https://github.com/pi-hole/pi-hole              | Network-wide ad blocking                             |
+|         <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>         | Unbound         | https://github.com/NLnetLabs/unbound            | Validating, recursive, and caching DNS resolver      |
+|     <img src="images/logo-uptime-kuma.svg" alt="Uptime Kuma logo" height="34"/>     | Uptime Kuma     | https://github.com/louislam/uptime-kuma         | Easy-to-use self-hosted monitoring tool              |
+|           <img src="images/logo-homer.png" alt="Homer logo" height="30"/>           | Homer           | https://github.com/bastienwirtz/homer           | Static application dashboard                         |
+|         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
+|           <img src="images/logo-ackee.png" alt="Ackee logo" height="32"/>           | Ackee           | https://github.com/electerious/Ackee            | Analytics tool that cares about privacy              |
+|          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
+|      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
 
 And also some personal applications :
 
@@ -2376,7 +2377,8 @@ Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
 
 - for a service put behind the Traefik middleware, the callback URL is the service URL followed by `/oidc/callback` (the default `CallbackUri` of the plugin), for example `https://pihole.example.com/oidc/callback`,
   and **PKCE** enabled. Copy the generated client ID and secret into the `ClientId` / `ClientSecret` fields of the corresponding middleware in _pocketid.yml_,
-  and give the middleware a random 32 characters `Secret` (`openssl rand -hex 16`) : this one is not a PocketID secret, it is the key the plugin uses to encrypt its own session cookie.
+  and give the middleware a random 32 characters `Secret` (`openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32; echo`) : this one is not a PocketID secret,
+  it is the key the plugin uses to encrypt its own session cookie. The plugin expects exactly **32 characters**, and each middleware must have its own.
   Traefik picks up the change without restart
 - for a service with native OIDC support, use the callback URL it documents and its own settings page. **Portainer** (_Settings -> Authentication -> OAuth -> Custom_) needs the client ID and secret,
   `openid profile email` as scopes, **PKCE disabled** on the PocketID side as Portainer does not support it, and three endpoints : the **authorization URL** is the public one
@@ -2775,6 +2777,217 @@ sudo docker exec crowdsec cscli decisions delete --ip <phone_public_ip>
 The phone must get a `403` from Traefik while the decision is active. To test the scenarios, from the same phone request a dozen pages a scanner would try
 (`/.env`, `/wp-login.php`, `/phpmyadmin/`, `/.git/config`, ...) on a public service : after a few of them `cscli alerts list` shows a `http-probing` or `http-sensitive-files` alert
 and the phone is banned for four hours (the default duration) — lift it with `cscli decisions delete`.
+
+## CrowdSec Web UI
+
+<img src="images/logo-crowdsec-web-ui.svg" alt="CrowdSec Web UI logo" height="128"/>
+
+[CrowdSec](#crowdsec) is driven from the command line with `cscli`, which is fine for a check now and then but tedious to browse.
+**CrowdSec Web UI** is a small third-party dashboard that reads the same **local API** and shows the alerts, the active decisions, the bouncers and the metrics,
+with the country and the AS of every attacker, filters, and the ability to ban or unban an address in two clicks.
+
+It is a plain HTTP application, it holds no Docker socket and no privilege : it only needs a **machine account** on the CrowdSec local API,
+so it sits on the private network like the other administration tools.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style CROWDSEC_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{3000/tcp}}
+    DOCKER_CROWDSEC_PORT{{8080/tcp\nlocal API}}
+    TRAEFIK_ROUTER_APP(crowdsec.example.com)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                    TRAEFIK_MIDDLEWARE_OIDC
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+            end
+
+            subgraph APP_CONTAINER[CROWDSEC WEB UI CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
+                DOCKER_CROWDSEC_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
+            DOCKER_APP_PORT -->|machine account : alerts, decisions, metrics| DOCKER_CROWDSEC_PORT
+        end
+    end
+```
+
+### Setting up
+
+Create the folders, then register the **machine account** the UI will use to read the local API :
+
+```bash
+sudo mkdir -p /opt/apps/crowdsec-web-ui/data
+PW=$(openssl rand -base64 32); echo "machine password : $PW"
+sudo docker exec crowdsec cscli machines add crowdsec-web-ui --password "$PW" -f /dev/null
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _crowdsec-web-ui_ directory into the _/opt/apps/crowdsec-web-ui_ directory,
+  and put the generated password in `CONFIG_INSTANCE_LAPI_AUTH_PASSWORD`
+- copy the _crowdsec-web-ui.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- create the OIDC client and its middleware as described in [PocketID](#pocketid) : callback URL `https://crowdsec.example.com/oidc/callback`, **PKCE** enabled,
+  then fill the `crowdsec-web-ui-auth` middleware in _pocketid.yml_ with the client ID, the client secret and its own 32 characters `Secret`
+- add a **local DNS record** `crowdsec.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not published on the internet
+
+> [!TIP]
+> If PocketID answers **`access_denied` — "you are not allowed to access this service"** right after the login, the problem is not in the middleware :
+> the OIDC client restricts access to some **user groups** and your account is not in them. Remove the restriction on the client, or add your group.
+> The error comes from PocketID (look at the domain in the address bar), the application is not even reached.
+
+> [!NOTE]
+> The UI has its own accounts (password, TOTP, passkeys), which would mean logging in twice behind the OIDC middleware.
+> That is why `CONFIG_AUTH_ENABLED` is set to `false` : the reverse proxy is the only gate. The counterpart is that the UI no longer knows **who** is connected,
+> so there is no admin / read-only distinction and no per-user trail — acceptable for a single administrator, exactly like [Pi-hole](#pi-hole).
+> To use the built-in accounts instead, set it back to `auto` and drop the `crowdsec-web-ui-auth@file` middleware from the router.
+>
+> Using the application's **native OIDC** support (`CONFIG_AUTH_OIDC_*`) would keep the roles, but it does not work here : its OIDC library only accepts **HTTPS**
+> issuers (`only requests to HTTPS are allowed`), so it cannot use the internal `http://pocketid:1411` URL, and going through the public URL would reach Traefik
+> with the container IP address and be rejected by the IP whitelist. The Traefik plugin does not have this limitation, hence the middleware.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  crowdsec-web-ui:
+    image: ghcr.io/theduffman85/crowdsec-web-ui:latest
+    container_name: crowdsec-web-ui
+    restart: unless-stopped
+    # Holds the password of the CrowdSec machine account (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      # Authentication is handled in front by the reverse proxy (PocketID, crowdsec-web-ui-auth middleware),
+      # so the UI's own login is disabled to avoid logging in twice. Set it back to "auto" to use the
+      # built-in accounts (password, TOTP, passkeys) instead, and drop the middleware from the router.
+      CONFIG_AUTH_ENABLED: "false"
+      # CrowdSec local API, reached by container name on the private Traefik network
+      CONFIG_INSTANCE_LAPI_URL: http://crowdsec:8080
+      CONFIG_INSTANCE_LAPI_AUTH_TYPE: password
+      CONFIG_INSTANCE_LAPI_AUTH_USERNAME: crowdsec-web-ui
+      # CONFIG_INSTANCE_LAPI_AUTH_PASSWORD comes from the .env file
+    volumes:
+      # SQLite database of the UI (its own users, notification rules, GeoNames data)
+      - ./data:/app/data
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+```
+
+:page_facing_up: _.env_ :
+
+```shell
+# Password of the CrowdSec machine account the UI uses to read the local API.
+# Generate it with `openssl rand -base64 32`, then register the machine in the CrowdSec container :
+#   sudo docker exec crowdsec cscli machines add crowdsec-web-ui --password '<password>' -f /dev/null
+CONFIG_INSTANCE_LAPI_AUTH_PASSWORD=<lapi_machine_password>
+```
+
+:page_facing_up: _crowdsec-web-ui.yml_ :
+
+```yaml
+http:
+  services:
+    crowdsec-web-ui:
+      loadBalancer:
+        servers:
+          - url: http://crowdsec-web-ui:3000
+
+  routers:
+    crowdsec-web-ui:
+      rule: 'Host(`crowdsec.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: crowdsec-web-ui
+      # Same pattern as Pi-hole : IP whitelist, then PocketID authentication handled by the reverse proxy
+      # (the UI's own authentication is disabled with CONFIG_AUTH_ENABLED, to avoid logging in twice)
+      middlewares:
+        - vpn-whitelist@file
+        - crowdsec-web-ui-auth@file
+```
+
+Things to notice :
+
+- it only joins `traefik-private-net` : it reaches the CrowdSec local API at `crowdsec:8080` by container name, and nothing is published on the host
+- `CONFIG_INSTANCE_LAPI_AUTH_*` are the credentials of the machine account registered with `cscli machines add`. A **machine** account is required :
+  a bouncer API key like the one used by the Traefik plugin can only read the decisions, not the alerts
+- the _data_ volume holds the UI's own SQLite database (its accounts, its notification rules, the GeoNames data used to locate the attackers), not CrowdSec data
+- the router carries the same two middlewares as Pi-Hole : the IP whitelist, then the PocketID authentication
+- deleting alerts from the UI additionally requires its source IP to be trusted by CrowdSec, see the note below
+
+> [!WARNING]
+> To allow **alert deletion**, the UI's IP must be listed in `api.server.trusted_ips` of CrowdSec's _config.yaml_ (in _/opt/apps/crowdsec/config/_), then restart the container.
+> Use the **private** network range only, never the `172.16.0.0/12` the project suggests : that range also covers `traefik-public-net`, so the applications exposed
+> to the internet would be trusted too, which is exactly what [Network segmentation](#network-segmentation) avoids.
+>
+> ```yaml
+> api:
+>   server:
+>     trusted_ips:
+>       - 127.0.0.1
+>       - ::1
+>       - 172.21.0.0/16 # traefik-private-net, check it with : docker network inspect traefik-private-net
+> ```
+>
+> Everything else (reading the alerts, adding or lifting a ban) works without it.
+
+### Run
+
+Simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/crowdsec-web-ui/docker-compose.yml up -d
+```
+
+You should end-up with a running `crowdsec-web-ui` container, and Traefik picks up the dynamic configuration file without restarting.
+
+The application is available at https://crowdsec.example.com, after authenticating with PocketID.
+
+> [!NOTE]
+> This is a third-party project, unrelated to the CrowdSec company, and it only publishes a `latest` tag : keep an eye on it when you pull the images.
 
 ## Portainer
 
