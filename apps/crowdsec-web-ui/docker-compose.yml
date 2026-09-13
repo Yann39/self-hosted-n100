@@ -1,0 +1,30 @@
+services:
+
+  crowdsec-web-ui:
+    image: ghcr.io/theduffman85/crowdsec-web-ui:latest
+    container_name: crowdsec-web-ui
+    restart: unless-stopped
+    # Holds the password of the CrowdSec machine account (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      # Authentication is handled in front by the reverse proxy (PocketID, crowdsec-web-ui-auth middleware),
+      # so the UI's own login is disabled to avoid logging in twice. Set it back to "auto" to use the
+      # built-in accounts (password, TOTP, passkeys) instead, and drop the middleware from the router.
+      CONFIG_AUTH_ENABLED: "false"
+      # CrowdSec local API, reached by container name on the private Traefik network
+      CONFIG_INSTANCE_LAPI_URL: http://crowdsec:8080
+      CONFIG_INSTANCE_LAPI_AUTH_TYPE: password
+      CONFIG_INSTANCE_LAPI_AUTH_USERNAME: crowdsec-web-ui
+      # CONFIG_INSTANCE_LAPI_AUTH_PASSWORD comes from the .env file
+    volumes:
+      # SQLite database of the UI (its own users, notification rules, GeoNames data)
+      - ./data:/app/data
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true

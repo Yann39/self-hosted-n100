@@ -1,0 +1,18 @@
+http:
+  services:
+    crowdsec-web-ui:
+      loadBalancer:
+        servers:
+          - url: http://crowdsec-web-ui:3000
+
+  routers:
+    crowdsec-web-ui:
+      rule: 'Host(`crowdsec.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: crowdsec-web-ui
+      middlewares:
+        - vpn-whitelist@file
+        - crowdsec-web-ui-auth@file
