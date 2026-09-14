@@ -15,8 +15,14 @@ services:
       - ./credentials.txt:/credentials.txt:ro           # For Traefik dashboard credentials
       - ./logs:/var/log/traefik                          # Access log, shared (read-only) with CrowdSec
     networks:
-      - traefik-private-net # private : services reachable from the local network and the VPN only
-      - traefik-public-net  # public : services exposed to the internet
+      # private : services reachable from the local network and the VPN only
+      traefik-private-net:
+        aliases:
+          # Lets the containers of the private network resolve the public name of the OIDC provider to Traefik itself,
+          # so that applications authenticating natively against PocketID can use its public issuer URL (see PocketID)
+          - pocketid.example.com
+      # public : services exposed to the internet
+      traefik-public-net:
     env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"

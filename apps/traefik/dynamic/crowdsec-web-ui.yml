@@ -15,4 +15,3 @@ http:
       service: crowdsec-web-ui
       middlewares:
         - vpn-whitelist@file
-        - crowdsec-web-ui-auth@file
