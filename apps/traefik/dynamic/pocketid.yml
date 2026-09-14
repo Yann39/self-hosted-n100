@@ -47,3 +47,13 @@ http:
             ClientSecret: "<oidc_client_secret>"
             UsePkce: true
           Scopes: [ "openid", "profile", "email" ]
+    goatcounter-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
