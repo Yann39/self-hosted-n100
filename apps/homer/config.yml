@@ -146,7 +146,7 @@ services:
       - name: "Omnitools"
         logo: "https://getumbrel.github.io/umbrel-apps-gallery/omnitools/icon.svg"
         subtitle: "Various user-friendly utilities"
-        tag: "tool"
+        tag: "app"
         url: "https://omnitools.example.com"
   - name: "Internal"
     icon: "fas fa-microchip"

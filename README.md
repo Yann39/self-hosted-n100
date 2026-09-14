@@ -2384,8 +2384,21 @@ Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
   `openid profile email` as scopes, **PKCE disabled** on the PocketID side as Portainer does not support it, and three endpoints : the **authorization URL** is the public one
   (`https://pocketid.example.com/authorize`, the browser follows it), but the **access token URL** and the **resource URL** must be the **internal** ones
   (`http://pocketid:1411/api/oidc/token` and `http://pocketid:1411/api/oidc/userinfo`). These two calls are made by the Portainer container itself : through the public URL
-  they would loop through the NAT of the router and reach Traefik with the **public IP address** as source, rejected by the whitelist. That is what `INTERNAL_APP_URL` is for,
-  the discovery document served on the internal URL (`http://pocketid:1411/.well-known/openid-configuration`) lists them
+  these two calls are made by the Portainer container itself, and reaching PocketID directly on the Docker network is the shortest path. Since the alias and the
+  `pocketid-whitelist` middleware described below, the public URLs would work just as well here
+- most OIDC libraries, however, **verify that the issuer announced by the provider matches the URL they queried** (Homebox and its `go-oidc` for instance), so they cannot use the internal URL at all :
+  querying `http://pocketid:1411` returns `https://pocketid.example.com` as issuer and they refuse. Those applications must use the **public** issuer URL, which means their container has to reach it.
+  Two small additions make that work, and they serve every future application :
+    - Traefik carries a **network alias** with the provider's public name on the private network (see [Service definition](#service-definition-)), so that the containers resolve it to Traefik itself,
+      without any hard coded IP address and without depending on Pi-Hole for the container DNS
+    - the PocketID router uses the `pocketid-whitelist` middleware instead of `vpn-whitelist` : same ranges plus the **private** Docker network, so that a container is allowed to fetch the discovery
+      document and to exchange the token. The **public** Docker network is deliberately left out, an application exposed to the internet must not reach the provider this way
+  ```mermaid
+  flowchart LR
+      APP[application container] -->|1 . resolves pocketid.example.com| DNS[[Docker DNS : alias on Traefik]]
+      APP -->|2 . HTTPS, source 172.21.x.x| TRAEFIK[Traefik]
+      TRAEFIK -->|3 . pocketid-whitelist accepts the private network| POCKETID[PocketID]
+  ```
 
 Finally, to protect a service with the middleware, add it to the `middlewares` list of its router, after the IP whitelist, as done for Pi-Hole :
 
@@ -2506,7 +2519,6 @@ Things to notice :
 
 ```shell
 APP_URL=https://pocketid.example.com
-INTERNAL_APP_URL=http://pocketid:1411
 ENCRYPTION_KEY_FILE=/opt/pocket-id/encryption_key
 # These variables are optional but recommended to review:
 TRUST_PROXY=true
@@ -2516,7 +2528,9 @@ PGID=1001
 ```
 
 - `APP_URL` is the public URL, it is also the OIDC **issuer** written in every token, so it must match the router's host exactly
-- `INTERNAL_APP_URL` is the URL the other containers use to reach PocketID (the Traefik plugin in our case), so that the OIDC discovery works from inside the Docker network
+- there is no `INTERNAL_APP_URL` here on purpose : it makes the discovery document advertise the **token** and **userinfo** endpoints as `http://pocketid:1411/...`,
+  for every client and whatever URL the document was fetched from. Clients whose library refuses plain HTTP (CrowdSec Web UI) then break on the token exchange.
+  With the network alias and `pocketid-whitelist`, the containers reach the public HTTPS endpoints directly, so it is no longer needed
 - `ENCRYPTION_KEY_FILE` points to the key mounted read-only in the container
 - `TRUST_PROXY` makes PocketID take the client IP addresses from the headers set by Traefik (audit log, rate limiting), which is required behind a reverse proxy
 - `MAXMIND_LICENSE_KEY` is optional, with a free MaxMind licence key the audit log shows where the logins come from
@@ -2787,7 +2801,7 @@ and the phone is banned for four hours (the default duration) — lift it with `
 with the country and the AS of every attacker, filters, and the ability to ban or unban an address in two clicks.
 
 It is a plain HTTP application, it holds no Docker socket and no privilege : it only needs a **machine account** on the CrowdSec local API,
-so it sits on the private network like the other administration tools.
+so it sits on the private network like the other administration tools. It authenticates its users against [PocketID](#pocketid) with its own OIDC support.
 
 Here is an overview of the network flow :
 
@@ -2797,6 +2811,7 @@ flowchart LR
     style TRAEFIK_CONTAINER fill: #663535
     style APP_CONTAINER fill: #663535
     style CROWDSEC_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
@@ -2804,9 +2819,9 @@ flowchart LR
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_APP_PORT{{3000/tcp}}
     DOCKER_CROWDSEC_PORT{{8080/tcp\nlocal API}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
     TRAEFIK_ROUTER_APP(crowdsec.example.com)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
-    TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
     INCOMING_REQUEST((INCOMING\nREQUEST))
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
@@ -2821,11 +2836,9 @@ flowchart LR
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                    TRAEFIK_MIDDLEWARE_OIDC
                 end
 
                 TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
             end
 
             subgraph APP_CONTAINER[CROWDSEC WEB UI CONTAINER]
@@ -2836,8 +2849,13 @@ flowchart LR
                 DOCKER_CROWDSEC_PORT
             end
 
-            TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
             DOCKER_APP_PORT -->|machine account : alerts, decisions, metrics| DOCKER_CROWDSEC_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign-on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
 ```
@@ -2857,8 +2875,10 @@ Then :
 - copy the _.env_ and _docker-compose.yml_ files from this project's _crowdsec-web-ui_ directory into the _/opt/apps/crowdsec-web-ui_ directory,
   and put the generated password in `CONFIG_INSTANCE_LAPI_AUTH_PASSWORD`
 - copy the _crowdsec-web-ui.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
-- create the OIDC client and its middleware as described in [PocketID](#pocketid) : callback URL `https://crowdsec.example.com/oidc/callback`, **PKCE** enabled,
-  then fill the `crowdsec-web-ui-auth` middleware in _pocketid.yml_ with the client ID, the client secret and its own 32 characters `Secret`
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** : `https://crowdsec.example.com/api/auth/oidc/callback`,
+  and **PKCE disabled**, as the application does not send a `code_challenge` (like Portainer, and for the same reason : it is a confidential client, the client secret
+  is what protects the code exchange). Then put its client ID in `CONFIG_AUTH_OIDC_CLIENT_ID` and its secret in `CONFIG_AUTH_OIDC_CLIENT_SECRET`.
+  No middleware on the router : the application talks to PocketID itself
 - add a **local DNS record** `crowdsec.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not published on the internet
 
 > [!TIP]
@@ -2867,14 +2887,17 @@ Then :
 > The error comes from PocketID (look at the domain in the address bar), the application is not even reached.
 
 > [!NOTE]
-> The UI has its own accounts (password, TOTP, passkeys), which would mean logging in twice behind the OIDC middleware.
-> That is why `CONFIG_AUTH_ENABLED` is set to `false` : the reverse proxy is the only gate. The counterpart is that the UI no longer knows **who** is connected,
-> so there is no admin / read-only distinction and no per-user trail — acceptable for a single administrator, exactly like [Pi-hole](#pi-hole).
-> To use the built-in accounts instead, set it back to `auto` and drop the `crowdsec-web-ui-auth@file` middleware from the router.
+> This service uses the **native OIDC** support of the application rather than the Traefik plugin used by Pi-Hole, so that the UI knows who is connected
+> and can apply its **admin / read-only** roles. Its OIDC library only accepts **HTTPS** issuers (`only requests to HTTPS are allowed`), so the internal
+> `http://pocketid:1411` URL cannot be used : it goes through the public issuer, reachable from the container thanks to the Traefik network alias and the
+> `pocketid-whitelist` middleware described in [PocketID](#pocketid).
 >
-> Using the application's **native OIDC** support (`CONFIG_AUTH_OIDC_*`) would keep the roles, but it does not work here : its OIDC library only accepts **HTTPS**
-> issuers (`only requests to HTTPS are allowed`), so it cannot use the internal `http://pocketid:1411` URL, and going through the public URL would reach Traefik
-> with the container IP address and be rejected by the IP whitelist. The Traefik plugin does not have this limitation, hence the middleware.
+> `CONFIG_AUTH_ENABLED` stays on `auto` : the built-in account (password, TOTP, passkeys) created on the first visit remains available and is your way back in
+> if the OIDC login ever breaks.
+>
+> Roles are decided by **group mapping**, and `CONFIG_AUTH_OIDC_UNMATCHED_ROLE` defaults to `deny` : without any group configured, a user who authenticates
+> perfectly is still rejected with *OIDC user is not authorized*, and nothing is written in the logs since it is a decision, not an error.
+> Either declare the groups as above, or set `CONFIG_AUTH_OIDC_UNMATCHED_ROLE` to `admin` and let PocketID alone decide who may use the client.
 
 ### Details
 
@@ -2893,10 +2916,24 @@ services:
     env_file: .env
     environment:
       TZ: "Europe/Zurich"
-      # Authentication is handled in front by the reverse proxy (PocketID, crowdsec-web-ui-auth middleware),
-      # so the UI's own login is disabled to avoid logging in twice. Set it back to "auto" to use the
-      # built-in accounts (password, TOTP, passkeys) instead, and drop the middleware from the router.
-      CONFIG_AUTH_ENABLED: "false"
+      # Built-in authentication stays enabled : the local account (password, TOTP, passkeys) is the fallback
+      # if the OIDC login ever fails, and it is what gives the UI a real identity and admin / read-only roles
+      CONFIG_AUTH_ENABLED: "auto"
+      # Single sign-on against PocketID, handled by the application itself (no middleware on the router).
+      # The issuer is the PUBLIC URL, no trailing slash : the container reaches it through the Traefik network
+      # alias and the pocketid-whitelist middleware, see the PocketID section
+      CONFIG_AUTH_OIDC_ISSUER_URL: https://pocketid.example.com
+      CONFIG_AUTH_OIDC_CLIENT_ID: <oidc_client_id>
+      # CONFIG_AUTH_OIDC_CLIENT_SECRET comes from the .env file
+      # Role given to a user matching no group. It defaults to "deny", which rejects every OIDC user with
+      # "OIDC user is not authorized" as long as no group is mapped. With a single administrator, "admin" is
+      # enough : PocketID already decides who may use the client, through the allowed groups of the client itself.
+      # For real admin / read-only roles, set it back to "deny" and map the groups :
+      #   CONFIG_AUTH_OIDC_SCOPE: "openid profile email groups"
+      #   CONFIG_AUTH_OIDC_GROUPS_CLAIM: groups
+      #   CONFIG_AUTH_OIDC_ADMIN_GROUPS_0: <admin_group>
+      #   CONFIG_AUTH_OIDC_READ_ONLY_GROUPS_0: <read_only_group>
+      CONFIG_AUTH_OIDC_UNMATCHED_ROLE: admin
       # CrowdSec local API, reached by container name on the private Traefik network
       CONFIG_INSTANCE_LAPI_URL: http://crowdsec:8080
       CONFIG_INSTANCE_LAPI_AUTH_TYPE: password
@@ -2922,6 +2959,9 @@ networks:
 # Generate it with `openssl rand -base64 32`, then register the machine in the CrowdSec container :
 #   sudo docker exec crowdsec cscli machines add crowdsec-web-ui --password '<password>' -f /dev/null
 CONFIG_INSTANCE_LAPI_AUTH_PASSWORD=<lapi_machine_password>
+
+# Secret of the PocketID OIDC client used for the single sign-on
+CONFIG_AUTH_OIDC_CLIENT_SECRET=<oidc_client_secret>
 ```
 
 :page_facing_up: _crowdsec-web-ui.yml_ :
@@ -2942,11 +2982,10 @@ http:
       tls:
         certResolver: default
       service: crowdsec-web-ui
-      # Same pattern as Pi-hole : IP whitelist, then PocketID authentication handled by the reverse proxy
-      # (the UI's own authentication is disabled with CONFIG_AUTH_ENABLED, to avoid logging in twice)
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
       middlewares:
         - vpn-whitelist@file
-        - crowdsec-web-ui-auth@file
 ```
 
 Things to notice :
@@ -2955,7 +2994,7 @@ Things to notice :
 - `CONFIG_INSTANCE_LAPI_AUTH_*` are the credentials of the machine account registered with `cscli machines add`. A **machine** account is required :
   a bouncer API key like the one used by the Traefik plugin can only read the decisions, not the alerts
 - the _data_ volume holds the UI's own SQLite database (its accounts, its notification rules, the GeoNames data used to locate the attackers), not CrowdSec data
-- the router carries the same two middlewares as Pi-Hole : the IP whitelist, then the PocketID authentication
+- the router only carries the IP whitelist : the single sign-on is done by the application itself, adding an authentication middleware would mean logging in twice
 - deleting alerts from the UI additionally requires its source IP to be trusted by CrowdSec, see the note below
 
 > [!WARNING]
@@ -2984,7 +3023,7 @@ sudo docker-compose -f /opt/apps/crowdsec-web-ui/docker-compose.yml up -d
 
 You should end-up with a running `crowdsec-web-ui` container, and Traefik picks up the dynamic configuration file without restarting.
 
-The application is available at https://crowdsec.example.com, after authenticating with PocketID.
+The application is available at https://crowdsec.example.com. On the first visit it asks you to create the local administrator account, then the PocketID button appears on the login page.
 
 > [!NOTE]
 > This is a third-party project, unrelated to the CrowdSec company, and it only publishes a `latest` tag : keep an eye on it when you pull the images.
