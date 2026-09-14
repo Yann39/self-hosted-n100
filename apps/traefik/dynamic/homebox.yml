@@ -1,0 +1,18 @@
+http:
+  services:
+    homebox:
+      loadBalancer:
+        servers:
+          - url: http://homebox:7745
+
+  routers:
+    homebox:
+      rule: 'Host(`homebox.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: homebox
+      # Only the IP whitelist : Homebox handles the PocketID single sign-on itself (native OIDC)
+      middlewares:
+        - vpn-whitelist@file

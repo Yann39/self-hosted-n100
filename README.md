@@ -70,6 +70,7 @@ These are the tools we are going to run :
 |         <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>         | Unbound         | https://github.com/NLnetLabs/unbound            | Validating, recursive, and caching DNS resolver      |
 |     <img src="images/logo-uptime-kuma.svg" alt="Uptime Kuma logo" height="34"/>     | Uptime Kuma     | https://github.com/louislam/uptime-kuma         | Easy-to-use self-hosted monitoring tool              |
 |           <img src="images/logo-homer.png" alt="Homer logo" height="30"/>           | Homer           | https://github.com/bastienwirtz/homer           | Static application dashboard                         |
+|         <img src="images/logo-homebox.svg" alt="Homebox logo" height="32"/>         | Homebox         | https://github.com/sysadminsmedia/homebox       | Inventory and organisation system for the home       |
 |         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
 |           <img src="images/logo-ackee.png" alt="Ackee logo" height="32"/>           | Ackee           | https://github.com/electerious/Ackee            | Analytics tool that cares about privacy              |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
@@ -3786,6 +3787,194 @@ The application is available at https://phpmyadmin.example.com.
 > You will have to use the database **service name** as host to connect to a database
 
 <img src="images/screen-phpmyadmin.png" alt="PhpMyAdmin screenshot"/>
+
+## Homebox
+
+<img src="images/logo-homebox.svg" alt="Homebox logo" height="128"/>
+
+**Homebox** is a simple inventory for the house : what you own, where it is stored, when it was bought, the warranty, the receipts and the manuals attached to it,
+with labels, a QR code per item and a full text search. Useful when the insurance asks for a list, or just to remember in which box something ended up.
+
+It is a small Go application with an embedded database, it needs nothing else. It is reachable from the local network and the VPN only,
+and it is our example of an application doing **OIDC natively** against [PocketID](#pocketid), with its public issuer URL.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{7745/tcp}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    TRAEFIK_ROUTER_APP(homebox.example.com)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+            end
+
+            subgraph APP_CONTAINER[HOMEBOX CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign-on, through the Traefik alias| DOCKER_POCKETID_PORT
+        end
+    end
+```
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/homebox
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _homebox_ directory into the _/opt/apps/homebox_ directory
+- copy the _homebox.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL Homebox documents, then fill `HBOX_OIDC_CLIENT_ID` and `HBOX_OIDC_CLIENT_SECRET`
+- generate the pepper used to hash the API keys (`openssl rand -base64 32`) and put it in `HBOX_AUTH_API_KEY_PEPPER`
+- add a **local DNS record** `homebox.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not published on the internet
+
+> [!IMPORTANT]
+> `HBOX_OIDC_ISSUER_URL` must be the **public** URL, **without a trailing slash** (Homebox is [sensitive to it](https://github.com/sysadminsmedia/homebox/issues/1151)),
+> and it must match character for character the `issuer` returned by the provider : its OIDC library refuses any difference. The internal URL `http://pocketid:1411`
+> therefore cannot be used, it answers with the public issuer and Homebox rejects it with `issuer URL provided to client ... did not match`.
+> That the container can nonetheless reach the public URL is exactly what the Traefik **network alias** and the `pocketid-whitelist` middleware are for,
+> see [PocketID](#pocketid). Without them the container does not even resolve the name, since the private services have no public DNS record.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  homebox:
+    image: ghcr.io/sysadminsmedia/homebox:latest
+    container_name: homebox
+    restart: always
+    env_file: .env
+    environment:
+      - HBOX_LOG_LEVEL=debug
+      - HBOX_LOG_FORMAT=text
+      - HBOX_WEB_MAX_UPLOAD_SIZE=10
+      - HBOX_OIDC_ENABLED=true
+      - HBOX_OIDC_ISSUER_URL=https://pocketid.example.com
+      - HBOX_OIDC_CLIENT_ID=f1644c44-4f50-458f-9043-2bad9224e09c
+      #- HBOX_OIDC_AUTO_REDIRECT=true
+      #- HBOX_OPTIONS_ALLOW_LOCAL_LOGIN=false
+      - HBOX_OPTIONS_TRUST_PROXY=true
+      # Please consider allowing analytics to help us improve Homebox (basic computer information, no personal data)
+      - HBOX_OPTIONS_ALLOW_ANALYTICS=true
+    volumes:
+      - homebox-data:/data/
+    networks:
+      - homebox-net
+      - traefik-private-net
+
+volumes:
+
+  homebox-data:
+    name: homebox-data-vol
+
+networks:
+
+  homebox-net:
+    name: homebox-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+```
+
+:page_facing_up: _homebox.yml_ :
+
+```yaml
+http:
+  services:
+    homebox:
+      loadBalancer:
+        servers:
+          - url: http://homebox:7745
+
+  routers:
+    homebox:
+      rule: 'Host(`homebox.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: homebox
+      # Only the IP whitelist : Homebox handles the PocketID single sign-on itself (native OIDC)
+      middlewares:
+        - vpn-whitelist@file
+```
+
+Things to notice :
+
+- the data (SQLite database, uploaded receipts and pictures) lives in a **Docker volume** named `homebox-data-vol`
+- it runs in its own network (`homebox-net`) but must also join the **private** network of Traefik (`traefik-private-net`) to be reachable by the reverse proxy,
+  which is also what lets it reach PocketID, see [Network segmentation](#network-segmentation)
+- the Traefik dynamic config file creates the **service** pointing to the container on port `7745`, the HTTP **router** matching `homebox.example.com`
+  on the `websecure` entrypoint with a Let's Encrypt certificate, and applies the IP whitelist. No authentication middleware : Homebox does the single sign-on itself
+- `HBOX_OPTIONS_TRUST_PROXY` makes Homebox read the client address and the protocol from the headers set by Traefik, which is required behind a reverse proxy
+- `HBOX_OPTIONS_ALLOW_LOCAL_LOGIN` and `HBOX_OIDC_AUTO_REDIRECT` are commented out : the first one disables the local accounts once the single sign-on works,
+  the second one sends the user straight to PocketID without showing the login page. Enable them only when you are sure the OIDC login works, otherwise you lock yourself out
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+HBOX_OIDC_CLIENT_SECRET=<client_secret>
+HBOX_AUTH_API_KEY_PEPPER=<pepper_auth_api_key>
+```
+
+- `HBOX_OIDC_CLIENT_SECRET` is the secret of the PocketID client
+- `HBOX_AUTH_API_KEY_PEPPER` is the value Homebox mixes into the hash of the API keys it issues. Set it once and keep it : changing it invalidates every existing key
+
+### Run
+
+Simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/homebox/docker-compose.yml up -d
+```
+
+You should end-up with a running `homebox` container, and Traefik picks up the dynamic configuration file without restarting.
+
+The application is available at https://homebox.example.com, with a button to log in through PocketID.
 
 ## Lychee
 
