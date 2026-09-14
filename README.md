@@ -72,7 +72,7 @@ These are the tools we are going to run :
 |           <img src="images/logo-homer.png" alt="Homer logo" height="30"/>           | Homer           | https://github.com/bastienwirtz/homer           | Static application dashboard                         |
 |         <img src="images/logo-homebox.svg" alt="Homebox logo" height="32"/>         | Homebox         | https://github.com/sysadminsmedia/homebox       | Inventory and organisation system for the home       |
 |         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
-|           <img src="images/logo-ackee.png" alt="Ackee logo" height="32"/>           | Ackee           | https://github.com/electerious/Ackee            | Analytics tool that cares about privacy              |
+|     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter    | https://github.com/arp242/goatcounter          | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
 |      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
 
@@ -1472,7 +1472,6 @@ We simply need to associate domain names with the internal IP address of the min
 Go to _Settings -> Local DNS Records_ (or repeat the `pihole-FTL --config dns.hosts` command above with the complete list) and add a **DNS record entry** for every subdomain that must only be reachable from the local network or through VPN :
 
 ```
-ackee.example.com                   192.168.0.16
 dashboard.example.com               192.168.0.16
 dashdot.example.com                 192.168.0.16
 kuma.example.com                    192.168.0.16
@@ -1483,6 +1482,8 @@ traefik.example.com                 192.168.0.16
 pocketid.example.com                192.168.0.16
 lychee.example.com                  192.168.0.16
 quake.example.com                   192.168.0.16
+goatcounter.example.com             192.168.0.16
+...
 ```
 
 Add the **public** services as well (Lychee, Defrag-life, ...), even though they have a public DNS record. Without a local record, a device at home resolves them to the
@@ -3555,11 +3556,11 @@ services:
         subtitle: "Application monitoring tool"
         tag: "monitoring"
         url: "https://kuma.example.com/status/dashboard"
-      - name: "Ackee"
-        logo: "assets/logos/logo-ackee.png"
-        subtitle: "Analytics tool that cares about privacy"
+      - name: "GoatCounter"
+        logo: "assets/logos/logo-goatcounter.svg"
+        subtitle: "Privacy-friendly web analytics"
         tag: "analytics"
-        url: "https://ackee.example.com"
+        url: "https://goatcounter.example.com"
       - name: "PhpMyAdmin"
         logo: "assets/logos/logo-phpmyadmin.svg"
         subtitle: "MySQL database management"
@@ -3975,6 +3976,244 @@ sudo docker-compose -f /opt/apps/homebox/docker-compose.yml up -d
 You should end-up with a running `homebox` container, and Traefik picks up the dynamic configuration file without restarting.
 
 The application is available at https://homebox.example.com, with a button to log in through PocketID.
+
+## GoatCounter
+
+<img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="128"/>
+
+**GoatCounter** counts the visits on the public websites. It is deliberately minimal : no cookies, no tracking across sites, no personal data stored
+(the visitor IP is only used to derive the country and to compute a daily hash, it is never kept), which also means no consent banner to display.
+A single Go binary with an embedded SQLite database, a few megabytes of memory.
+
+Unlike every other tool of this guide, it is **exposed to the internet** : the tracking script and the endpoint that collects the hits must be reachable by the visitors
+of the public websites. It therefore sits on the **public** network and relies on [CrowdSec](#crowdsec) like the other public applications. Only the **collecting endpoints** are open ;
+the dashboard is put behind [PocketID](#pocketid) with a second router, see below.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style WEBSITE_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{8080/tcp}}
+    DOCKER_WEBSITE_PORT{{80/tcp}}
+    TRAEFIK_ROUTER_APP(goatcounter.example.com
+/count, /loader, ...)
+    TRAEFIK_ROUTER_DASH(goatcounter.example.com
+dashboard)
+    TRAEFIK_ROUTER_SITE(quake.example.com)
+    TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer)
+    VISITOR((VISITOR))
+    VISITOR -->|1 . loads the page| DOCKER_TRAEFIK_PORT443
+    VISITOR -.->|2 . the script reports the visit| DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_CROWDSEC
+                end
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
+                    TRAEFIK_ROUTER_SITE
+                    TRAEFIK_ROUTER_APP
+                    TRAEFIK_ROUTER_DASH
+                end
+
+                TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
+
+                TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER
+            end
+
+            subgraph WEBSITE_CONTAINER[WEBSITE CONTAINER]
+                DOCKER_WEBSITE_PORT
+            end
+
+            subgraph APP_CONTAINER[GOATCOUNTER CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            TRAEFIK_ROUTER_SITE --> DOCKER_WEBSITE_PORT
+            TRAEFIK_ROUTER_APP -->|X-Forwarded-For : the visitor IP| DOCKER_APP_PORT
+            TRAEFIK_ROUTER_DASH --> TRAEFIK_MIDDLEWARE_OIDC
+            TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
+        end
+    end
+```
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/goatcounter
+```
+
+Then :
+
+- copy the _docker-compose.yml_ file from this project's _goatcounter_ directory into the _/opt/apps/goatcounter_ directory
+- copy the _goatcounter.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- add a **public** DNS record for `goatcounter.example.com` (a `CNAME` to your dynamic DNS, like the other public services, see [Domain and subdomains](#domain-and-subdomains)),
+  **and** a local DNS record pointing to the mini PC (see [Pi-hole](#pi-hole)) so that your own devices do not go through the NAT loopback of the router
+- create an OIDC client and its `goatcounter-auth` middleware as described in [PocketID](#pocketid), with the callback URL `https://goatcounter.example.com/oidc/callback`
+- start the service (see [Run](#run-10)), then create the site and its administrator account :
+
+  ```bash
+  sudo docker exec -it goatcounter goatcounter db create site -vhost=goatcounter.example.com -user.email=you@example.com
+  ```
+
+  It asks for a password. The `-vhost` **must** match the `Host()` of the router : GoatCounter is multi-site and dispatches on the `Host` header.
+
+Finally, add the tracking script to the websites you want to count, just before `</body>` :
+
+```html
+<script data-goatcounter="https://goatcounter.example.com/count"
+        async src="https://goatcounter.example.com/count.js"></script>
+```
+
+> [!TIP]
+> The script must run on **every** page, but there is no need to edit them one by one : put it once in the shared header or footer that all the pages already include
+> (`include 'header.php'` and friends). If the site has no such common template, PHP-FPM can append a file to every script without touching a single page,
+> with `php_value[auto_append_file] = /var/www/html/goatcounter.php` in its pool configuration — beware that it appends to *every* PHP response, which would corrupt
+> the ones that are not HTML (JSON, generated images, downloads).
+>
+> Serving the script from your own domain rather than from a third party CDN also makes it far less likely to be stopped by ad blockers.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  goatcounter:
+    image: arp242/goatcounter:latest
+    container_name: goatcounter
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Zurich"
+    # The image entrypoint is the goatcounter binary, its default command being "serve -automigrate".
+    # We keep -automigrate (pending migrations are applied at start, useful when pulling a new image) and add :
+    #   -tls=http  serve plain HTTP, TLS is terminated by Traefik. This one is NOT optional : without it
+    #              goatcounter defaults to "acme" in production and tries to get its own certificates
+    #   -listen    the address Traefik forwards to
+    command: [ "serve", "-automigrate", "-tls=http", "-listen=:8080" ]
+    volumes:
+      # SQLite database and uploaded data, in a named volume : the container runs as a non-root user,
+      # a bind mount would need the right ownership on the host
+      - goatcounter-data:/home/goatcounter/goatcounter-data
+    networks:
+      - goatcounter-net
+      - traefik-public-net
+
+volumes:
+
+  goatcounter-data:
+    name: goatcounter-data-vol
+
+networks:
+
+  goatcounter-net:
+    name: goatcounter-net
+
+  traefik-public-net:
+    name: traefik-public-net
+    external: true
+```
+
+:page_facing_up: _goatcounter.yml_ :
+
+```yaml
+http:
+  services:
+    goatcounter:
+      loadBalancer:
+        servers:
+          - url: http://goatcounter:8080
+
+  routers:
+    # Public part : everything a visitor's browser needs to report a hit. No whitelist, no authentication,
+    # otherwise the collection silently stops. PathPrefix(`/count`) covers /count, /count.js and /counter/...
+    # The higher priority makes this router win over the one below, which matches the whole host.
+    goatcounter-public:
+      rule: 'Host(`goatcounter.example.com`) && (PathPrefix(`/count`) || PathPrefix(`/loader`) || PathPrefix(`/load-widget`) || Path(`/jserr`) || Path(`/csp`) || Path(`/robots.txt`) || Path(`/security.txt`))'
+      priority: 100
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: goatcounter
+
+    # Everything else : the dashboard, the settings, the login page, behind PocketID authentication
+    goatcounter:
+      rule: 'Host(`goatcounter.example.com`)'
+      priority: 1
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: goatcounter
+      middlewares:
+        - goatcounter-auth@file
+```
+
+Things to notice :
+
+- `-tls=http` is **not optional** : GoatCounter defaults to `acme` in production and would try to obtain its own Let's Encrypt certificates, in competition with Traefik.
+  Here TLS is terminated by the reverse proxy and GoatCounter only serves plain HTTP on its port
+- `-automigrate` comes from the image's default command and is kept : pending schema migrations are applied at start, which matters when pulling a new image
+- the data (SQLite database) lives in a **named volume** rather than a bind mount : the container runs as a non-root user, a bind mount would need the matching
+  ownership on the host
+- there are **two routers on the same host**, split by path and separated by an explicit `priority`. The public one carries **no middleware** : an IP whitelist would
+  block the visitors and an authentication middleware would block the collection. The other one, matching everything else, is behind the PocketID middleware.
+  The CrowdSec bouncer applies to both, since it sits on the `websecure` entrypoint
+- it joins `traefik-public-net`, so it cannot reach the private services, see [Network segmentation](#network-segmentation)
+- GoatCounter reads the visitor address from the `X-Forwarded-For` header set by Traefik, there is nothing to configure for that
+
+> [!WARNING]
+> Splitting a host between a public router and an authenticated one is effective but unforgiving : if a collecting path ends up on the wrong side, the tracking
+> request is answered with a redirection to PocketID, the browser reports nothing and you **silently lose visits**. Check the paths your visitors really request
+> before and after the change, the Traefik access log gives them :
+>
+> ```bash
+> grep '"RequestHost":"goatcounter.example.com"' /opt/apps/traefik/logs/access.log | grep -oE '"RequestPath":"[^"]+"' | sort | uniq -c | sort -rn
+> ```
+>
+> Note also that GoatCounter has its own login : behind the middleware you would authenticate twice. To keep a single login, mark the site as **public** in its
+> settings so that the statistics no longer require a GoatCounter account, and let PocketID be the only gate — at the cost of world readable statistics should a
+> path rule ever leak.
+
+> [!NOTE]
+> About the **locations** shown in the dashboard :
+>
+> - a **Countries** database is built into GoatCounter, countries work out of the box. **Regions** need the *Cities* version of the MaxMind database, given with the
+>   `-geodb` flag (`-geodb maxmind:<account_id>:<license_key>` downloads and refreshes it automatically, or drop any `.mmdb` file in the data volume and it is picked up)
+> - the location is resolved **when the visit is recorded**, and stored. It is never recomputed : the visits collected before you enable or fix anything stay `Unknown` forever
+> - your own visits are always `Unknown`, since they come from the local network or from the VPN and a private address has no location. Testing from a phone only
+>   proves something if the **VPN is turned off** on it, otherwise the visit arrives from the tunnel with a `10.0.0.x` address
+
+### Run
+
+Simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/goatcounter/docker-compose.yml up -d
+```
+
+You should end-up with a running `goatcounter` container, and Traefik picks up the dynamic configuration file without restarting.
+
+The dashboard is available at https://goatcounter.example.com, with the account created above.
 
 ## Lychee
 
