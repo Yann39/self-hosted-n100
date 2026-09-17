@@ -27,5 +27,10 @@ http:
       tls:
         certResolver: default
       service: goatcounter
+      # IP whitelist first : the dashboard is only meant to be used from the local network or through the VPN,
+      # so it does not depend on the authentication middleware alone. This matters because the host is public
+      # and GoatCounter's own login is disabled (its site is set to public) : without this, a mistake in the
+      # public router's path rule above would expose the statistics to the internet.
       middlewares:
+        - vpn-whitelist@file
         - goatcounter-auth@file

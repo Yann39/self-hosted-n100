@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.1.1-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-13_Sept_2026-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.1.2-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-15_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
@@ -59,9 +59,9 @@ These are the tools we are going to run :
 |:-----------------------------------------------------------------------------------:|-----------------|-------------------------------------------------|------------------------------------------------------|
 |          <img src="images/logo-docker.svg" alt="Docker logo" height="24"/>          | Docker          | https://github.com/docker                       | Help to build, share, and run container applications |
 |  <img src="images/logo-docker-compose.png" alt="Docker Compose logo" height="38"/>  | Docker Compose  | https://github.com/docker/compose               | Run multi-container applications with Docker         |
-|       <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>       | Portainer       | https://github.com/portainer/portainer          | Management platform for containerized applications   |
-|         <img src="images/logo-sablier.png" alt="Sablier logo" height="38"/>         | Sablier         | https://github.com/acouvreur/sablier            | Workload scaling on demand                           |
 |         <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>         | Traefik         | https://github.com/traefik/traefik              | Modern HTTP reverse proxy and load balancer          |
+|       <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>       | Portainer       | https://github.com/portainer/portainer          | Management platform for containerized applications   |
+|         <img src="images/logo-sablier.svg" alt="Sablier logo" height="32"/>         | Sablier         | https://github.com/sablierapp/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>        | PocketID        | https://github.com/pocket-id/pocket-id          | Simple OIDC provider for passkey authentication      |
 |        <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="32"/>        | CrowdSec        | https://github.com/crowdsecurity/crowdsec       | Collaborative intrusion prevention, bans attackers   |
 | <img src="images/logo-crowdsec-web-ui.svg" alt="CrowdSec Web UI logo" height="32"/> | CrowdSec Web UI | https://github.com/TheDuffman85/crowdsec-web-ui | Web dashboard for CrowdSec alerts and decisions      |
@@ -71,8 +71,9 @@ These are the tools we are going to run :
 |     <img src="images/logo-uptime-kuma.svg" alt="Uptime Kuma logo" height="34"/>     | Uptime Kuma     | https://github.com/louislam/uptime-kuma         | Easy-to-use self-hosted monitoring tool              |
 |           <img src="images/logo-homer.png" alt="Homer logo" height="30"/>           | Homer           | https://github.com/bastienwirtz/homer           | Static application dashboard                         |
 |         <img src="images/logo-homebox.svg" alt="Homebox logo" height="32"/>         | Homebox         | https://github.com/sysadminsmedia/homebox       | Inventory and organisation system for the home       |
+|       <img src="images/logo-omnitools.svg" alt="Omnitools logo" height="32"/>       | Omnitools       | https://github.com/iib0011/omni-tools           | Various online tools for everyday tasks              |
 |         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
-|     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter    | https://github.com/arp242/goatcounter          | Privacy-friendly web analytics, no cookies           |
+|     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
 |      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
 
@@ -86,7 +87,7 @@ All of this runs on a **Trigkey G4 mini PC** ! With the following specifications
 <table>
   <tr>
     <td>
-      <img src="images/mini-pc.png" alt="Trigkey G4 mini PC"/>
+      <img src="images/trigkey-g4.jpg" alt="Trigkey G4 mini PC" height="138"/>
     </td>
     <td>
       <ul>
@@ -108,7 +109,7 @@ All of this runs on a **Trigkey G4 mini PC** ! With the following specifications
 
 It should also work on many other **x86** based mini PCs.
 
-## Network architecture
+## Target architecture
 
 Here is a chart representing the global network "architecture" we are going to set up, simplified with only the most relevant services.
 See [Network flow](#network-flow) for more detailed schemas.
@@ -4004,10 +4005,8 @@ flowchart LR
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_APP_PORT{{8080/tcp}}
     DOCKER_WEBSITE_PORT{{80/tcp}}
-    TRAEFIK_ROUTER_APP(goatcounter.example.com
-/count, /loader, ...)
-    TRAEFIK_ROUTER_DASH(goatcounter.example.com
-dashboard)
+    TRAEFIK_ROUTER_APP(goatcounter.example.com\n/count, /loader, ...)
+    TRAEFIK_ROUTER_DASH(goatcounter.example.com\ndashboard)
     TRAEFIK_ROUTER_SITE(quake.example.com)
     TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer)
     VISITOR((VISITOR))
@@ -4164,7 +4163,12 @@ http:
       tls:
         certResolver: default
       service: goatcounter
+      # IP whitelist first : the dashboard is only meant to be used from the local network or through the VPN,
+      # so it does not depend on the authentication middleware alone. This matters because the host is public
+      # and GoatCounter's own login is disabled (its site is set to public) : without this, a mistake in the
+      # public router's path rule above would expose the statistics to the internet.
       middlewares:
+        - vpn-whitelist@file
         - goatcounter-auth@file
 ```
 
@@ -4176,7 +4180,8 @@ Things to notice :
 - the data (SQLite database) lives in a **named volume** rather than a bind mount : the container runs as a non-root user, a bind mount would need the matching
   ownership on the host
 - there are **two routers on the same host**, split by path and separated by an explicit `priority`. The public one carries **no middleware** : an IP whitelist would
-  block the visitors and an authentication middleware would block the collection. The other one, matching everything else, is behind the PocketID middleware.
+  block the visitors and an authentication middleware would block the collection. The other one, matching everything else, carries the IP whitelist **and** the PocketID
+  middleware : the dashboard is only used from the local network or the VPN, and since the host is public it must not depend on the authentication middleware alone.
   The CrowdSec bouncer applies to both, since it sits on the `websecure` entrypoint
 - it joins `traefik-public-net`, so it cannot reach the private services, see [Network segmentation](#network-segmentation)
 - GoatCounter reads the visitor address from the `X-Forwarded-For` header set by Traefik, there is nothing to configure for that
