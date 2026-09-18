@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.1.2-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-15_Sept_2026-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.1.3-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-18_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
@@ -25,24 +25,85 @@ It uses only **free** and **open source** software.
 
 # Table of Content
 
-1. [Overview](#overview)
-2. [Install and prepare system](#install-and-prepare-system)
-3. [Docker & Docker Compose](#docker--docker-compose)
-4. [Network configuration](#network-configuration)
-5. [Reverse proxy](#reverse-proxy)
-6. [VPN and ad-blocking](#vpn-and-ad-blocking)
-7. [Test the network](#test-the-network)
-8. [Install services](#install-services)
-9. [Contributing](#contributing)
-10. [Acknowledgments](#acknowledgments)
-11. [License](#license)
+1. <details>
+   <summary><a href="#overview">Overview</a></summary>
+
+    1. [Plan](#plan)
+    2. [Target architecture](#target-architecture)
+
+   </details>
+2. <details>
+   <summary><a href="#install-and-prepare-system">Install and prepare system</a></summary>
+
+    1. [System user](#system-user)
+    2. [SSH access](#ssh-access)
+    3. [Basic tools](#basic-tools)
+    4. [Directory structure](#directory-structure)
+    5. [Docker & Docker Compose](#docker--docker-compose)
+
+   </details>
+3. <details open>
+   <summary><a href="#network-configuration">Network configuration</a></summary>
+
+    1. [IP settings](#ip-settings)
+    2. [Dynamic DNS](#dynamic-dns)
+    3. [Domain and subdomains](#domain-and-subdomains)
+    4. [Port forwarding](#port-forwarding)
+    5. [Reverse proxy](#reverse-proxy)
+    6. [VPN and ad-blocking](#vpn-and-ad-blocking)
+    7. [Test the network](#test-the-network)
+    8. [Network flow](#network-flow)
+
+   </details>
+4. <details>
+   <summary><a href="#install-services">Install services</a></summary>
+
+   1. [PocketID](#pocketid)
+   2. [CrowdSec](#crowdsec)
+   3. [CrowdSec Web UI](#crowdsec-web-ui)
+   4. [Portainer](#portainer)
+   5. [PhpMyAdmin](#phpmyadmin)
+   6. [Homer](#homer)
+   7. [Dashdot](#dashdot)
+   8. [Lychee](#lychee)
+   9. [Homebox](#homebox)
+   10. [Goatcounter](#goatcounter)
+   11. [Defrag-life](#defrag-life)
+   12. [CCTeam](#ccteam)
+
+   </details>
+5. <details>
+   <summary><a href="#scale-to-zero-with-sablier">Scale to zero with Sablier</a></summary>
+
+   1. [Install Sablier](#install-sablier)
+   2. [Install Traefik plugin](#install-traefik-plugin)
+   3. [Configure target applications](#configure-target-applications)
+
+   </details>
+6. <details>
+   <summary><a href="#backup">Backup</a></summary>
+
+   1. [Files](#files)
+   2. [Volumes](#volumes)
+   3. [Databases](#databases)
+
+   </details>
+7. <details>
+   <summary><a href="#contributing">Contributing</a></summary>
+   </details>
+8. <details>
+   <summary><a href="#acknowledgments">Acknowledgments</a></summary>
+   </details>
+9. <details>
+   <summary><a href="#license">License</a></summary>
+   </details>
 
 # Overview
 
 ## Plan
 
 This project is based on my previous **home lab** setup running on a **Banana pi** board, it contains similar but maybe more up-to-date instructions.
-The old project can still be found [here](https://github.com/Yann39/self-hosted).
+The old project can be found [here](https://github.com/Yann39/self-hosted).
 
 The goal is still the same : learning, and have an environment :
 
@@ -59,8 +120,8 @@ These are the tools we are going to run :
 |:-----------------------------------------------------------------------------------:|-----------------|-------------------------------------------------|------------------------------------------------------|
 |          <img src="images/logo-docker.svg" alt="Docker logo" height="24"/>          | Docker          | https://github.com/docker                       | Help to build, share, and run container applications |
 |  <img src="images/logo-docker-compose.png" alt="Docker Compose logo" height="38"/>  | Docker Compose  | https://github.com/docker/compose               | Run multi-container applications with Docker         |
-|         <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>         | Traefik         | https://github.com/traefik/traefik              | Modern HTTP reverse proxy and load balancer          |
 |       <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>       | Portainer       | https://github.com/portainer/portainer          | Management platform for containerized applications   |
+|         <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>         | Traefik         | https://github.com/traefik/traefik              | Modern HTTP reverse proxy and load balancer          |
 |         <img src="images/logo-sablier.svg" alt="Sablier logo" height="32"/>         | Sablier         | https://github.com/sablierapp/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>        | PocketID        | https://github.com/pocket-id/pocket-id          | Simple OIDC provider for passkey authentication      |
 |        <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="32"/>        | CrowdSec        | https://github.com/crowdsecurity/crowdsec       | Collaborative intrusion prevention, bans attackers   |
@@ -129,6 +190,7 @@ flowchart TB
     style UNBOUND_CONTAINER fill: #663535
     style MYAPP_CONTAINER fill: #663535
     style CROWDSEC_CONTAINER fill: #663535
+    style SABLIER_CONTAINER fill:#663535
     style WIREGUARD_HOST fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
@@ -159,6 +221,7 @@ flowchart TB
     DOCKER_PIHOLE_DNS[DNS 1 & 2]
     PIHOLE_DNS_PIHOLE[pihole\n.example.com]
     PIHOLE_DNS_TRAEFIK[traefik\n.example.com]
+    PIHOLE_DNS_MYAPP[myapp\n.example.com]
     CROWDSEC_BOUNCER(CrowdSec bouncer)
     CROWDSEC_ENGINE[Security engine\n+ local API]
     ACCESS_LOG[(access log)]
@@ -198,6 +261,7 @@ flowchart TB
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
                     REDIRECT(HTTPS redirect)
                     IP_WHITELISTING(IP whitelist)
+                    SABLIER(Sablier dynamic)
                     AUTH(PocketID auth)
                 end
                 CROWDSEC_BOUNCER
@@ -207,14 +271,24 @@ flowchart TB
                 DOCKER_TRAEFIK_PORT8080
             end
 
+           subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
+              DOCKER_SABLIER_PORT10000
+              WAITING_PAGE(Waiting page)
+           end
+
             subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
                 subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
                     PIHOLE_DNS_TRAEFIK
                     PIHOLE_DNS_PIHOLE
+                    PIHOLE_DNS_MYAPP
                 end
                 DOCKER_PIHOLE_PORT53
                 DOCKER_PIHOLE_PORT80
                 DOCKER_PIHOLE_DNS
+            end
+
+            subgraph WIREGUARD_HOST[WIREGUARD CONTAINER]
+               DOCKER_WIREGUARD_PORT51820
             end
 
             subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
@@ -231,37 +305,38 @@ flowchart TB
 
         end
 
-        subgraph WIREGUARD_HOST[WIREGUARD\non the host]
-            DOCKER_WIREGUARD_PORT51820
-        end
-
     end
 
     WIREGUARD_CLIENT_ENDPOINT ---> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS ------------------->|10.0.0.1\nserver tunnel address| DOCKER_PIHOLE_PORT53
+    WIREGUARD_CLIENT_DNS ------>|Server tunnel address| DOCKER_PIHOLE_PORT53
     ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
     DNS_ISP ------>|Server static IP| DOCKER_PIHOLE_PORT53
-    PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_MYAPP --->|Server internal IP| DOCKER_TRAEFIK_PORT443
     PIHOLE_DNS_PIHOLE --->|Server internal IP| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
     DOCKER_TRAEFIK_PORT443 --> CROWDSEC_BOUNCER
-    CROWDSEC_BOUNCER -->|IP not banned| TRAEFIK_ROUTER
+    CROWDSEC_BOUNCER ----->|IP not banned| TRAEFIK_ROUTER
     DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
     CROWDSEC_BOUNCER -.->|every request logged| ACCESS_LOG
-    ACCESS_LOG -.->|reads, detects attacks| CROWDSEC_ENGINE
+    ACCESS_LOG -.........->|reads, detects attacks| CROWDSEC_ENGINE
     CROWDSEC_ENGINE -.->|decisions| CROWDSEC_BOUNCER
-    CROWDSEC_ENGINE <-....->|signals / community blocklist| CROWDSEC_COMMUNITY
+    CROWDSEC_ENGINE <-..->|signals / community blocklist| CROWDSEC_COMMUNITY
     TRAEFIK_ROUTER_MYAPP --> REDIRECT
     TRAEFIK_ROUTER_PIHOLE --> REDIRECT
     TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| REDIRECT
     IP_WHITELISTING --> AUTH
     IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
+    REDIRECT ----> SABLIER
+    SABLIER <-..->|return status| DOCKER_SABLIER_PORT10000
+    SABLIER --->|not ready| WAITING_PAGE
+    SABLIER --->|ready| DOCKER_MYAPP_PORT5000
     REDIRECT --> IP_WHITELISTING
-    REDIRECT ----> DOCKER_MYAPP_PORT5000
+    DOCKER_SABLIER_PORT10000 <-.->|check status| DOCKER_MYAPP_PORT5000
     AUTH --> DOCKER_TRAEFIK_PORT8080
     DOCKER_PIHOLE_DNS ---> DOCKER_UNBOUND_PORT53
-    UNBOUND_CONTAINER <--> ROOT_DNS_SERVERS
+    UNBOUND_CONTAINER <----> ROOT_DNS_SERVERS
 ```
 
 Basically all services will be accessible via dedicated subdomains which will point to our local network, either through **dynamic DNS** or through **local DNS records**,
@@ -272,7 +347,7 @@ so that we reroute the entire Internet traffic through **Pi-hole** and thus take
 
 In this example **Traefik** (_traefik.example.com_) and **Pi-Hole** (_pihole.example.com_) are only accessible
 through VPN and from the local network thanks to local DNS records and IP whitelisting,
-while **Myapp** (_myapp.example.com_) is also accessible from the internet publicly.
+while **Myapp** (_myapp.example.com_) is also accessible from the internet publicly. In addition, Traefik dashboard is behind **OIDC authentication** through **PocketID**, see [PocketID](#pocketid).
 
 On top of that, **CrowdSec** watches the Traefik access log and its bouncer, plugged on the HTTPS entrypoint, rejects the IP addresses flagged as malicious
 (by our own scenarios or by the community blocklist) before they reach any service, see [CrowdSec](#crowdsec).
@@ -292,7 +367,7 @@ By default, the Mni PC came with **Windows 11**, I simply installed **Debian 12*
 - Insert the USB key into the mini PC and start it, you may need to access the bios to change the boot device priority, to boot on the USB key
 - Then follow the Debian installation instructions, I personally installed the basic system without GUI (no desktop environment)
 
-## User
+## System user
 
 When installing **Debian**, you should have been asked to create a **regular user account**.
 We will simply use that user for the whole guide.
@@ -351,12 +426,6 @@ If you do so consider using it behind a VPN (even if SSH itself is very secure).
 
 We need to install some basic tools we will need later.
 
-Install **vim** (improved **vi**) :
-
-```shell
-sudo apt install vim
-```
-
 Install **curl** (for transferring data through URLs) :
 
 ```shell
@@ -367,6 +436,12 @@ Install **netstat** (to check network connections) :
 
 ```shell
 sudo apt install net-tools
+```
+
+Optionally install **vim** (improved **vi**) :
+
+```shell
+sudo apt install vim
 ```
 
 ## Directory structure
@@ -395,7 +470,7 @@ sudo mkdir /opt/apps
 
 We will create the subdirectories associated with each application when we install them.
 
-# Docker & Docker Compose
+## Docker & Docker Compose
 
 <table>
   <tr>
@@ -861,7 +936,10 @@ flowchart LR
 
 It handles HTTP to HTTPS redirection, IP whitelisting and authentication (through PocketID, or basic authentication) through custom **middlewares**.
 In this example `myapp1` is accessible from the internet, `myapp2` is accessible only through VPN,
-and Traefik (dashboard and APIs) is accessible only through VPN after authentication.
+and Traefik (dashboard and APIs) is accessible only through VPN after OIDC authentication.
+
+I've deliberately left out **Sablier** for the moment, to keep things simple, but basically this would simply add a middleware that checks the state of the application,
+in order to temporarily display a waiting page while not ready, refer to [Scale to zero with Sablier](#scale-to-zero-with-sablier) for more information.
 
 ### Installation
 
@@ -876,7 +954,7 @@ Then copy the files from this project's _traefik_ directory into the _/opt/apps/
 - _docker-compose.yml_ : The Traefik service definition
 - _traefik.yml_ : The Traefik static configuration
 - _.env_ : The secrets read by the service (DNS provider token, CrowdSec bouncer key), to fill in
-- _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (restricted with **basic authentication**),
+- _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (if you want it restricted with **basic authentication**),
   see [Generate basic authentication credentials](#generate-basic-authentication-credentials)
 
 Files should be ready to use, simply replace the e-mail address (`admin@example.com`) in the _traefik.yaml_ file with your e-mail address.
@@ -887,7 +965,7 @@ Anyway you will find below more details about each file (see [Configuration file
 
 ### Generate basic authentication credentials
 
-As we configured the Traefik dashboard to be protected with **basic authentication**, allowed users have to be added to the _credentials.txt_ file.
+If you want the Traefik dashboard to be protected with **basic authentication** rather than via PocketID, allowed users have to be added to the _credentials.txt_ file.
 
 You can generate a user/password using **htpasswd** :
 
@@ -906,12 +984,12 @@ You can generate a user/password using **htpasswd** :
 Then copy the output to the _credentials.txt_ file.
 
 > [!NOTE]
-> Actually as Traefik will be accessible only from local network and through VPN, we don't really need to set up basic authentication,
+> Actually as Traefik will be accessible only from local network and through VPN, we don't really need to set up authentication,
 > but it's more for demonstration, and it's always better to have 2 layers of security than one.
 
 ### TLS certificates
 
-<img src="images/logo-letsencrypt.svg" alt="Let's Encrypt logo" height="64"/>
+<img src="images/logo-letsencrypt.svg" alt="Let's Encrypt logo" height="72"/>
 
 To enable **HTTPS** on our websites, we need to get **TLS certificates** from a **certificate authority**.
 A TLS certificate certifies, in a way, the authenticity of a website (actually it proves that we have the ownership of the public key used for TLS encryption),
@@ -1001,7 +1079,7 @@ That way :
 > [!NOTE]
 > A request from your own network to a name that resolves to your **public IP** goes through the NAT loopback of the router and reaches Traefik with the **public IP** as source : rejected as well.
 > So the private services must resolve to the LAN address of the mini PC for the devices that use them (Pi-Hole's local DNS records, see [Pi-hole](#pi-hole)), and a container that has to call
-> another one (Portainer or the Traefik plugin fetching a token from PocketID) must use the **internal** name (`http://pocketid:1411`), never the public URL.
+> another one (Portainer or the Traefik plugin fetching a token from PocketID) must use the **internal** name (i.e. `http://pocketid:1411`), never the public URL.
 
 > [!WARNING]
 > Never whitelist a **Docker network range**
@@ -1424,8 +1502,8 @@ PersistentKeepalive = 25
 
 > [!WARNING]
 > Connect the server to the LAN through **one interface only**. I had the Wi-Fi of the mini PC connected to the same network "just in case", plus a USB Ethernet adapter left over from a test.
-> Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic for the main address through the Wi-Fi or the USB adapter ;
-> NetworkManager detected its own Wi-Fi as an address conflict and dropped the USB adapter address for hours at each DHCP renewal ; and the client I had pointed to that address
+> Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic for the main address through the Wi-Fi or the USB adapter,
+> NetworkManager detected its own Wi-Fi as an address conflict and dropped the USB adapter address for hours at each DHCP renewal, and the client I had pointed to that address
 > lost its tunnel at random and got a fraction of the throughput when it worked. Disable the Wi-Fi (`sudo nmcli radio wifi off`) and unplug what you don't use.
 
 #### Pi-hole
@@ -1474,7 +1552,6 @@ Go to _Settings -> Local DNS Records_ (or repeat the `pihole-FTL --config dns.ho
 ```
 dashboard.example.com               192.168.0.16
 dashdot.example.com                 192.168.0.16
-kuma.example.com                    192.168.0.16
 phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 portainer.example.com               192.168.0.16
@@ -1916,86 +1993,131 @@ from your local network holding your homelab (on the left), or from any other lo
 
 <table width="100%">
 <tr>
+  <th>From local network</th>
+  <th>From outside local network</th>
+</tr>
+<tr>
 <td width="50%" valign="top">
+<img src="images/1x480-transparent.png" width="480" height="1" alt="" />
 
 ```mermaid
 flowchart TB
-    style INTERNET_SERVICE_PROVIDER fill: #205566
-    style SERVER_DEVICE fill: #665151
-    style CONTAINER_ENGINE fill: #664343
-    style TRAEFIK_CONTAINER fill: #663535
-    style PIHOLE_CONTAINER fill: #663535
-    style MYAPP_CONTAINER fill: #663535
-    style PIHOLE_DNS_RECORDS fill: #806030
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    ROUTER_DNS[DNS]
-    DOCKER_PIHOLE_PORT53{{53/udp}}
-    DOCKER_TRAEFIK_PORT443{{443/tcp}}
-    DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_MYAPP_PORT{{port/tcp}}
-    TRAEFIK_ROUTER_MYAPP(myapp.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
-    PIHOLE_DNS_MYAPP(myapp.example.com)
+   style HOSTING_PROVIDER fill:#4d683b,color:#fff
+   style DDNS_PROVIDER fill:#69587b,color:#fff
+   style INTERNET_SERVICE_PROVIDER fill:#205566,color:#fff
+   style SINGLE_BOARD_COMPUTER fill:#665151,color:#fff
+   style CONTAINER_ENGINE fill:#664343,color:#fff
+   style TRAEFIK_CONTAINER fill:#663535,color:#fff
+   style PIHOLE_CONTAINER fill:#663535,color:#fff
+   style UNBOUND_CONTAINER fill:#663535,color:#fff
+   style MYAPP_CONTAINER fill:#663535,color:#fff
+   style TRAEFIK_ROUTER fill:#806030,color:#fff
+   style TRAEFIK_MIDDLEWARE fill:#806030,color:#fff
+   DOMAIN(example.com)
+   SUBDOMAIN_MYAPP(myapp.example.com)
+   DDNS(myddns.ddns.net)
+   ROUTER_PUBLIC_IP[public IP]
+   ROUTER_PORT80{{80/tcp}}
+   ROUTER_PORT443{{443/tcp}}
+   ROUTER_DNS[DNS]
+   DOCKER_PIHOLE_PORT53{{53/udp}}
+   DOCKER_TRAEFIK_PORT443{{443/tcp}}
+   DOCKER_TRAEFIK_PORT80{{80/tcp}}
+   DOCKER_MYAPP_PORT{{port/tcp}}
+   DOCKER_UNBOUND_PORT53{{53/udp}}
+   TRAEFIK_ROUTER_MYAPP(myapp.example.com)
+   TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+   ROOT_DNS_SERVERS[Root DNS servers]
 
-    subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
-        ROUTER_DNS
-    end
+   subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
+      DOMAIN
+      SUBDOMAIN_MYAPP
+   end
 
-    subgraph SERVER_DEVICE[MINI PC]
-        subgraph CONTAINER_ENGINE[DOCKER]
-            subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
-                DOCKER_MYAPP_PORT
+   subgraph DDNS_PROVIDER[DYNAMIC DNS PROVIDER]
+      DDNS
+   end
+
+   subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
+      ROUTER_PUBLIC_IP
+      ROUTER_PORT80
+      ROUTER_PORT443
+      ROUTER_DNS
+   end
+
+   subgraph SINGLE_BOARD_COMPUTER[BANANA PI M5]
+      subgraph CONTAINER_ENGINE[DOCKER]
+         subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
+            DOCKER_MYAPP_PORT
+         end
+
+         subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
+            DOCKER_UNBOUND_PORT53
+         end
+
+         subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
+            DOCKER_PIHOLE_PORT53
+         end
+
+         subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+            DOCKER_TRAEFIK_PORT443
+            DOCKER_TRAEFIK_PORT80
+
+            subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+               TRAEFIK_ROUTER_MYAPP
             end
 
-            subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
-                DOCKER_PIHOLE_PORT53
-                subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
-                    PIHOLE_DNS_MYAPP
-                end
+            subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
+               TRAEFIK_MIDDLEWARE_REDIRECT
             end
+         end
 
-            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443
-                DOCKER_TRAEFIK_PORT80
+      end
 
-                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
-                    TRAEFIK_ROUTER_MYAPP
-                end
+   end
 
-                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
-                end
-            end
-
-        end
-
-    end
-
-    CLIENT((client)) --->|" http://myapp.example.com "| BROWSER
-    BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
-    LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER_DNS
-    ROUTER_DNS <-->|mini PC static IP| DOCKER_PIHOLE_PORT53
-    PIHOLE_DNS_MYAPP -->|mini PC internal IP| DOCKER_TRAEFIK_PORT80
-    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
-    linkStyle 0 stroke-width: 4px, stroke: red
-    linkStyle 1 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 4 stroke-width: 4px, stroke: red
-    linkStyle 5 stroke-width: 4px, stroke: red
-    linkStyle 6 stroke-width: 4px, stroke: red
-    linkStyle 7 stroke-width: 4px, stroke: red
-    linkStyle 8 stroke-width: 4px, stroke: red
-    linkStyle 9 stroke-width: 4px, stroke: red
+   CLIENT((client)) --->|" http‎://myapp.example.com "| BROWSER
+   BROWSER((browser)) -->|HTTP| ROUTER_PUBLIC_IP
+   DOMAIN <-->|subdomain| SUBDOMAIN_MYAPP
+   SUBDOMAIN_MYAPP <-->|CNAME| DDNS
+   DDNS <-->|DynDNS| ROUTER_PUBLIC_IP
+   ROUTER_PUBLIC_IP --> ROUTER_PORT80
+   ROUTER_PUBLIC_IP --> ROUTER_PORT443
+   ROUTER_PORT443 -->|port forward| DOCKER_TRAEFIK_PORT443
+   ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
+   DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+   DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+   TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
+   TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
+   TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
+   BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
+   LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER_DNS
+   ROUTER_DNS <-->|Banana Pi M5 static IP| DOCKER_PIHOLE_PORT53
+   DOCKER_PIHOLE_PORT53 <-->|DNS| DOCKER_UNBOUND_PORT53
+   UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
+   linkStyle 0 stroke-width: 4px, stroke: red
+   linkStyle 1 stroke-width: 4px, stroke: red
+   linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 4 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 5 stroke-width: 4px, stroke: red
+   linkStyle 8 stroke-width: 4px, stroke: red
+   linkStyle 9 stroke-width: 4px, stroke: red
+   linkStyle 10 stroke-width: 4px, stroke: red
+   linkStyle 11 stroke-width: 4px, stroke: red
+   linkStyle 12 stroke-width: 4px, stroke: red
+   linkStyle 13 stroke-width: 4px, stroke: red
+   linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+   linkStyle 18 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
 ```
 
 </td>
 <td width="50%" valign="top">
+
+<img src="images/1x480-transparent.png" width="480" height="1" alt="" />
 
 ```mermaid
 flowchart TB
@@ -2218,7 +2340,7 @@ flowchart TB
 
     CLIENT((client)) --> VPN_CLIENT
     WIREGUARD_CLIENT_ENDPOINT --> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS -->|10.0.0.1 = server tunnel address| DOCKER_PIHOLE_PORT53
+    WIREGUARD_CLIENT_DNS -->|Server tunnel address| DOCKER_PIHOLE_PORT53
     VPN_CLIENT -->|" http://myapp.example.com "| BROWSER
     BROWSER((browser)) --> ROUTER_PUBLIC_IP
     DOMAIN -->|subdomain| SUBDOMAIN_MYAPP
@@ -2552,6 +2674,8 @@ It should also have generated the needed Let's Encrypt certificates in the _acme
 
 The application is available at https://pocketid.example.com, where the first visit creates the administrator account and its passkey (see [Setting up](#setting-up)).
 
+<img src="images/screen-pocketid.png" alt="PocketID screenshot"/>
+
 ## CrowdSec
 
 <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="128"/>
@@ -2748,10 +2872,10 @@ Things to notice :
 - the security engine only joins `traefik-private-net` : the bouncer reaches its **local API** at `crowdsec:8080` by name, nothing is published on the host
 - `COLLECTIONS` and `PARSERS` are installed from the hub at the first start : `crowdsecurity/traefik` (the access log parser and the base HTTP scenarios), `crowdsecurity/http-cve`
   (known exploits) and `crowdsecurity/whitelists` (private IP ranges are never banned, so a misbehaving device at home cannot lock you out)
-- `BOUNCER_KEY_traefik` (from the _.env_ file) registers the `traefik` bouncer with the given key at start, no manual `cscli bouncers add` needed ; the middleware reads the same key
+- `BOUNCER_KEY_traefik` (from the _.env_ file) registers the `traefik` bouncer with the given key at start, no manual `cscli bouncers add` needed, the middleware reads the same key
   from Traefik's own _.env_ file through a template, so that the key never appears in a configuration file
 - the **volumes** hold the acquisition file (which log to read, and which parser applies to it â€” mounted as _/etc/crowdsec/acquis.yaml_, the path CrowdSec expects), the configuration (hub items, local API and community API credentials, all created automatically)
-  and the data (SQLite database of alerts and decisions, downloaded blocklists) ; the Traefik _logs_ folder is mounted **read-only**
+  and the data (SQLite database of alerts and decisions, downloaded blocklists), the Traefik _logs_ folder is mounted **read-only**
 - the middleware runs in **stream** mode : it pulls the decisions from the local API every `updateIntervalSeconds` and answers from its cache, nothing is called on the request path.
   If the local API becomes unreachable, the plugin keeps serving with the decisions it already has and logs errors
 - `clientTrustedIPs` makes the bouncer skip the local network and the VPN peers entirely, in addition to the CrowdSec side whitelist
@@ -3182,11 +3306,17 @@ On first start, you will be asked to create the **initial administrator user**.
 
 <img src="images/screen-portainer.png" alt="Portainer dashboard screenshot"/>
 
-## Dashdot
+## PhpMyAdmin
 
-<img src="images/logo-dashdot.png" alt="Dashdot logo"/>
+<img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="148"/>
 
-**Dashdot** is a modern application to monitor server resources through a basic UI.
+As our services will use some MySQL/MariaDB databases, we will use **PhpMyAdmin** to easily manage our databases.
+
+**PhpMyAdmin** is a free software tool intended to handle the administration of MySQL over the Web, it supports a wide range of operations on **MySQL** and **MariaDB** (managing
+databases,
+tables, columns, relations, indexes, users, permissions, etc.).
+
+Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
@@ -3199,8 +3329,8 @@ flowchart LR
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_APP_PORT{{3001/tcp}}
-    TRAEFIK_ROUTER_APP(dashdot.example.com)
+    DOCKER_APP_PORT{{80/tcp}}
+    TRAEFIK_ROUTER_APP(phpmyadmin.example.com)
     TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
@@ -3209,7 +3339,7 @@ flowchart LR
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
-            subgraph APP_CONTAINER[DASHDOT CONTAINER]
+            subgraph APP_CONTAINER[PHPMYADMIN CONTAINER]
                 DOCKER_APP_PORT
             end
 
@@ -3241,12 +3371,10 @@ flowchart LR
 Create a folder to hold the configuration :
 
 ```bash
-sudo mkdir /opt/apps/dashdot
+sudo mkdir /opt/apps/phpmyadmin
 ```
 
-Then :
-- copy the _docker-compose.yml_ file from this project's _dashdot_ directory into the _/opt/apps/dashdot_ directory
-- copy the _dashdot.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ directory into the _/opt/apps/phpmyadmin_ directory.
 
 ### Details
 
@@ -3257,75 +3385,81 @@ Then :
 ```yaml
 services:
 
-  dashdot:
-    image: mauricenino/dashdot:latest
-    container_name: dashdot
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: phpmyadmin
+    environment:
+      - PMA_ARBITRARY=1
     restart: unless-stopped
     volumes:
-      - /:/mnt/host:ro
+      - ./darkwolf/:/var/www/html/themes/darkwolf/
     networks:
-      - dashdot-net
+      - phpmyadmin-net
       - traefik-private-net
 
 networks:
 
-  dashdot-net:
-    name: dashdot-net
+  phpmyadmin-net:
+    name: phpmyadmin-net
 
   traefik-private-net:
     name: traefik-private-net
     external: true
 ```
 
-:page_facing_up: _dashdot.yml_ :
+:page_facing_up: _phpmyadmin.yml_ :
 
 ```yaml
 http:
   services:
-    dashdot:
+    phpmyadmin:
       loadBalancer:
         servers:
-          - url: http://dashdot:3001
+          - url: http://phpmyadmin:80
 
   routers:
-    dashdot:
-      rule: 'Host(`dashdot.example.com`)'
+    phpmyadmin:
+      rule: 'Host(`phpmyadmin.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: dashdot
+      service: phpmyadmin
       middlewares:
         - vpn-whitelist@file
-        - sablier-dashdot@file
 ```
 
 Things to notice :
 
-- Dashdot's data is bound to the current directory (read-only)
+- We mount a _theme_ directory to use a custom theme (dark theme named `darkwolf`), so just copy the theme data from official repository https://www.phpmyadmin.net/themes/
 - It uses Traefik dynamic config file to :
-    - create a **service** which will point to our container application running on port `3001`
-    - create an HTTP **router** that will match `dashdot.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-    - assign the `sablier-dashdot` **middleware** so that on-demand stop/start of the container can be done through Sablier
-- It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
+   - create a **service** which will point to our container application running on port `80`
+   - create an HTTP **router** that will match `phpmyadmin.example.com` URL on our `websecure` **entrypoint** to point to our service
+   - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+   - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
+- It runs in its own **network** (`phpmyadmin-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
+- The `phpmyadmin` network will have to be added to any MySQL/MariaDB database container that we want to make reachable from PhpMyAdmin
+- We set the environment variable `PMA_ARBITRARY` to `1` to tell PhpMyAdmin to allow connection to any arbitrary database server (we will be able to specify the server on login
+  screen)
 
 ### Run
 
 Finally, simply run the Compose file :
 
 ```bash
-sudo docker-compose -f /opt/apps/dashdot/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/phpmyadmin/docker-compose.yml up -d
 ```
 
-You should end-up with a running `dashdot` container.
+You should end-up with a running `phpmyadmin` container.
 
 It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
 
-The application is available at https://dashdot.example.com.
+The application is available at https://phpmyadmin.example.com.
 
-<img src="images/screen-dashdot.png" alt="Dashdot screenshot"/>
+> [!IMPORTANT]
+> You will have to use the database **service name** as host to connect to a database
+
+<img src="images/screen-phpmyadmin.png" alt="PhpMyAdmin screenshot"/>
 
 ## Homer
 
@@ -3474,10 +3608,10 @@ Things to notice :
 - It sets the `IPV6_DISABLE` environment variable to `1`to disable listening on IPv6 (we don't use IPv6)
 - It sets a user with **uid** and **gid** `1000` to run the application in the container
 - It uses Traefik dynamic config file to :
-    - create a **service** which will point to our container application running on port `8080`
-    - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-    - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
+   - create a **service** which will point to our container application running on port `8080`
+   - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point to our service
+   - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+   - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
 - It runs in its own network (`homer-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
 
 #### Configuration file
@@ -3551,11 +3685,6 @@ services:
         subtitle: "Network-wide ad blocking"
         tag: "network"
         url: "https://pihole.example.com/admin"
-      - name: "Uptime Kuma"
-        logo: "assets/logos/logo-uptime-kuma.svg"
-        subtitle: "Application monitoring tool"
-        tag: "monitoring"
-        url: "https://kuma.example.com/status/dashboard"
       - name: "GoatCounter"
         logo: "assets/logos/logo-goatcounter.svg"
         subtitle: "Privacy-friendly web analytics"
@@ -3634,17 +3763,11 @@ The application will be available at https://dashboard.example.com.
 
 <img src="images/screen-homer.png" alt="Homer dashboard screenshot"/>
 
-## PhpMyAdmin
+## Dashdot
 
-<img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="148"/>
+<img src="images/logo-dashdot.png" alt="Dashdot logo"/>
 
-As our services will use some MySQL/MariaDB databases, we will use **PhpMyAdmin** to easily manage our databases.
-
-**PhpMyAdmin** is a free software tool intended to handle the administration of MySQL over the Web, it supports a wide range of operations on **MySQL** and **MariaDB** (managing
-databases,
-tables, columns, relations, indexes, users, permissions, etc.).
-
-Here is an overview of the network flow :
+**Dashdot** is a modern application to monitor server resources through a basic UI.
 
 ```mermaid
 flowchart LR
@@ -3657,8 +3780,8 @@ flowchart LR
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_APP_PORT{{80/tcp}}
-    TRAEFIK_ROUTER_APP(phpmyadmin.example.com)
+    DOCKER_APP_PORT{{3001/tcp}}
+    TRAEFIK_ROUTER_APP(dashdot.example.com)
     TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
@@ -3667,7 +3790,7 @@ flowchart LR
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
-            subgraph APP_CONTAINER[PHPMYADMIN CONTAINER]
+            subgraph APP_CONTAINER[DASHDOT CONTAINER]
                 DOCKER_APP_PORT
             end
 
@@ -3699,10 +3822,12 @@ flowchart LR
 Create a folder to hold the configuration :
 
 ```bash
-sudo mkdir /opt/apps/phpmyadmin
+sudo mkdir /opt/apps/dashdot
 ```
 
-Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ directory into the _/opt/apps/phpmyadmin_ directory.
+Then :
+- copy the _docker-compose.yml_ file from this project's _dashdot_ directory into the _/opt/apps/dashdot_ directory
+- copy the _dashdot.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
 
 ### Details
 
@@ -3713,81 +3838,252 @@ Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ 
 ```yaml
 services:
 
-  phpmyadmin:
-    image: phpmyadmin:latest
-    container_name: phpmyadmin
-    environment:
-      - PMA_ARBITRARY=1
+  dashdot:
+    image: mauricenino/dashdot:latest
+    container_name: dashdot
     restart: unless-stopped
     volumes:
-      - ./darkwolf/:/var/www/html/themes/darkwolf/
+      - /:/mnt/host:ro
     networks:
-      - phpmyadmin-net
+      - dashdot-net
       - traefik-private-net
 
 networks:
 
-  phpmyadmin-net:
-    name: phpmyadmin-net
+  dashdot-net:
+    name: dashdot-net
 
   traefik-private-net:
     name: traefik-private-net
     external: true
 ```
 
-:page_facing_up: _phpmyadmin.yml_ :
+:page_facing_up: _dashdot.yml_ :
 
 ```yaml
 http:
   services:
-    phpmyadmin:
+    dashdot:
       loadBalancer:
         servers:
-          - url: http://phpmyadmin:80
+          - url: http://dashdot:3001
 
   routers:
-    phpmyadmin:
-      rule: 'Host(`phpmyadmin.example.com`)'
+    dashdot:
+      rule: 'Host(`dashdot.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: phpmyadmin
+      service: dashdot
       middlewares:
         - vpn-whitelist@file
+        - sablier-dashdot@file
 ```
 
 Things to notice :
 
-- We mount a _theme_ directory to use a custom theme (dark theme named `darkwolf`), so just copy the theme data from official repository https://www.phpmyadmin.net/themes/
+- Dashdot's data is bound to the current directory (read-only)
 - It uses Traefik dynamic config file to :
-    - create a **service** which will point to our container application running on port `80`
-    - create an HTTP **router** that will match `phpmyadmin.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+    - create a **service** which will point to our container application running on port `3001`
+    - create an HTTP **router** that will match `dashdot.example.com` URL on our `websecure` **entrypoint** to point to our service
     - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own **network** (`phpmyadmin-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
-- The `phpmyadmin` network will have to be added to any MySQL/MariaDB database container that we want to make reachable from PhpMyAdmin
-- We set the environment variable `PMA_ARBITRARY` to `1` to tell PhpMyAdmin to allow connection to any arbitrary database server (we will be able to specify the server on login
-  screen)
+    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
+    - assign the `sablier-dashdot` **middleware** so that on-demand stop/start of the container can be done through Sablier
+- It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
 
 ### Run
 
 Finally, simply run the Compose file :
 
 ```bash
-sudo docker-compose -f /opt/apps/phpmyadmin/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/dashdot/docker-compose.yml up -d
 ```
 
-You should end-up with a running `phpmyadmin` container.
+You should end-up with a running `dashdot` container.
 
 It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
 
-The application is available at https://phpmyadmin.example.com.
+The application is available at https://dashdot.example.com.
 
-> [!IMPORTANT]
-> You will have to use the database **service name** as host to connect to a database
+<img src="images/screen-dashdot.png" alt="Dashdot screenshot"/>
 
-<img src="images/screen-phpmyadmin.png" alt="PhpMyAdmin screenshot"/>
+## Lychee
+
+<img src="images/logo-lychee.png" alt="Lychee logo" height="128"/>
+
+**Lychee** is a robust, locally hosted web-based photo management tool.
+It enables you to carry out various operations on photos, including uploading, organizing, sharing, and more.
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_APP_PORT{{80/tcp}}
+    TRAEFIK_ROUTER_APP(lychee.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+
+    subgraph SERVER_DEVICE[MINI_PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph APP_CONTAINER[LYCHEE CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                end
+
+                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
+                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
+            end
+
+        end
+    end
+```
+
+### Setting up
+
+First, create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/lychee
+```
+
+Then copy :
+- the _docker-compose.yml_ file from this project's _lychee_ directory into the _/opt/apps/lychee_ directory.
+- the _lychee.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  lychee:
+    image: lycheeorg/lychee:latest
+    container_name: lychee
+    volumes:
+      - ./lychee/conf:/conf
+      - ./lychee/uploads:/uploads
+      - ./lychee/sym:/sym
+      - ./lychee/logs:/logs
+    environment:
+      - PHP_TZ=UTC
+      - TIMEZONE=UTC
+      - DB_CONNECTION=mysql
+      - DB_HOST=lychee-db
+      - DB_PORT=3306
+      - DB_DATABASE=lychee
+      - DB_USERNAME=$MYSQL_USERNAME
+      - DB_PASSWORD=$MYSQL_PASSWORD
+      - STARTUP_DELAY=30
+      - ADMIN_USER=$ADMIN_USER
+      - ADMIN_PASSWORD=$ADMIN_PASSWORD
+      - APP_URL=https://lychee.example.com
+      - TRUSTED_PROXIES=*
+    depends_on:
+      - lychee-db
+    restart: unless-stopped
+    networks:
+      - lychee-net
+      - traefik-public-net
+
+  lychee-db:
+    container_name: lychee-db
+    image: mariadb:latest
+    restart: unless-stopped
+    environment:
+      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE=lychee
+      - MYSQL_USER=$MYSQL_USERNAME
+      - MYSQL_PASSWORD=$MYSQL_PASSWORD
+    volumes:
+      - lychee-db-vol:/var/lib/mysql
+    networks:
+      - lychee-net
+
+volumes:
+
+  lychee-db-vol:
+    name: lychee-db-vol
+
+networks:
+
+  lychee-net:
+    name: lychee-net
+
+  traefik-public-net:
+    name: traefik-public-net
+    external: true
+```
+
+:page_facing_up: _lychee.yml_ :
+
+```yaml
+http:
+  services:
+    lychee:
+      loadBalancer:
+        servers:
+          - url: http://lychee:80
+
+  routers:
+    lychee:
+      rule: 'Host(`lychee.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: lychee
+```
+
+Things to notice :
+
+- It binds some volumes for configuration, uploads, symbolic links and logs
+- It sets some environment variables for timezone, database connection, admin user and password, application URL and trusted proxies
+- It uses Traefik dynamic config file to :
+   - create a **service** which will point to our container application running on port `80`
+   - create an HTTP **router** that will match `lychee.example.com` URL on our `websecure` **entrypoint** to point to our service
+   - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
+- It runs in its own network (`lychee-net`) but must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as it is exposed to the internet (see [Network segmentation](#network-segmentation))
+
+### Run
+
+Finally, simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/lychee/docker-compose.yml up -d
+```
+
+You should end-up with a running `lychee` container.
+
+It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
+
+The application will be available at https://lychee.example.com.
+
+<img src="images/screen-lychee.png" alt="Lychee homepage screenshot"/>
 
 ## Homebox
 
@@ -4219,183 +4515,6 @@ You should end-up with a running `goatcounter` container, and Traefik picks up t
 
 The dashboard is available at https://goatcounter.example.com, with the account created above.
 
-## Lychee
-
-<img src="images/logo-lychee.png" alt="Lychee logo" height="128"/>
-
-**Lychee** is a robust, locally hosted web-based photo management tool.
-It enables you to carry out various operations on photos, including uploading, organizing, sharing, and more.
-
-```mermaid
-flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
-    DOCKER_TRAEFIK_PORT443{{443/tcp}}
-    DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_APP_PORT{{80/tcp}}
-    TRAEFIK_ROUTER_APP(lychee.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
-    INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
-
-    subgraph SERVER_DEVICE[MINI_PC]
-        subgraph CONTAINER_ENGINE[DOCKER]
-            subgraph APP_CONTAINER[LYCHEE CONTAINER]
-                DOCKER_APP_PORT
-            end
-
-            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-
-                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
-                    TRAEFIK_ROUTER_APP
-                end
-
-                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
-                end
-
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
-            end
-
-        end
-    end
-```
-
-### Setting up
-
-First, create a folder to hold the configuration :
-
-```bash
-sudo mkdir /opt/apps/lychee
-```
-
-Then copy :
-- the _docker-compose.yml_ file from this project's _lychee_ directory into the _/opt/apps/lychee_ directory.
-- the _lychee.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory.
-
-### Details
-
-#### Service definition
-
-:page_facing_up: _docker-compose.yml_ :
-
-```yaml
-services:
-
-  lychee:
-    image: lycheeorg/lychee:latest
-    container_name: lychee
-    volumes:
-      - ./lychee/conf:/conf
-      - ./lychee/uploads:/uploads
-      - ./lychee/sym:/sym
-      - ./lychee/logs:/logs
-    environment:
-      - PHP_TZ=UTC
-      - TIMEZONE=UTC
-      - DB_CONNECTION=mysql
-      - DB_HOST=lychee-db
-      - DB_PORT=3306
-      - DB_DATABASE=lychee
-      - DB_USERNAME=$MYSQL_USERNAME
-      - DB_PASSWORD=$MYSQL_PASSWORD
-      - STARTUP_DELAY=30
-      - ADMIN_USER=$ADMIN_USER
-      - ADMIN_PASSWORD=$ADMIN_PASSWORD
-      - APP_URL=https://lychee.example.com
-      - TRUSTED_PROXIES=*
-    depends_on:
-      - lychee-db
-    restart: unless-stopped
-    networks:
-      - lychee-net
-      - traefik-public-net
-
-  lychee-db:
-    container_name: lychee-db
-    image: mariadb:latest
-    restart: unless-stopped
-    environment:
-      - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
-      - MYSQL_DATABASE=lychee
-      - MYSQL_USER=$MYSQL_USERNAME
-      - MYSQL_PASSWORD=$MYSQL_PASSWORD
-    volumes:
-      - lychee-db-vol:/var/lib/mysql
-    networks:
-      - lychee-net
-
-volumes:
-
-  lychee-db-vol:
-    name: lychee-db-vol
-
-networks:
-
-  lychee-net:
-    name: lychee-net
-
-  traefik-public-net:
-    name: traefik-public-net
-    external: true
-```
-
-:page_facing_up: _lychee.yml_ :
-
-```yaml
-http:
-  services:
-    lychee:
-      loadBalancer:
-        servers:
-          - url: http://lychee:80
-
-  routers:
-    lychee:
-      rule: 'Host(`lychee.example.com`)'
-      entryPoints:
-        - websecure
-      tls:
-        certResolver: default
-      service: lychee
-```
-
-Things to notice :
-
-- It binds some volumes for configuration, uploads, symbolic links and logs
-- It sets some environment variables for timezone, database connection, admin user and password, application URL and trusted proxies
-- It uses Traefik dynamic config file to :
-    - create a **service** which will point to our container application running on port `80`
-    - create an HTTP **router** that will match `lychee.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own network (`lychee-net`) but must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as it is exposed to the internet (see [Network segmentation](#network-segmentation))
-
-### Run
-
-Finally, simply run the Compose file :
-
-```bash
-sudo docker-compose -f /opt/apps/lychee/docker-compose.yml up -d
-```
-
-You should end-up with a running `lychee` container.
-
-It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
-
-The application will be available at https://lychee.example.com.
-
-<img src="images/screen-lychee.png" alt="Lychee homepage screenshot"/>
-
 ## Defrag-life
 
 <table>
@@ -4642,7 +4761,7 @@ Then we use Traefik dynamic config file to :
   - create an HTTP **router** that will match `quake.example.com` URL on our `websecure` **entrypoint** to point to our service
   - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
 
-All services run in a `defrag-life-net` **network** ; the `nginx` front must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as the website is exposed to the internet (see [Network segmentation](#network-segmentation)),
+All services run in a `defrag-life-net` **network**, the `nginx` front must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as the website is exposed to the internet (see [Network segmentation](#network-segmentation)),
 and `phpmyadmin-net` so that the database is reachable from PhpMyAdmin, see [PhpMyAdmin](#phpmyadmin).
 
 #### Environment variables
@@ -4683,7 +4802,7 @@ ping.response = pong
 ```
 
 This is a quite basic configuration file for Nginx, we just enabled **ping**,
-so we can ping the service from monitoring tool like **Uptime-Kuma**.
+so we can ping the service from any monitoring tool.
 
 #### PHP-FPM configuration file
 
@@ -4749,6 +4868,630 @@ It should also have generated the needed Let's Encrypt certificates in the _acme
 The application will be available at https://quake.example.com.
 
 <img src="images/screen-defrag-life.png" alt="Defrag-Life website screenshot"/>
+
+## CCTeam
+
+Create a directory to hold the app :
+
+```bash
+mkdir /opt/apps/ccteam
+cd /opt/apps/ccteam
+```
+
+Create the _Dockerfile_ and _docker-compose.yml_ files based on the files in the _ccteam_ folder in this project.
+
+In the same directory, create a _.env_ file to hold the environment variables :
+
+```env
+MARIADB_ROOT_PASSWORD=<root_password>
+MARIADB_DATABASE=<db_name>
+MARIADB_USER=<username>
+MARIADB_PASSWORD=<password>
+MAIL_SERVER_HOST=<mail_server_host>
+MAIL_SERVER_PORT=<mail_server_port>
+MAIL_SERVER_USERNAME=<mail_server_username>
+MAIL_SERVER_PASSWORD=<mail_server_password>
+JWT_SECRET=<jwt_secret>
+JWT_EXPIRATION_TIME=<jwt_expiration_time>
+```
+
+Move the application JAR file (_ccteam-graphql.jar_) into the current directory.
+
+Start :
+
+```bash
+sudo docker-compose up -d
+```
+
+This will create 2 containers :
+
+- A container holding the **MariaDB** database
+- A container holding the **Java** application (based on the provided _Dockerfile_), exposed on port **5001**
+
+Then the API is available at : https://ccteam.example.com/ccteam-gql/graphql
+
+You will get access denied as you need a valid **JWT token**, but it confirms that the service is running correctly :
+
+```json
+{
+  "errors": [
+    {
+      "cause": null,
+      "stackTrace": null,
+      "extensions": {
+        "errorCode": "no_token"
+      },
+      "errorType": "DataFetchingException",
+      "locations": null,
+      "message": "Full authentication is required to access this resource",
+      "path": null,
+      "suppressed": [],
+      "localizedMessage": "Full authentication is required to access this resource"
+    }
+  ],
+  "data": null
+}
+```
+
+# Scale to zero with Sablier
+
+<img src="images/logo-sablier.svg" alt="Sablier logo" height="128"/>
+
+Some of our services will be accessed quite rarely (i.e. UIs of monitoring tools, websites open only to family through VPN, etc.),
+it would be a shame to leave them running for days and waste resources while there are no requests, wouldn't it ?
+
+That's why we're going to use **Sablier**, a little tool that lets you start / stop containers on demand (also known as "scale-to-zero").
+Basically it allows to start a container when a request arrives, and stop it after a period of inactivity.
+
+Sablier provides 2 strategies, a **dynamic strategy** which provides a waiting page while the container is not ready,
+and a **blocking strategy** which hangs the request until the container is ready.
+
+We will use the dynamic strategy, well suited for a user that would access a frontend directly and expects to see a loading page.
+The blocking strategy is better suited for API communication.
+
+Basically here is how it works when using the dynamic strategy with Traefik :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill:#205566,color:#fff
+    style TRAEFIK_CONTAINER fill:#663535,color:#fff
+    style SABLIER_CONTAINER fill:#663535,color:#fff
+    style APP_CONTAINER fill:#663535,color:#fff
+    style TRAEFIK_MIDDLEWARE fill:#806030,color:#fff
+    DOCKER_SABLIER_PORT{{10000/tcp}}
+    DOCKER_APP_PORT{{myapp port}}
+    WAITING_PAGE(waiting page)
+    TRAEFIK_MIDDLEWARE_APP(sablier-myapp)
+    INCOMING_REQUEST((INCOMING<br/>REQUEST))
+    INCOMING_REQUEST --> TRAEFIK_MIDDLEWARE_APP
+
+    subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
+        DOCKER_SABLIER_PORT
+        WAITING_PAGE
+    end
+
+    subgraph APP_CONTAINER[APP CONTAINER]
+        DOCKER_APP_PORT
+    end
+
+    subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+
+        subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+            TRAEFIK_MIDDLEWARE_APP
+        end
+
+        TRAEFIK_MIDDLEWARE_APP -.->|request session status| DOCKER_SABLIER_PORT
+        DOCKER_SABLIER_PORT -.->|"return status header"| TRAEFIK_MIDDLEWARE_APP
+        TRAEFIK_MIDDLEWARE_APP -->|"ready"| DOCKER_APP_PORT
+        TRAEFIK_MIDDLEWARE_APP -->|"not ready"| WAITING_PAGE
+        DOCKER_APP_PORT -.->|return instance status| DOCKER_SABLIER_PORT
+        DOCKER_SABLIER_PORT -.->|"check instance status"| DOCKER_APP_PORT
+    end
+```
+
+When a request arrives, a **Traefik middleware** is responsible to contact Sablier to know if the target container is ready or not.
+Sablier asks for the container status to the **Docker provider**, then return the result to the proxy, to either serve the waiting page or redirect to the application.
+It is done through a `X-Sablier-Status` request header value :
+
+```mermaid
+sequenceDiagram
+    User->>Proxy: Website Request
+    Proxy->>Sablier: Reverse Proxy Plugin Request Session Status
+    Sablier->>Provider: Request Instance Status
+    Provider-->>Sablier: Response Instance Status
+    Sablier-->>Proxy: Returns the X-Sablier-Status Header
+    alt X-Sablier-Status` value is `not-ready`
+        Proxy-->>User: Serve the waiting page
+        loop until `X-Sablier-Status` value is `ready`
+            User->>Proxy: Self-Reload Waiting Page
+            Proxy->>Sablier: Reverse Proxy Plugin Request Session Status
+            Sablier->>Provider: Request Instance Status
+            Provider-->>Sablier: Response Instance Status
+            Sablier-->>Proxy: Returns the waiting page
+            Proxy-->>User: Serve the waiting page
+        end
+    end
+    Proxy-->>User: Content
+```
+
+As you see it continuously checks for instance status until it is ready, and will intend to start the underlying container if not started,
+or shut it down if it has reached the configured period of inactivity.
+
+> [!NOTE]
+> Note that you need one plugin configuration (one middleware) per application set if you want to start/stop them independently
+> or if you want to have different theme, display name, loading strategy or session duration.
+> In the flow chart above, `sablier-app` is a dedicated middleware for "myapp" application, but you could have several of them.
+
+## Install Sablier
+
+**Sablier** can be installed using the binary distribution, or through Docker.
+We will use the Docker image.
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/sablier
+```
+
+Then copy the _docker-compose.yml_ file from this project's _sablier_ directory into the _/opt/apps/sablier_ directory.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+version: "3.7"
+
+services:
+  sablier:
+    image: sablierapp/sablier:latest
+    container_name: sablier
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    command:
+      - start
+      - --provider.name=docker
+    networks:
+      - sablier-net
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      # here we will add middleware configuration, see later in this guide
+
+networks:
+
+  sablier-net:
+    name: sablier-net
+
+  traefik-net:
+    name: traefik-net
+    external: true
+```
+
+Essentially :
+
+- We bind the Docker **socket** to the container because the Docker provider communicates with the _docker.sock_ socket to start and stop containers on demand
+- We specify the command to start the server with the parameter to set the provider name (docker)
+- It runs in its own **network** (`sablier-net`) but must also share the same network as Traefik (`traefik-net`) so it can be discovered
+
+## Install Traefik plugin
+
+There are **plugins** available for easier integration with major reverse proxies, Traefik in particular.
+Sablier is designed as an API that can be used on its own, reverse proxy integrations acts as a client of that API.
+
+Thus, simply add the following into the Traefik static configuration file (_traefik.yml_) to load the plugin :
+
+```yaml
+experimental:
+  plugins:
+    sablier:
+      moduleName: "github.com/sablierapp/sablier"
+      version: "v1.7.0"
+```
+
+You can take a look at the _apps/traefik/traefik.yml_ file from this repository.
+
+## Configure target applications
+
+In order for Sablier to be able to contact the containers to start and stop them,
+we need to change the configuration of the target service to use a **dynamic configuration file** instead of **Docker labels**.
+Indeed, Traefik no longer has access to container labels when a container is not running.
+
+We will configure Sablier for the Dashdot application as an example, but it can be applied to any container :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill:#205566,color:#fff
+    style TRAEFIK_CONTAINER fill:#663535,color:#fff
+    style SABLIER_CONTAINER fill:#663535,color:#fff
+    style DASHDOT_CONTAINER fill:#663535,color:#fff
+    style TRAEFIK_ROUTER fill:#806030,color:#fff
+    style TRAEFIK_MIDDLEWARE fill:#806030,color:#fff
+    style SERVER_DEVICE fill:#665555,color:#fff
+    style CONTAINER_ENGINE fill:#664545,color:#fff
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_SABLIER_PORT{{10000/tcp}}
+    DOCKER_DASHDOT_PORT{{3001/tcp}}
+    WAITING_PAGE(Waiting page)
+    TRAEFIK_ROUTER_APP(dashdot.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_DASHDOT(sablier-dashdot)
+    INCOMING_REQUEST((INCOMING<br/>REQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+
+    subgraph SERVER_DEVICE[MINI_PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
+                DOCKER_SABLIER_PORT
+                WAITING_PAGE
+            end
+
+            subgraph DASHDOT_CONTAINER[DASHDOT CONTAINER]
+                DOCKER_DASHDOT_PORT
+            end
+
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_DASHDOT
+                end
+
+                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_DASHDOT
+                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
+                TRAEFIK_MIDDLEWARE_DASHDOT -->|check status| DOCKER_SABLIER_PORT
+                DOCKER_SABLIER_PORT -->|return status| TRAEFIK_MIDDLEWARE_DASHDOT
+                TRAEFIK_MIDDLEWARE_DASHDOT -->|ready| DOCKER_DASHDOT_PORT
+                TRAEFIK_MIDDLEWARE_DASHDOT -->|not ready| WAITING_PAGE
+            end
+
+        end
+    end
+```
+
+In the above flow chart we have named the Traefik middleware `sablier-dashdot` because it is specific to the Dashdot application,
+but you can absolutely create one to manage several services, or one for each service.
+
+So let's transfer the labels from the service configuration file to a file in our Traefik dynamic configuration.
+I personally use a file per service, for example for Dashdot, the configuration will be held in a file _dashdot.yml_ in the dynamic folder :
+
+Note that you need to define a volume to bind Traefik dynamic configuration to the container,
+in addition to the static configuration (simply create a _dynamic_ folder in _/opt/apps/traefik_) :
+
+```bash
+sudo mkdir /opt/apps/traefik/dynamic
+sudo vi /opt/apps/traefik/dynamic/dashdot.yml
+```
+
+Then add the volume in the Traefik service configuration (_docker-compose.yml_) :
+
+```yaml
+volumes:
+  - ./dynamic:/etc/traefik/dynamic:ro
+```
+
+So Traefik will handle every YAML file placed in the _dynamic_ directory.
+
+That's it, the following labels :
+
+```yaml
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dashdot.rule=Host(`dashdot.example.com`)"
+      - "traefik.http.routers.dashdot.entrypoints=websecure"
+      - "traefik.http.routers.dashdot.tls.certresolver=default"
+      - "traefik.http.routers.dashdot.middlewares=vpn-whitelist"
+      - "traefik.http.services.dashdot.loadbalancer.server.port=3001"
+      - "traefik.docker.network=traefik-net"
+```
+
+becomes the following inside _dashdot.yml_ :
+
+```yaml
+http:
+  services:
+    dashdot:
+      loadBalancer:
+        servers:
+          - url: http://dashdot:3001
+
+  routers:
+    dashdot:
+      rule: 'Host(`dashdot.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: dashdot
+      middlewares:
+        - vpn-whitelist@docker
+        - sablier-dashdot@docker
+```
+
+As you see, the only thing we added is the `sablier-dashdot` **middleware** reference,
+which defines the strategy to use to respond to any incoming HTTP request when the corresponding container is not running :
+
+Then add the labels for the `sablier-dashdot` middleware configuration into the `sablier` service configuration (_docker_compose.yml_ file) :
+
+```yaml
+    labels:
+      - "traefik.enable=true"
+      # Dashdot
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.names=dashdot"
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.sablierUrl=http://sablier:10000"
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.sessionDuration=5m"
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.dynamic.theme=hacker-terminal"
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.dynamic.displayName=Dashdot"
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.dynamic.refreshFrequency=1s"
+      - "traefik.http.middlewares.sablier-dashdot.plugin.sablier.dynamic.showDetails=true"
+```
+
+Add here any other middleware that would need a different configuration for other services.
+
+Basically, it defines a **Traefik middleware** to configure the Sablier plugin to :
+- Provide the name of the service(s) to be checked
+- The URL to Sablier
+- The session duration (will stop the container after that period)
+- The theme for the waiting page
+- The display name of the target service(s), to be displayed on the waiting page
+- The refresh frequency of the waiting page
+- Show the loading instances details
+
+Here is how the "hacker-terminal" waiting page looks like while starting the Dashdot container :
+
+<img src="images/sablier-dashdot-loading.gif" alt="Sablier starting Dashdot"/>
+
+# Backup
+
+We have so far set up a structure with a folder per stack/container (in _/opt/apps_).
+That way each stack definition (Docker Compose file) and bind mount data is fully contained in that single folder.
+
+The only exception is **named volumes**, which store data in the _/var/lib/docker/volumes_ directory.
+This includes the databases of some applications, which could also be backed up separately using the tool associated with the database management system.
+
+This is the only data that really concerns us, thanks to Docker, the system has hardly been modified at all, so there's no need to back it up completely
+(like doing entire system image backup).
+
+So there are three things we have to worry about in terms of backup :
+
+- the content of the _/opt/apps_ directory, holding services configuration and containers bound data
+- the content of the _/var/lib/docker/volumes_, holding the Docker container named volumes data
+- the databases (i.e. MySQL for Defrag-Life website, MongoDB for Ackee application, ...)
+
+Later we can even place volume backups and database exports in the _/opt/apps_ directory so that we can back up everything in one place easily.
+
+## Files
+
+### Rsync
+
+<img src="images/logo-rsync.png" alt="Rsync logo"/>
+
+The simplest way to back up the content of our N100 server is by using `rsync`.
+
+`rsync` (remote sync) is a utility for **transferring** and **synchronizing** files between a computer and a storage drive
+and across networked computers by comparing the modification times and sizes of files.
+
+We can use it to copy the file system (actually only required files) to another machine (such as a Windows computer on the local network,
+or any external drive connected to it) through a mount point.
+
+1. First, make sure to have a folder on the machine that will hold the backup (Windows in my case) that is shared and have enough storage for the server backup :
+
+   - Create a folder to hold the backup data (i.e. _E:\data\N100 backup_),
+   - Right-click on the folder
+   - Select _Properties > Sharing tab_
+   - Click _Share..._ and choose the user with whom you want to share the folder (you can either use your default Windows user or create a specific user for that)
+   - Assign the appropriate permissions (at least Read access).
+   - Click Share, then Done.
+   - Take note of the network path of the share (i.e. \\DESKTOP-ABCDEF\N100 backup).
+
+2. Secondly, mount the shared Windows folder on the server :
+
+   To mount a Windows share, you need to install the _cifs-utils_ package :
+
+   ```bash
+   sudo apt install cifs-utils
+   ```
+
+   Then create a directory where you will mount the shared folder. For example:
+
+   ```bash
+   sudo mkdir /mnt/windows
+   ```
+
+   And mount the shared folder from the Windows machine to the server :
+
+   ```bash
+   sudo mount -t cifs -o username=my_windows_user "//DESKTOP-ABCDEF/N100 backup" /mnt/windows
+   ```
+
+   Explanation:
+   - `-t cifs`: Specifies that you’re using the **CIFS** protocol
+   - `//DESKTOP-ABCDEF/N100 backup`: The network path to the Windows share
+   - `/mnt/windows`: The mount point on the server
+
+   > [!NOTE]
+   > You can create a file to hold the credentials for authentication, instead of specifying it in the command line
+   > (so you can protect the credentials file by setting the appropriate permissions),
+   > this can be done by using the `-o credentials` option of the `mount` command
+
+3. Finally, use `rsync` to synchronize the files to the mount point :
+
+   Install `rsync`:
+
+   ```bash
+   sudo apt install rsync
+   ```
+
+   Then either sync all the file system or only some folders :
+
+   ```bash
+   # all file system with some exceptions
+   sudo rsync -aAXv --exclude={"/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/mnt/*","/media/*","/lost+found"} / /mnt/windows
+   # only specified paths
+   sudo rsync -aAXv /home /opt/apps /var/lib/docker/volumes /var/log /mnt/windows
+   ```
+
+   Explanation:
+   - `-aAXv`: Preserve permissions, ownership, timestamps, and device files, with verbose output
+   - `--exclude`: Exclude certain directories
+   - `/`: The root of the server, to be backed up (without excluded directories)
+   - `/home /opt/apps /var/lib/docker/volumes /var/log`: The 4 directories to be backed up
+   - `/mnt/windows`: The mount point on the server
+
+Once the backup is complete, you can verify that the backup files are on the destination machine and that they contain all your server data.
+
+> [!NOTE]
+> If you want to make a bit-for-bit clone of your entire disk, you can use the `dd` command.
+> However, it requires more storage and time, for the time being I prefer `rsync` for flexibility, file-based backups, and faster cloning of only necessary files
+
+### FreeFileSync
+
+<img src="images/logo-freefilesync.svg" alt="FreeFileSync logo" height="64"/>
+
+Another solution than [rsync](#rsync) is to simply use a tool from the Windows machine, to copy the _/opt/apps_ folder regularly through **SFTP**.
+
+One awesome tool which I've been using for years for synchronizing my disks, is named **FreeFileSync**.
+
+**FreeFileSync** is a **folder comparison** and **synchronization** software that creates and manages backup copies of target files.
+Instead of copying every file every time, FreeFileSync determines the differences between a source and a target folder and transfers only the minimum amount of data needed.
+
+Source and target folders can be **remote** folders (support for **Google Drive** and **FTP/SFTP**).
+
+FreeFileSync is Open Source software, available for Windows, macOS, and Linux.
+
+I will install the Windows version on my home Windows machine, which will be used as client to connect to the Banana Pi board through SFTP
+(SSH File Transfer Protocol, allows secure file transfer trough SSH encrypted connections).
+
+To do a mirror synchronization :
+
+1. Download the software for your operating system at https://freefilesync.org/
+2. Install and start it
+3. Choose left and right folders :
+
+   <img src="images/freefilesync-choose-folders.png" alt="FreeFileSync choose folders"/>
+
+   Click the cloud icon to connect to the Banana Pi board via SFTP and select the _/opt/apps_ folder
+
+4. Compare them :
+
+   <img src="images/freefilesync-compare.png" alt="FreeFileSync compare folders"/>
+
+5. Adapt synchronization settings if needed :
+
+   <img src="images/freefilesync-settings.png" alt="FreeFileSync synchronization settings"/>
+
+6. Start synchronization :
+
+   <img src="images/freefilesync-sync.png" alt="FreeFileSync start synchronization"/>
+
+Refer to the documentation and tutorials on the software's website for more information.
+
+## Volumes
+
+### Backup
+
+We can back up Docker volumes using `docker run` and `tar` command.
+This method involves creating a temporary container that mounts the named volume we want to back up, then using tar to produce an archive of the volume content.
+
+For example to back up the Portainer volume `portainer-vol` to the current directory :
+
+```bash
+sudo docker run --rm --mount source=portainer-vol,target=/mybackup -v $(pwd):/backup busybox tar cvf /backup/portainer-vol-backup.tar /mybackup
+```
+
+- `--rm` will remove the container when it exits
+- `--mount source=portainer-vol,target=/mybackup` will mount the `portainer-vol` volume to the container mount point `/mybackup`
+- `-v $(pwd):/backup` bind mount the current directory into the container's `backup` directory to write the tar file to
+- `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick maintenance
+- `tar cvf /backup/portainer-vol-backup.tar /mybackup` will create an uncompressed tar file of all the files in the `/mybackup` directory
+
+This will create a _portainer-vol-backup.tar_ archive in the current directory.
+The tar will contain a _mybackup_ directory containing all volume data.
+
+Then feel free to move it to the _/opt/apps/portainer_ directory if you want to back it up along with that directory when using FreeFileSync (see [Files](#files)),
+or simply move the backup file to an external server.
+
+> [!IMPORTANT]
+> Some services may need to be stopped during backup or restore to ensure data consistency
+
+### Restore
+
+To restore the volume :
+
+1. Create a new container (this represents the container in which you wish to restore the backup) :
+
+   ```bash
+   sudo docker create -v /data --name newcontainer busybox /bin/bash
+   ```
+
+2. Untar the backup files into the new container volume :
+
+   ```bash
+   sudo docker run --rm --volumes-from newcontainer -v $(pwd):/backup busybox tar -xvf /backup/portainer-vol-backup.tar --strip 1 -C /data
+   ```
+
+- `--rm` will remove the container when it exits
+- `--volumes-from newcontainer` mounts all the volumes from the `newcontainer` container into the new container being started
+- `-v $(pwd):/backup` bind mount the current directory into the container's `/backup` directory to write the tar file to
+- `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick maintenance
+- `tar xvf /backup/portainer-vol-backup.tar --strip 1 -C /data` will extract the files from the tar archive in the `/data` directory of the container's filesystem
+  (without the parent directory thanks to `--strip 1`)
+
+Finally, you can compare the 2 volumes content to check that everything has been copied correctly :
+
+```bash
+sudo diff -qr /var/lib/docker/volumes/portainer-vol /var/lib/docker/volumes/0862be139e8b9e8137c02005739071d2338fd04f6090b8a89d6b5012fc5fb33a
+```
+
+## Databases
+
+When applicable, we can also back up the database directly.
+
+### MySQL
+
+For **MySQL**, we can use **mysqldump**, a command-line utility that is used to generate or restore logical backups of MySQL databases.
+
+To export data :
+
+```shell
+mysqldump --complete-insert --skip-comments --skip-tz-utc --skip-opt --hex-blob --no-set-names --set-charset --column-statistics=0 --set-gtid-purged=OFF -P 3306 -h localhost -u <user> -p <dbname> > db_backup.sql
+```
+
+If you don't have the **mysqldump** utility installed on your environment, you can use the one embedded in the MySQL container :
+
+```shell
+docker exec <container_id> /usr/bin/mysqldump --complete-insert --skip-comments --skip-tz-utc --skip-opt --hex-blob --no-set-names --set-charset --column-statistics=0 --set-gtid-purged=OFF -P 6033 -h prdmysql.unil.ch -u <user> --password=<password_here> <dbname> > db_backup.sql
+```
+
+> [!IMPORTANT]
+> Again there is a slight chance that a database gets inconsistent when backing up hot files, so prefer to stop services before proceeding,
+> but in a home lab with minimal load this is usually not an issue
+
+To import data :
+
+```shell
+mysql -P 3306 -h localhost -u <user> -p <dbname> < db_backup.sql
+```
+
+Or again if you don't have the **mysqldump** utility installed on your environment, you can use the one from the MySQL container :
+
+```shell
+docker exec -i <container_id> /usr/bin/mysql -P 3306 -h localhost -u <user> --password=<password_here> <dbname> < db_backup.sql
+```
 
 # Contributing
 
