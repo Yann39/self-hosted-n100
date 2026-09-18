@@ -1,24 +1,15 @@
-#http:
-#  middlewares:
-#    dashdot:
-#      plugin:
-#        sablier:
-#          names: dashdot
-#          sablierUrl: http://sablier:10000
-#          sessionDuration: 5m
-#          dynamic:
-#            displayName: Dashdot
-#            refreshFrequency: 1s
-#            showDetails: true
-#            theme: hacker-terminal
-#    stirling:
-#      plugin:
-#        sablier:
-#          names: stirling
-#          sablierUrl: http://sablier:10000
-#          sessionDuration: 5m
-#          dynamic:
-#            displayName: Stirling PDF
-#            refreshFrequency: 1s
-#            showDetails: true
-#            theme: hacker-terminal
+http:
+  middlewares:
+    sablier-dashdot:
+      plugin:
+        sablier:
+          sablierUrl: http://sablier:10000
+          names: dashdot
+          group: homelab
+          sessionDuration: 1m
+          ignoreUserAgent: curl
+          dynamic:
+            displayName: Dashdot
+            showDetails: true
+            theme: hacker-terminal
+            refreshFrequency: 5s

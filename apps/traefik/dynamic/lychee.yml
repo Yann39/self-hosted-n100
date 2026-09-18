@@ -1,0 +1,15 @@
+http:
+  services:
+    lychee:
+      loadBalancer:
+        servers:
+          - url: http://lychee:80
+
+  routers:
+    lychee:
+      rule: 'Host(`lychee.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: lychee

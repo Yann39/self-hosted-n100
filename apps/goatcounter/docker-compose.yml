@@ -1,0 +1,35 @@
+services:
+
+  goatcounter:
+    image: arp242/goatcounter:latest
+    container_name: goatcounter
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Zurich"
+    # The image entrypoint is the goatcounter binary, its default command being "serve -automigrate".
+    # We keep -automigrate (pending migrations are applied at start, useful when pulling a new image) and add :
+    #   -tls=http  serve plain HTTP, TLS is terminated by Traefik. This one is NOT optional : without it
+    #              goatcounter defaults to "acme" in production and tries to get its own certificates
+    #   -listen    the address Traefik forwards to
+    command: [ "serve", "-automigrate", "-tls=http", "-listen=:8080" ]
+    volumes:
+      # SQLite database and uploaded data, in a named volume : the container runs as a non-root user,
+      # a bind mount would need the right ownership on the host
+      - goatcounter-data:/home/goatcounter/goatcounter-data
+    networks:
+      - goatcounter-net
+      - traefik-public-net
+
+volumes:
+
+  goatcounter-data:
+    name: goatcounter-data-vol
+
+networks:
+
+  goatcounter-net:
+    name: goatcounter-net
+
+  traefik-public-net:
+    name: traefik-public-net
+    external: true

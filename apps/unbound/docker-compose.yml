@@ -1,0 +1,18 @@
+services:
+
+  unbound:
+    image: "mvance/unbound:latest"
+    container_name: unbound
+    restart: unless-stopped
+    hostname: "unbound"
+    volumes:
+      - "./unbound:/opt/unbound/etc/unbound/"
+    networks:
+      pihole-net:
+        ipv4_address: 10.2.0.200
+
+networks:
+
+  pihole-net:
+    name: pihole-net
+    external: true

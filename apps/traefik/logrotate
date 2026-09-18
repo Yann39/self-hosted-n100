@@ -1,0 +1,14 @@
+# Rotation of the Traefik access log (copy this file to /etc/logrotate.d/traefik on the host).
+# Traefik reopens its log files when it receives the USR1 signal, no restart needed.
+/opt/apps/traefik/logs/access.log {
+    daily
+    rotate 7
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0644 root root
+    postrotate
+        /usr/bin/docker kill --signal=USR1 traefik >/dev/null 2>&1 || true
+    endscript
+}

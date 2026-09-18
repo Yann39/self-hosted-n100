@@ -1,0 +1,17 @@
+http:
+  services:
+    portainer:
+      loadBalancer:
+        servers:
+          - url: http://portainer:9000
+
+  routers:
+    portainer:
+      rule: 'Host(`portainer.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: portainer
+      middlewares:
+        - vpn-whitelist@file
