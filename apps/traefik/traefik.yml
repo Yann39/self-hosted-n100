@@ -7,6 +7,10 @@ entryPoints:
 
   websecure:
     address: ':443'
+    http:
+      middlewares:
+        # Every request on 443 is checked against the CrowdSec decisions first (see the CrowdSec section)
+        - crowdsec@file
 
 providers:
   docker:
@@ -28,8 +32,23 @@ certificatesResolvers:
 experimental:
   plugins:
     sablier:
-      moduleName: "github.com/acouvreur/sablier"
-      version: "v1.7.0"
-
+      moduleName: "github.com/sablierapp/sablier-traefik-plugin"
+      version: "v1.1.0"
+    traefik-oidc-auth:
+      moduleName: "github.com/sevensolutions/traefik-oidc-auth"
+      version: "v0.18.0"
+    crowdsec-bouncer-traefik-plugin:
+      moduleName: "github.com/maxlerebourg/crowdsec-bouncer-traefik-plugin"
+      version: "v1.7.1"
 log:
   level: info
+
+accessLog:
+  # One JSON line per request, written to a file shared (read-only) with the CrowdSec container
+  filePath: /var/log/traefik/access.log
+  format: json
+  fields:
+    headers:
+      names:
+        # Request headers are dropped from the log by default, the User-Agent is needed by the CrowdSec scenarios
+        User-Agent: keep

@@ -1,18 +1,18 @@
 http:
   services:
-    dashdot:
+    pihole:
       loadBalancer:
         servers:
-          - url: http://dashdot:3001
+          - url: http://pihole:80
 
   routers:
-    dashdot:
-      rule: 'Host(`dashdot.example.com`)'
+    pihole:
+      rule: 'Host(`pihole.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: dashdot
+      service: pihole
       middlewares:
         - vpn-whitelist@file
-        - sablier-dashdot@file
+        - pihole-auth@file

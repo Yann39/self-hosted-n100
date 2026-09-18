@@ -9,15 +9,7 @@ services:
     restart: unless-stopped
     networks:
       - portainer-net
-      - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.portainer.rule=Host(`portainer.example.com`)"
-      - "traefik.http.routers.portainer.entrypoints=websecure"
-      - "traefik.http.routers.portainer.tls.certresolver=default"
-      - "traefik.http.routers.portainer.middlewares=vpn-whitelist"
-      - "traefik.http.services.portainer.loadbalancer.server.port=9000"
-      - "traefik.docker.network=traefik-net"
+      - traefik-private-net
 
 volumes:
   portainer-vol:
@@ -28,6 +20,6 @@ networks:
   portainer-net:
     name: portainer-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-private-net:
+    name: traefik-private-net
     external: true

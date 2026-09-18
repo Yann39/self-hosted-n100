@@ -1,0 +1,36 @@
+http:
+  services:
+    goatcounter:
+      loadBalancer:
+        servers:
+          - url: http://goatcounter:8080
+
+  routers:
+    # Public part : everything a visitor's browser needs to report a hit. No whitelist, no authentication,
+    # otherwise the collection silently stops. PathPrefix(`/count`) covers /count, /count.js and /counter/...
+    # The higher priority makes this router win over the one below, which matches the whole host.
+    goatcounter-public:
+      rule: 'Host(`goatcounter.example.com`) && (PathPrefix(`/count`) || PathPrefix(`/loader`) || PathPrefix(`/load-widget`) || Path(`/jserr`) || Path(`/csp`) || Path(`/robots.txt`) || Path(`/security.txt`))'
+      priority: 100
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: goatcounter
+
+    # Everything else : the dashboard, the settings, the login page, behind PocketID authentication
+    goatcounter:
+      rule: 'Host(`goatcounter.example.com`)'
+      priority: 1
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: goatcounter
+      # IP whitelist first : the dashboard is only meant to be used from the local network or through the VPN,
+      # so it does not depend on the authentication middleware alone. This matters because the host is public
+      # and GoatCounter's own login is disabled (its site is set to public) : without this, a mistake in the
+      # public router's path rule above would expose the statistics to the internet.
+      middlewares:
+        - vpn-whitelist@file
+        - goatcounter-auth@file

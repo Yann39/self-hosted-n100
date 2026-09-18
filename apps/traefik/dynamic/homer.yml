@@ -1,0 +1,17 @@
+http:
+  services:
+    homer:
+      loadBalancer:
+        servers:
+          - url: http://homer:8080
+
+  routers:
+    homer:
+      rule: 'Host(`dashboard.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: homer
+      middlewares:
+        - vpn-whitelist@file

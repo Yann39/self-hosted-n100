@@ -1,0 +1,44 @@
+services:
+
+  crowdsec-web-ui:
+    image: ghcr.io/theduffman85/crowdsec-web-ui:latest
+    container_name: crowdsec-web-ui
+    restart: unless-stopped
+    # Holds the password of the CrowdSec machine account (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      # Built-in authentication stays enabled : the local account (password, TOTP, passkeys) is the fallback
+      # if the OIDC login ever fails, and it is what gives the UI a real identity and admin / read-only roles
+      CONFIG_AUTH_ENABLED: "auto"
+      # Single sign-on against PocketID, handled by the application itself (no middleware on the router).
+      # The issuer is the PUBLIC URL, no trailing slash : the container reaches it through the Traefik network
+      # alias and the pocketid-whitelist middleware, see the PocketID section
+      CONFIG_AUTH_OIDC_ISSUER_URL: https://pocketid.example.com
+      CONFIG_AUTH_OIDC_CLIENT_ID: <oidc_client_id>
+      # CONFIG_AUTH_OIDC_CLIENT_SECRET comes from the .env file
+      # Role given to a user matching no group. It defaults to "deny", which rejects every OIDC user with
+      # "OIDC user is not authorized" as long as no group is mapped. With a single administrator, "admin" is
+      # enough : PocketID already decides who may use the client, through the allowed groups of the client itself.
+      # For real admin / read-only roles, set it back to "deny" and map the groups :
+      #   CONFIG_AUTH_OIDC_SCOPE: "openid profile email groups"
+      #   CONFIG_AUTH_OIDC_GROUPS_CLAIM: groups
+      #   CONFIG_AUTH_OIDC_ADMIN_GROUPS_0: <admin_group>
+      #   CONFIG_AUTH_OIDC_READ_ONLY_GROUPS_0: <read_only_group>
+      CONFIG_AUTH_OIDC_UNMATCHED_ROLE: admin
+      # CrowdSec local API, reached by container name on the private Traefik network
+      CONFIG_INSTANCE_LAPI_URL: http://crowdsec:8080
+      CONFIG_INSTANCE_LAPI_AUTH_TYPE: password
+      CONFIG_INSTANCE_LAPI_AUTH_USERNAME: crowdsec-web-ui
+      # CONFIG_INSTANCE_LAPI_AUTH_PASSWORD comes from the .env file
+    volumes:
+      # SQLite database of the UI (its own users, notification rules, GeoNames data)
+      - ./data:/app/data
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true

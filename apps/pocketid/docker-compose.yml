@@ -1,0 +1,22 @@
+services:
+
+  pocketid:
+    image: ghcr.io/pocket-id/pocket-id:v2
+    container_name: pocketid
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - /opt/apps/pocketid/encryption_key:/opt/pocket-id/encryption_key:ro
+    networks:
+      - pocketid-net
+      - traefik-private-net
+
+networks:
+
+  pocketid-net:
+    name: pocketid-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true

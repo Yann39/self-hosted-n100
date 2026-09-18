@@ -1,0 +1,17 @@
+http:
+  services:
+    phpmyadmin:
+      loadBalancer:
+        servers:
+          - url: http://phpmyadmin:80
+
+  routers:
+    phpmyadmin:
+      rule: 'Host(`phpmyadmin.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: phpmyadmin
+      middlewares:
+        - vpn-whitelist@file

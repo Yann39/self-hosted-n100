@@ -1,0 +1,59 @@
+http:
+  services:
+    pocketid:
+      loadBalancer:
+        servers:
+          - url: http://pocketid:1411
+
+  routers:
+    pocketid:
+      rule: 'Host(`pocketid.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: pocketid
+      # Wider whitelist than the other private services : the containers must reach the provider too (see below)
+      middlewares:
+        - pocketid-whitelist@file
+
+  middlewares:
+    # Same as vpn-whitelist, plus the private Docker network : an application authenticating natively against
+    # PocketID fetches the discovery document and exchanges the token itself, from its container.
+    # The public Docker network is NOT included : an application exposed to the internet must never reach the provider this way.
+    pocketid-whitelist:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/24" # your LAN
+          - "10.0.0.0/24" # Wireguard subnet
+          - "172.21.0.0/16" # traefik-private-net, check it with : docker network inspect traefik-private-net
+    traefik-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    pihole-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    goatcounter-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]

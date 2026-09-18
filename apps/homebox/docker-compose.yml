@@ -1,0 +1,38 @@
+services:
+
+  homebox:
+    image: ghcr.io/sysadminsmedia/homebox:latest
+    container_name: homebox
+    restart: always
+    env_file: .env
+    environment:
+      - HBOX_LOG_LEVEL=info
+      - HBOX_LOG_FORMAT=text
+      - HBOX_WEB_MAX_UPLOAD_SIZE=10
+      - HBOX_OIDC_ENABLED=true
+      - HBOX_OIDC_ISSUER_URL=https://pocketid.example.com
+      - HBOX_OIDC_CLIENT_ID=<oidc_client_id>
+      #- HBOX_OIDC_AUTO_REDIRECT=true
+      #- HBOX_OPTIONS_ALLOW_LOCAL_LOGIN=false
+      - HBOX_OPTIONS_TRUST_PROXY=true
+      # Please consider allowing analytics to help us improve Homebox (basic computer information, no personal data)
+      - HBOX_OPTIONS_ALLOW_ANALYTICS=true
+    volumes:
+      - homebox-data:/data/
+    networks:
+      - homebox-net
+      - traefik-private-net
+
+volumes:
+
+  homebox-data:
+    name: homebox-data-vol
+
+networks:
+
+  homebox-net:
+    name: homebox-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
