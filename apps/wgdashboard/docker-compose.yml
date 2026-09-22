@@ -1,0 +1,14 @@
+services:
+
+  wgdashboard:
+    image: ghcr.io/wgdashboard/wgdashboard:latest
+    restart: unless-stopped
+    container_name: wgdashboard
+    volumes:
+      - /etc/wireguard:/etc/wireguard
+      - ./data:/data
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    extra_hosts:
+      - "pocketid.example.com:192.168.0.16"
