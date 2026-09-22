@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.1.3-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-18_Sept_2026-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.1.4-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-22_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
@@ -55,7 +55,7 @@ It uses only **free** and **open source** software.
     8. [Network flow](#network-flow)
 
    </details>
-4. <details>
+4. <details open>
    <summary><a href="#install-services">Install services</a></summary>
 
    1. [PocketID](#pocketid)
@@ -127,6 +127,7 @@ These are the tools we are going to run :
 |        <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="32"/>        | CrowdSec        | https://github.com/crowdsecurity/crowdsec       | Collaborative intrusion prevention, bans attackers   |
 | <img src="images/logo-crowdsec-web-ui.svg" alt="CrowdSec Web UI logo" height="32"/> | CrowdSec Web UI | https://github.com/TheDuffman85/crowdsec-web-ui | Web dashboard for CrowdSec alerts and decisions      |
 |       <img src="images/logo-wireguard.svg" alt="Wireguard logo" height="30"/>       | Wireguard       | https://github.com/WireGuard                    | Simple yet fast and modern VPN                       |
+|     <img src="images/logo-wgdashboard.png" alt="WGDashboard logo" height="30"/>     | WGDashboard     | https://github.com/WGDashboard/WGDashboard      | Web interface to manage WireGuard peers              |
 |         <img src="images/logo-pihole.svg" alt="Pi-hole logo" height="34"/>          | Pi-hole         | https://github.com/pi-hole/pi-hole              | Network-wide ad blocking                             |
 |         <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>         | Unbound         | https://github.com/NLnetLabs/unbound            | Validating, recursive, and caching DNS resolver      |
 |           <img src="images/logo-homer.png" alt="Homer logo" height="30"/>           | Homer           | https://github.com/bastienwirtz/homer           | Static application dashboard                         |
@@ -1394,10 +1395,10 @@ Everything about performance is in [VPN connection speed](#vpn-connection-speed)
 First, create the folders that will hold data and configuration :
 
 ```bash
-sudo mkdir -p /opt/apps/pihole /opt/apps/unbound
+sudo mkdir -p /opt/apps/pihole /opt/apps/unbound /opt/apps/wgdashboard/data
 ```
 
-Then from this project's _pihole_ and _unbound_ directories, copy the _docker-compose.yml_ files into _/opt/apps/pihole_ and _/opt/apps/unbound_ respectively.
+Then from this project's _pihole_, _unbound_ and _wgdashboard_ directories, copy the _docker-compose.yml_ files into the matching _/opt/apps_ folders.
 For more details about these files, see [Configuration files details](#configuration-files-details-1).
 
 WireGuard itself is a Debian package :
@@ -1505,6 +1506,64 @@ PersistentKeepalive = 25
 > Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic for the main address through the Wi-Fi or the USB adapter,
 > NetworkManager detected its own Wi-Fi as an address conflict and dropped the USB adapter address for hours at each DHCP renewal, and the client I had pointed to that address
 > lost its tunnel at random and got a fraction of the throughput when it worked. Disable the Wi-Fi (`sudo nmcli radio wifi off`) and unplug what you don't use.
+
+#### WGDashboard
+
+<img src="images/logo-wgdashboard.png" alt="WGDashboard logo" height="88"/>
+
+Managing the peers in _wg0.conf_ with an editor works, but a web interface is more comfortable : **WGDashboard** shows the interfaces, the peers, their last handshake
+and their traffic, creates a peer with its keys and its QR code, and serves the configuration file to download. It is the replacement for WireGuard UI,
+which is no longer maintained and which could not be used with WireGuard running on the host.
+
+> [!IMPORTANT]
+> The container **must share the host's network namespace** (`network_mode: host`). WireGuard runs on the host, so the `wg0` interface lives in the host's namespace :
+> a container with its own namespace can read _wg0.conf_ through the bind mount, and will happily list your peers, but it cannot query the interface itself.
+> The symptom is unmistakable : the peers are displayed but always as **disconnected**, with no handshake and no traffic, whatever their real state.
+
+Two consequences follow from the host namespace, and they are the whole difficulty of this service :
+
+- Traefik can no longer reach it by container name, since the container is on no Docker network. The service points at the mini PC address instead, `http://192.168.0.16:10086`
+- the dashboard is reachable **directly** at that same address, hence bypassing Traefik, the IP whitelist and any authentication middleware. Its own login therefore remains
+  the barrier that covers every path, and it is the reason we do not put PocketID in front of it : that would only protect the nice URL while leaving the direct one open
+
+To close that direct path, `app_ip` in the `[Server]` section of _wg-dashboard.ini_ can bind the dashboard to the gateway address of the private Traefik network
+(`docker network inspect traefik-private-net --format '{{range .IPAM.Config}}{{.Gateway}}{{end}}'`) so that only Traefik and the containers of that network can reach it.
+Keep in mind that this address depends on the subnet Docker assigns, and would change if the network were recreated.
+
+> [!NOTE]
+> **OIDC is not available for the admin dashboard**, only for the client side app. The `[OIDC] admin_enable` setting and the `/api/oidc/toggle` endpoint exist,
+> and the `Admin` section of _wg-dashboard-oidc-providers.json_ can be filled, but nothing consumes them : `dashboard.py` never instantiates the `DashboardOIDC` module,
+> so no provider is registered, no request is made to the provider, nothing is logged, and no button appears. Don't spend an evening looking for a configuration mistake.
+>
+> The single sign-on documented by the project applies to the **client side app** (`/client`), a self-service portal where people sign in to download the peers assigned
+> to them : fill the `Client` section instead, set `client_enable = true`, and register the portal URL itself as the callback. The (empty) **Clients** tab of the admin
+> dashboard lists those portal accounts, not your peers — an empty tab is normal when you are the only user.
+>
+> The `extra_hosts` entry of the Compose file is there for that case : in the host namespace the container resolves names through the **host** resolver, which knows
+> nothing of the private names, so the provider would not even be resolved. See [PocketID](#pocketid) for the general problem and its other solutions.
+
+##### Setting up
+
+Create the folder, then copy the _docker-compose.yml_ file from this project's _wgdashboard_ directory into _/opt/apps/wgdashboard_,
+and the _wgdashboard.yml_ file from _traefik/dynamic_ into _/opt/apps/traefik/dynamic_ :
+
+```bash
+sudo mkdir -p /opt/apps/wgdashboard/data
+```
+
+Then add a **local DNS record** `wgdashboard.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), start the container (see [Run](#run-2)) and open
+https://wgdashboard.example.com. The default credentials are `admin` / `admin`, change them immediately in the settings, where TOTP can also be enabled.
+
+Your existing peers appear on their own : the dashboard reads the very _wg0.conf_ the interface uses, so nothing has to be imported and nothing is duplicated.
+
+> [!WARNING]
+> The dashboard can start and stop the interface, but `wg0` is managed by `wg-quick@wg0` through systemd. Avoid switching it from both sides, otherwise systemd
+> and the dashboard end up with diverging views of what is running.
+>
+> Peers created from the dashboard are written directly into _wg0.conf_. Keep a copy of that file with your backups : it holds the **server's private key**, and losing it
+> means every client has to be reconfigured.
+
+<img src="images/screen-wgdashboard.png" alt="WG Dashboard screenshot"/>
 
 #### Pi-hole
 
@@ -1761,6 +1820,29 @@ networks:
 This **Compose** file only defines the `unbound` service, on the same (external) `pihole-net` network with the **static IP address** `10.2.0.200`,
 and binds the configuration folder so that _unbound.conf_ can be edited (see [Unbound](#unbound)). Unbound is not exposed at all, only Pi-Hole talks to it.
 
+:page_facing_up: _wgdashboard/docker-compose.yml_ :
+
+```yaml
+services:
+
+  wgdashboard:
+    image: ghcr.io/wgdashboard/wgdashboard:latest
+    restart: unless-stopped
+    container_name: wgdashboard
+    volumes:
+      - /etc/wireguard:/etc/wireguard
+      - ./data:/data
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
+    extra_hosts:
+      - "pocketid.example.com:192.168.0.16"
+```
+
+This one is the odd one out : no network and no published port, because `network_mode: host` puts it in the **host's** network namespace — the only way for it to see
+the live state of `wg0` (see [WGDashboard](#wgdashboard)). `NET_ADMIN` lets it act on the interface, _/etc/wireguard_ is shared with the host so that it edits the very
+file `wg-quick` uses, and _data_ holds its own database and settings. `extra_hosts` is only useful if you enable the single sign-on of the client side app.
+
 #### Traefik routing
 
 :page_facing_up: _traefik/dynamic/pihole.yml_ (to copy into _/opt/apps/traefik/dynamic/_, the directory watched by the `file` provider of _traefik.yml_) :
@@ -1791,17 +1873,43 @@ It declares the `pihole` **service** pointing to the container on port `80` (rea
 without restarting anything. The `vpn-whitelist` middleware keeps the web UI private (local network and VPN peers only).
 The `pihole-auth` middleware is a forward-auth middleware (I use PocketID) to require authentication (see [PocketID](#pocketid)).
 
+:page_facing_up: _traefik/dynamic/wgdashboard.yml_ :
+
+```yaml
+http:
+  services:
+    wgdashboard:
+      loadBalancer:
+        servers:
+          - url: http://192.168.0.16:10086
+
+  routers:
+    wgdashboard:
+      rule: 'Host(`wgdashboard.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: wgdashboard
+      middlewares:
+        - vpn-whitelist@file
+```
+
+The WGDashboard router is the same, with one difference : its service points at the **mini PC address** rather than at a container name, since the container has no
+Docker network of its own. Only the IP whitelist is applied, for the reason explained in [WGDashboard](#wgdashboard).
+
 ### Run
 
-Once the tunnel is up (see [WireGuard](#wireguard)), run the two Compose files :
+Once the tunnel is up (see [WireGuard](#wireguard)), run the three Compose files :
 
 ```bash
 sudo docker-compose -f /opt/apps/pihole/docker-compose.yml up -d
 sudo docker-compose -f /opt/apps/unbound/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/wgdashboard/docker-compose.yml up -d
 ```
 
-You should end up with the `wg0` interface (`sudo wg show`) and **2** running containers, `pihole` and `unbound`.
-Unbound is not exposed, Pi-Hole is reachable at https://pihole.example.com.
+You should end up with the `wg0` interface (`sudo wg show`) and **3** running containers, `pihole`, `unbound` and `wgdashboard`.
+Unbound is not exposed, Pi-Hole is reachable at https://pihole.example.com and WGDashboard at https://wgdashboard.example.com.
 
 # Test the network
 

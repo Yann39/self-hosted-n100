@@ -1,0 +1,17 @@
+http:
+  services:
+    wgdashboard:
+      loadBalancer:
+        servers:
+          - url: http://192.168.0.16:10086
+
+  routers:
+    wgdashboard:
+      rule: 'Host(`wgdashboard.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: wgdashboard
+      middlewares:
+        - vpn-whitelist@file
