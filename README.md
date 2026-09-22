@@ -4728,6 +4728,8 @@ restarting.
 
 The application is available at https://homebox.example.com, with a button to log in through PocketID.
 
+<img src="images/screen-homebox.png" alt="Homebox screenshot"/>
+
 ## GoatCounter
 
 <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="128"/>
