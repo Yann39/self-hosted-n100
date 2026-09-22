@@ -18,6 +18,11 @@ It uses only **free** and **open source** software.
   <img alt="Open-source initiative logo" src="images/logo-open-source-initiative-black.svg" height="128"/>
 </picture>
 
+> [!NOTE]
+> This project is based on my previous **home lab** setup running on a **Banana Pi** board, this one contains more
+> up-to-date instructions.
+> The old project can be found [here](https://github.com/Yann39/self-hosted).
+
 > [!IMPORTANT]
 > The content of this repository is provided "as is", with no guarantee that the information is complete or error-free.
 > The techniques and tools discussed here come with inherent risks.
@@ -25,14 +30,14 @@ It uses only **free** and **open source** software.
 
 # Table of Content
 
-1. <details>
+1. <details open>
    <summary><a href="#overview">Overview</a></summary>
 
     1. [Plan](#plan)
     2. [Target architecture](#target-architecture)
 
    </details>
-2. <details>
+2. <details open>
    <summary><a href="#install-and-prepare-system">Install and prepare system</a></summary>
 
     1. [System user](#system-user)
@@ -55,46 +60,46 @@ It uses only **free** and **open source** software.
     8. [Network flow](#network-flow)
 
    </details>
-4. <details>
+4. <details open>
    <summary><a href="#install-services">Install services</a></summary>
 
-   1. [PocketID](#pocketid)
-   2. [CrowdSec](#crowdsec)
-   3. [CrowdSec Web UI](#crowdsec-web-ui)
-   4. [Portainer](#portainer)
-   5. [PhpMyAdmin](#phpmyadmin)
-   6. [Homer](#homer)
-   7. [Dashdot](#dashdot)
-   8. [Lychee](#lychee)
-   9. [Homebox](#homebox)
-   10. [Goatcounter](#goatcounter)
-   11. [Defrag-life](#defrag-life)
-   12. [CCTeam](#ccteam)
+    1. [PocketID](#pocketid)
+    2. [CrowdSec](#crowdsec)
+    3. [CrowdSec Web UI](#crowdsec-web-ui)
+    4. [Portainer](#portainer)
+    5. [PhpMyAdmin](#phpmyadmin)
+    6. [Homer](#homer)
+    7. [Dashdot](#dashdot)
+    8. [Lychee](#lychee)
+    9. [Homebox](#homebox)
+    10. [Goatcounter](#goatcounter)
+    11. [Defrag-life](#defrag-life)
+    12. [CCTeam](#ccteam)
 
    </details>
-5. <details>
+5. <details open>
    <summary><a href="#scale-to-zero-with-sablier">Scale to zero with Sablier</a></summary>
 
-   1. [Install Sablier](#install-sablier)
-   2. [Install Traefik plugin](#install-traefik-plugin)
-   3. [Configure target applications](#configure-target-applications)
+    1. [Install Sablier](#install-sablier)
+    2. [Install Traefik plugin](#install-traefik-plugin)
+    3. [Configure target applications](#configure-target-applications)
 
    </details>
-6. <details>
+6. <details open>
    <summary><a href="#backup">Backup</a></summary>
 
-   1. [Files](#files)
-   2. [Volumes](#volumes)
-   3. [Databases](#databases)
+    1. [Files](#files)
+    2. [Volumes](#volumes)
+    3. [Databases](#databases)
 
    </details>
-7. <details>
+7. <details open>
    <summary><a href="#contributing">Contributing</a></summary>
    </details>
-8. <details>
+8. <details open>
    <summary><a href="#acknowledgments">Acknowledgments</a></summary>
    </details>
-9. <details>
+9. <details open>
    <summary><a href="#license">License</a></summary>
    </details>
 
@@ -102,13 +107,11 @@ It uses only **free** and **open source** software.
 
 ## Plan
 
-This project is based on my previous **home lab** setup running on a **Banana pi** board, it contains similar but maybe more up-to-date instructions.
-The old project can be found [here](https://github.com/Yann39/self-hosted).
-
 The goal is still the same : learning, and have an environment :
 
 - **100% self-hosted** (privacy preserving, full control over data and software)
-- **Secure** (authentication, SSL/TLS, reverse proxy, firewall, ad blocking, DDOS protection, rate limiting, custom DNS resolver, ...)
+- **Secure** (authentication, SSL/TLS, reverse proxy, firewall, ad blocking, DDOS protection, rate limiting, custom DNS
+  resolver, ...)
 - **Lightweight** (runs smoothly with minimal hardware and software requirements)
 - **Container-ready** (isolated, portable, scalable applications)
 - **Accessible** (some services accessible only locally, some only through VPN, some publicly)
@@ -140,7 +143,8 @@ These are the tools we are going to run :
 And also some personal applications :
 
 - My first **PHP** / **MySQL** website from the early 2000's ! : https://github.com/Yann39/defrag-life
-- A **GraphQL API**  (**Java** / **Spring Boot**) for one of my **Flutter** mobile applications : https://github.com/Yann39/ccteam-graphql
+- A **GraphQL API**  (**Java** / **Spring Boot**) for one of my **Flutter** mobile
+  applications : https://github.com/Yann39/ccteam-graphql
 
 All of this runs on a **Trigkey G4 mini PC** ! With the following specifications :
 
@@ -155,7 +159,7 @@ All of this runs on a **Trigkey G4 mini PC** ! With the following specifications
         <li>Integrated Intel UHD GPU handling 4K@60Hz</li>
         <li>16GB DDR4 3200MHz</li>
         <li>500GB M.2 NVME SSD</li>
-        <li>1 GbE ethernet & Wifi 6</li>
+        <li>1 GbE ethernet & Wi-Fi 6</li>
         <li>4 x USB 3.2 Gen2</li>
       </ul>
     </td>
@@ -167,15 +171,18 @@ All of this runs on a **Trigkey G4 mini PC** ! With the following specifications
 > I only have a few users on my public applications,
 > of course if you need to handle more load you might consider a better machine.
 
-It should also work on many other **x86** based mini PCs.
+It should also work on many other **x86** based computers.
 
 ## Target architecture
 
-Here is a chart representing the global network "architecture" we are going to set up, simplified with only the most relevant services.
+Here is a chart representing the global network "architecture" we are going to set up, simplified with only the most
+relevant services.
 See [Network flow](#network-flow) for more detailed schemas.
 
-This architecture allows exposing applications to the internet while restricting access to some of them only through **VPN** or from the local network.
-It's up to you to choose the accessibility level you need for each service, you may want some to be accessible only from your local network,
+This architecture allows exposing applications to the internet while restricting access to some of them only through
+**VPN** or from the local network.
+It's up to you to choose the accessibility level you need for each service, you may want some to be accessible only from
+your local network,
 some only via VPN, and others to anyone from the internet.
 
 ```mermaid
@@ -190,7 +197,7 @@ flowchart TB
     style UNBOUND_CONTAINER fill: #663535
     style MYAPP_CONTAINER fill: #663535
     style CROWDSEC_CONTAINER fill: #663535
-    style SABLIER_CONTAINER fill:#663535
+    style SABLIER_CONTAINER fill: #663535
     style WIREGUARD_HOST fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
@@ -271,15 +278,16 @@ flowchart TB
                 DOCKER_TRAEFIK_PORT8080
             end
 
-           subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
-              DOCKER_SABLIER_PORT10000
-              WAITING_PAGE(Waiting page)
-           end
+            subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
+                DOCKER_SABLIER_PORT10000
+                WAITING_PAGE(Waiting page)
+            end
 
             subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
                 subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
-                    PIHOLE_DNS_TRAEFIK
-                    PIHOLE_DNS_PIHOLE
+                    direction TB
+                    PIHOLE_DNS_TRAEFIK ~~~
+                    PIHOLE_DNS_PIHOLE ~~~
                     PIHOLE_DNS_MYAPP
                 end
                 DOCKER_PIHOLE_PORT53
@@ -288,7 +296,7 @@ flowchart TB
             end
 
             subgraph WIREGUARD_HOST[WIREGUARD CONTAINER]
-               DOCKER_WIREGUARD_PORT51820
+                DOCKER_WIREGUARD_PORT51820
             end
 
             subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
@@ -307,8 +315,12 @@ flowchart TB
 
     end
 
-    WIREGUARD_CLIENT_ENDPOINT ---> SUBDOMAIN_WIREGUARD
-    WIREGUARD_CLIENT_DNS ------>|Server tunnel address| DOCKER_PIHOLE_PORT53
+    CLIENT((User )) -.-> VPN_CLIENT
+    BROWSER((Browser)) --> HOSTING_PROVIDER
+    CLIENT -.-> BROWSER
+    VPN_CLIENT --> BROWSER
+    WIREGUARD_CLIENT_ENDPOINT -.->|Server static IP\n192.168.0.16| SERVER_DEVICE
+    WIREGUARD_CLIENT_DNS -->|Server tunnel address\n10.0.0.1| SERVER_DEVICE
     ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
@@ -322,7 +334,7 @@ flowchart TB
     CROWDSEC_BOUNCER -.->|every request logged| ACCESS_LOG
     ACCESS_LOG -.........->|reads, detects attacks| CROWDSEC_ENGINE
     CROWDSEC_ENGINE -.->|decisions| CROWDSEC_BOUNCER
-    CROWDSEC_ENGINE <-..->|signals / community blocklist| CROWDSEC_COMMUNITY
+    CROWDSEC_ENGINE <-...->|signals / community blocklist| CROWDSEC_COMMUNITY
     TRAEFIK_ROUTER_MYAPP --> REDIRECT
     TRAEFIK_ROUTER_PIHOLE --> REDIRECT
     TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| REDIRECT
@@ -339,18 +351,22 @@ flowchart TB
     UNBOUND_CONTAINER <----> ROOT_DNS_SERVERS
 ```
 
-Basically all services will be accessible via dedicated subdomains which will point to our local network, either through **dynamic DNS** or through **local DNS records**,
-then a **reverse proxy** will be responsible for routing the requests to the right application running in **Docker** containers.
+Basically all services will be accessible via dedicated subdomains which will point to our local network, either through
+**dynamic DNS** or through **local DNS records**,
+then a **reverse proxy** will be responsible for routing the requests to the right application running in **Docker**
+containers.
 
 We make the **ISP upstream DNS** (from **router** configuration) point to the server **IP address**,
 so that we reroute the entire Internet traffic through **Pi-hole** and thus take advantage of its benefits.
 
 In this example **Traefik** (_traefik.example.com_) and **Pi-Hole** (_pihole.example.com_) are only accessible
 through VPN and from the local network thanks to local DNS records and IP whitelisting,
-while **Myapp** (_myapp.example.com_) is also accessible from the internet publicly. In addition, Traefik dashboard is behind **OIDC authentication** through **PocketID**, see [PocketID](#pocketid).
+while **Myapp** (_myapp.example.com_) is also accessible from the internet publicly. In addition, Traefik dashboard is
+behind **OIDC authentication** through **PocketID**, see [PocketID](#pocketid).
 
-On top of that, **CrowdSec** watches the Traefik access log and its bouncer, plugged on the HTTPS entrypoint, rejects the IP addresses flagged as malicious
-(by our own scenarios or by the community blocklist) before they reach any service, see [CrowdSec](#crowdsec).
+On top of that, **CrowdSec** watches the Traefik access log and its bouncer, plugged on the HTTPS entrypoint, rejects
+the IP addresses flagged as malicious (by our own scenarios or by the community blocklist) before they reach any
+service, see [CrowdSec](#crowdsec).
 
 You will find more details on how all this has been implemented later in this guide.
 
@@ -358,14 +374,18 @@ You will find more details on how all this has been implemented later in this gu
 
 <img src="images/logo-debian.svg" alt="Debian logo"/>
 
-By default, the Mni PC came with **Windows 11**, I simply installed **Debian 12** instead (backup the Windows key before, just in case).
+By default, the Mni PC came with **Windows 11**, I simply installed **Debian 12** instead (then followed version up to
+**13.4**, which is the version I use at the time of writing this guide).
+Backup the Windows key before, just in case.
 
 - Download latest **Debian** image for amd64 :
     - _debian-12.5.0-amd64-netinst.iso_
 - Download **Rufus** or equivalent software to be able to write the image to a USB key
 - Simply select the image in **Rufus** and write it to the USB key with the default proposed options
-- Insert the USB key into the mini PC and start it, you may need to access the bios to change the boot device priority, to boot on the USB key
-- Then follow the Debian installation instructions, I personally installed the basic system without GUI (no desktop environment)
+- Insert the USB key into the mini PC and start it, you may need to access the bios to change the boot device priority,
+  to boot on the USB key
+- Then follow the Debian installation instructions, I personally installed the basic system without GUI (no desktop
+  environment)
 
 ## System user
 
@@ -373,13 +393,18 @@ When installing **Debian**, you should have been asked to create a **regular use
 We will simply use that user for the whole guide.
 
 For security reasons, do not use the `root` user directly.
-If you run a program as root and a security flaw is exploited, the attacker has access to the whole system without restriction.
-Using a regular user, even with sudo enabled, will require running `sudo` and will still prompt for the account password as an additional security step.
-It is also safer in case you unintentionally issue a command that could hurt the system (like deleting system files, etc.).
+If you run a program as root and a security flaw is exploited, the attacker has access to the whole system without
+restriction.
+Using a regular user, even with sudo enabled, will require running `sudo` and will still prompt for the account password
+as an additional security step.
+It is also safer in case you unintentionally issue a command that could hurt the system (like deleting system files,
+etc.).
 
 > [!NOTE]
-> We may also create specific users inside **Docker containers** for some applications, specially when creating our own **Dockerfile**,
-> but we'll clarify then whether additional permissions need to be added in case they need access to the local filesystem through a **bind mount**.
+> We may also create specific users inside **Docker containers** for some applications, specially when creating our own
+**Dockerfile**,
+> but we'll clarify then whether additional permissions need to be added in case they need access to the local
+filesystem through a **bind mount**.
 
 `sudo` is not installed on Debian by default. You have to install it.
 So, become root and install sudo :
@@ -398,18 +423,21 @@ Then add user in the sudoers :
 ## SSH access
 
 Generally, you'll want to leave your machine in a cool, quiet corner,
-rather than letting it land around in your feet and having to connect a keyboard/mouse/screen every time you want to access it.
+rather than letting it land around in your feet and having to connect a keyboard/mouse/screen every time you want to
+access it.
 
 A solution is simply to access it as a remote computer via **SSH**, from your main computer.
 
-In the normal **Debian** images, SSH is not enabled by default, so you need to install **openssh** server to allow SSH connections :
+In the normal **Debian** images, SSH is not enabled by default, so you need to install **openssh** server to allow SSH
+connections :
 
 ```shell
 apt update
 apt install openssh-server
 ```
 
-Then simply use the `ssh` command from the client machine to establish a secure and authenticated SSH connection to the mini PC (here named `n100`) :
+Then simply use the `ssh` command from the client machine to establish a secure and authenticated SSH connection to the
+mini PC (here named `n100`) :
 
 ```shell
 ssh username@n100
@@ -419,12 +447,13 @@ Enter your password then you are ready to go !
 
 You can also use your preferred **SSH client**.
 
-Unless you want to be able to do some operations from outside your local network, there is no need to open the SSH port to the internet.
+Unless you want to be able to do some operations from outside your local network, there is no need to open the SSH port
+to the internet.
 If you do so consider using it behind a VPN (even if SSH itself is very secure).
 
 ## Basic tools
 
-We need to install some basic tools we will need later.
+We need to install some basic tools which will be useful for the next steps.
 
 Install **curl** (for transferring data through URLs) :
 
@@ -485,51 +514,44 @@ We will create the subdirectories associated with each application when we insta
 
 We will use **Docker** to containerize and run our different applications.
 
-Docker enables to separate applications from the infrastructure, it provides the ability to package and run an application in an isolated environment called a **container**.
+Docker enables to separate applications from the infrastructure, it provides the ability to package and run an
+application in an isolated environment called a **container**.
 Containers contain everything needed to run the application, so you don't need to rely on what's installed on the host.
 
-Docker provides an installation script, just run it :
+We will also install **Docker-Compose**, so we can define and run multi-container Docker applications.
+
+Docker provides an installation script, but in Debian 13, we can install the Docker engine through the package manager
+and a more modern version of Docker Compose is available as a plugin.
+
+Complete Docker setup on Debian 13 :
 
 ```shell
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
-sudo rm get-docker.sh
-sudo docker version
-```
+# 1. Remove any conflicting packages
+sudo dpkg --remove --force-depends docker-buildx-plugin docker-compose-plugin docker-compose
+sudo apt --fix-broken install
+sudo apt autoremove
 
-> [!NOTE]
-> You can use https://get.docker.com/rootless to install it in rootless mode (run the Docker daemon as a non-root user)
-> to mitigate potential vulnerabilities in the daemon and the container runtime.
+# 2. Install Docker Engine + plugins
+sudo apt update
+sudo apt install docker.io docker-compose-plugin docker-buildx-plugin
 
-Then also install **Docker-Compose**, so we can define and run multi-container Docker applications :
+# 3. Enable and start Docker
+sudo systemctl enable --now docker
+sudo systemctl status docker
 
-```shell
-sudo apt install docker-compose -y
-sudo docker-compose version
-```
+# 4. Add user to docker group
+sudo usermod -aG docker $USER
+newgrp docker  # or log out/in
 
-That's it :
-
-```shell
+# 5. Check Docker installation
 sudo docker info
 ```
 
-```console
-Client:
-Context:    default
-Debug Mode: false
-Plugins:
-buildx: Docker Buildx (Docker Inc.)
-Version:  v0.10.4
-Path:     /usr/libexec/docker/cli-plugins/docker-buildx
-compose: Docker Compose (Docker Inc.)
-Version:  v2.17.3
-Path:     /usr/libexec/docker/cli-plugins/docker-compose
-```
-
 > [!NOTE]
-> In this guide I systematically use latest images (`:latest`tag), but usually you better want to avoid using `:latest` tags in production.
-> Anyway if you use `latest` tags and want to update an image in the future, simply pull it again and rerun your container / compose file, i.e. :
+> In this guide I systematically use latest images (`:latest`tag), but usually you better want to avoid using `:latest`
+tags in production.
+> Anyway if you use `latest` tags and want to update an image in the future, simply pull it again and rerun your
+container / compose file, i.e. :
 >
 > ```shell
 > sudo docker-compose pull
@@ -540,7 +562,8 @@ Path:     /usr/libexec/docker/cli-plugins/docker-compose
 
 # Network configuration
 
-Before installing our services, we need to configure the network, so we can reach our applications from different locations.
+Before installing our services, we need to configure the network, so we can reach our applications from different
+locations.
 
 The idea is to have :
 
@@ -549,7 +572,8 @@ The idea is to have :
 - A **dynamic DNS** name to avoid having to use a **static** public IP address
 - A **Traefik** reverse proxy to handle HTTP request that will be port forwarded to the applications
 
-For services that will not be accessible to the internet, we will use **Pi-Hole**’s ability to manage **local DNS records**
+For services that will not be accessible to the internet, we will use **Pi-Hole**’s ability to manage **local DNS
+records**
 (each record will point to server's internal IP address) so that they are also reachable using a subdomain name.
 
 Here is an overview of the route for each case, when a client request _myapp.example.com_ :
@@ -696,50 +720,64 @@ flowchart LR
 ```
 
 > [!NOTE]
-> My router offers all the required features (DHCP server, DNS server, port forwarding, dynDNS, etc.) for the steps described below.
+> My router offers all the required features (DHCP server, DNS server, port forwarding, dynDNS, etc.) for the steps
+described below.
 > Most of the routers also have those features (they rarely purely route packets),
 > but if this is not your case, you may have to perform **double NAT** to allow more advanced configurations.
 > I obviously cannot go through the configuration specific to each router.
 
 ## IP settings
 
-The following changes to the IP settings are required if you want the **DNS requests** of your whole local network to go through
-**Pi-Hole** and the custom **DNS resolver** (**Unbound**) (only the DNS requests : the ad blocking is done at DNS level, the traffic itself does not need to go through the mini PC) :
+The following changes to the IP settings are required if you want the **DNS requests** of your whole local network to go
+through **Pi-Hole** and the custom **DNS resolver** (**Unbound**) (only the DNS requests : the ad blocking is done at
+DNS level, the traffic itself does not need to go through the mini PC) :
 
 - Assign a **static IP address** to the mini PC, for example `192.168.0.16` (I have local **DHCP** enabled)
-- Make the devices use the mini PC as **DNS server** (`192.168.0.16`), either through the router (the DNS server it hands out with DHCP), or manually on each device
+- Make the devices use the mini PC as **DNS server** (`192.168.0.16`), either through the router (the DNS server it
+  hands out with DHCP), or manually on each device
 
-Of course Pi-Hole container have to expose port **53** to receive incoming DNS requests. Refer to [Pi-hole](#pi-hole) setup for more details.
+Of course Pi-Hole container have to expose port **53** to receive incoming DNS requests. Refer to [Pi-hole](#pi-hole)
+setup for more details.
 
 > [!WARNING]
 > Setting the mini PC as "DNS server" in the router configuration is **not always enough** : many ISP boxes
-> keep answering the DNS queries of the LAN devices themselves with the ISP resolvers, and the devices silently bypass Pi-Hole.
+> keep answering the DNS queries of the LAN devices themselves with the ISP resolvers, and the devices silently bypass
+Pi-Hole.
 > Always verify from a device which server actually answers :
 >
 > ```cmd
 > nslookup doubleclick.net
 > ```
 >
-> The answering server must be the mini PC (`192.168.0.16`), and a domain from the block lists must resolve to `0.0.0.0`.
+> The answering server must be the mini PC (`192.168.0.16`), and a domain from the block lists must resolve to
+`0.0.0.0`.
 > If the router does not hand out the mini PC address, set the DNS manually on each device
 > (on Windows : _Settings -> Network -> Ethernet -> DNS server assignment -> Manual_). In that case :
 >
-> - leave the **alternate DNS empty** : Windows does not strictly respect the primary/secondary order, a public secondary DNS ends up bypassing Pi-Hole
-> - leave "**DNS over HTTPS**" **off** : Pi-Hole only speaks plain DNS on port `53`, and this leg never leaves your LAN anyway (the privacy part is Unbound resolving directly from the root servers)
+> - leave the **alternate DNS empty** : Windows does not strictly respect the primary/secondary order, a public
+    secondary DNS ends up bypassing Pi-Hole
+> - leave "**DNS over HTTPS**" **off** : Pi-Hole only speaks plain DNS on port `53`, and this leg never leaves your LAN
+    anyway (the privacy part is Unbound resolving directly from the root servers)
 > - disable "secure DNS" / DNS-over-HTTPS in the **browsers** too, else they use their own resolver and bypass Pi-Hole
 
-If you don't want the whole network to use Pi-Hole, skip the second point, then only the VPN clients (and the devices you configure manually) will use it.
+If you don't want the whole network to use Pi-Hole, skip the second point, then only the VPN clients (and the devices
+you configure manually) will use it.
 
 ## Dynamic DNS
 
-When connecting from outside our network (from the internet), we need to know the **public IP address** of our router to connect to.
-But unless we have a **static** public IP (not necessarily the safest option), we are getting dynamically-assigned public IP addresses (via **DHCP**),
+When connecting from outside our network (from the internet), we need to know the **public IP address** of our router to
+connect to.
+But unless we have a **static** public IP (not necessarily the safest option), we are getting dynamically-assigned
+public IP addresses (via **DHCP**),
 so we would need to update the configuration everytime the IP changes, which is very uncomfortable.
 
-Fortunately we can register a **dynamic host record** (DynDNS), and configure it in our router configuration so that when the public IP address changes, a call is made to the
-DynDNS service provider to update the record. That way our network will always be reachable from the internet via the **DynDNS** record no matter the IP address.
+Fortunately we can register a **dynamic host record** (DynDNS), and configure it in our router configuration so that
+when the public IP address changes, a call is made to the
+DynDNS service provider to update the record. That way our network will always be reachable from the internet via the
+**DynDNS** record no matter the IP address.
 
-Well, simply register a **dynamic DNS** hostname from a provider (there are free ones), for example **No-IP**, **DuckDNS**, etc. :
+Well, simply register a **dynamic DNS** hostname from a provider (there are free ones), for example **No-IP**,
+**DuckDNS**, etc. :
 
 - hostname : `myddns.ddns.net`
 - IP / target : _internet box external IP (public IP)_
@@ -755,7 +793,8 @@ Then activate **DynDNS** on the router :
 The IP will be updated automatically when a change will be detected.
 
 > [!NOTE]
-> Your ISP may only support some dynamic DNS provider that can be configured in the router, so you may want to pick one that is supported natively,
+> Your ISP may only support some dynamic DNS provider that can be configured in the router, so you may want to pick one
+that is supported natively,
 > else you will have to set up an **update client** that will be responsible to regularly check for IP change.
 
 ## Domain and subdomains
@@ -774,10 +813,12 @@ You can check the information that are available publicly about your domain usin
 whois example.com
 ```
 
-Right, we will then use **subdomains** to locate each service as a separate website to avoid having to buy a new domain name for each.
+Right, we will then use **subdomains** to locate each service as a separate website to avoid having to buy a new domain
+name for each.
 A subdomain is simply a prefix added to the original domain name, it functions as a separate website from its domain.
 
-So, let's create **subdomains** from the domain name registrar settings, for every service to be exposed on the internet :
+So, let's create **subdomains** from the domain name registrar settings, for every service to be exposed on the
+internet :
 
 - `wireguard.example.com` : To access the [WireGuard](#wireguard) server
 - `quake.example.com` : To access the [Defrag-life](#defrag-life) website
@@ -791,22 +832,27 @@ Then add corresponding **CNAME records** to point to the dynamic DNS `myddns.ddn
 - `CNAME	lychee	        myddns.ddns.net`
 - `CNAME	ccteam	        myddns.ddns.net`
 
-A **CNAME record** is just a records which points a name to another name instead of pointing to an IP address (like **A** records).
+A **CNAME record** is just a records which points a name to another name instead of pointing to an IP address (like
+**A** records).
 
 > [!NOTE]
-> Services that will only be accessible from the local network or through VPN do **not** need to have a subdomain defined at this level.
+> Services that will only be accessible from the local network or through VPN do **not** need to have a subdomain
+defined at this level.
 > We will use Pi-Hole's **local DNS records** for that. See [Pi-Hole configuration](#pi-hole).
 >
-> However, while the VPN stuff is fully functional and to be able to do the configuration easily from your client machine,
+> However, while the VPN stuff is fully functional and to be able to do the configuration easily from your client
+machine,
 > you may want to temporarily create subdomains and add CNAME records for the following subdomains
-> (also remove the IP whitelisting middleware in the corresponding service configuration), else you will be blocked by IP whitelisting :
+> (also remove the IP whitelisting middleware in the corresponding service configuration), else you will be blocked by
+IP whitelisting :
 >
 > - `portainer.example.com` : To manage Docker containers (start/stop, check logs, etc.)
 > - `pihole.example.com` : To configure the local DNS
 
 ## Port forwarding
 
-For our services to be reachable from the internet, we need to **forward incoming requests** to our mini PC so that they will be handled by our **Traefik** reverse proxy.
+For our services to be reachable from the internet, we need to **forward incoming requests** to our mini PC so that they
+will be handled by our **Traefik** reverse proxy.
 This can be done through **port forwarding**.
 
 Port forwarding directs the **router** to send any incoming data from the internet to a specified device on the network.
@@ -814,7 +860,8 @@ It is safe to forward ports on your router as long as you have a **reverse proxy
 
 ### Allow access without VPN
 
-If you decide that at least one of the applications must be reachable from the outside directly through **HTTP** or **HTTPS** without requiring a **VPN**,
+If you decide that at least one of the applications must be reachable from the outside directly through **HTTP** or
+**HTTPS** without requiring a **VPN**,
 then simply port forward the related **TCP** ports to the mini PC.
 
 Go to your router configuration and add a **port forward rule** for the **TCP** port `80` :
@@ -849,13 +896,16 @@ Go to your router configuration and add a **port forward rule** for the **UDP** 
 - Device : `n100`
 - Protocol : `UDP`
 
-Of course if you want the applications to be available **only through VPN**, then only open the VPN port, remove any opened HTTP/HTTPS port.
+Of course if you want the applications to be available **only through VPN**, then only open the VPN port, remove any
+opened HTTP/HTTPS port.
 
 > [!WARNING]
-> Note that if you use Let's Encrypt' **HTTP challenge** to issue and renew **SSL/TLS certificates**, target websites must be reachable from the internet.
-> That mean you will have to open the HTTP(S) port at least when issuing/renewing certificates,
+> Note that if you use Let's Encrypt' **HTTP challenge** to issue and renew **SSL/TLS certificates**, target websites
+must be reachable from the internet.
+> That mean you will have to open the HTTP (S) port at least when issuing/renewing certificates,
 > you could also keep them open and restrict access to the necessary IP ranges, if your router supports that.
-> If you really don't want to open HTTP(S) ports (better for security), then you will have to configure **DNS challenge** instead of HTTP challenge,
+> If you really don't want to open HTTP (S) ports (better for security), then you will have to configure **DNS
+challenge** instead of HTTP challenge,
 > if your DNS provider support it.
 > See [HTTP challenge](#http-challenge) and [DNS challenge](#dns-challenge) below when configuring **Traefik**.
 
@@ -863,7 +913,8 @@ Of course if you want the applications to be available **only through VPN**, the
 
 <img src="images/logo-traefik.svg" alt="Docker logo" height="148"/>
 
-**Traefik** is an open source **HTTP reverse proxy** and **load balancer** that can integrate easily with our Docker infrastructure.
+**Traefik** is an open source **HTTP reverse proxy** and **load balancer** that can integrate easily with our Docker
+infrastructure.
 We will use it to intercept and route every incoming request to the corresponding backend services.
 
 It will listen to our services and instantly generates the **routes**, so that they are connected to the outside world.
@@ -934,12 +985,15 @@ flowchart LR
     AUTH --> DOCKER_TRAEFIK_PORT8080
 ```
 
-It handles HTTP to HTTPS redirection, IP whitelisting and authentication (through PocketID, or basic authentication) through custom **middlewares**.
+It handles HTTP to HTTPS redirection, IP whitelisting and authentication (through PocketID, or basic authentication)
+through custom **middlewares**.
 In this example `myapp1` is accessible from the internet, `myapp2` is accessible only through VPN,
 and Traefik (dashboard and APIs) is accessible only through VPN after OIDC authentication.
 
-I've deliberately left out **Sablier** for the moment, to keep things simple, but basically this would simply add a middleware that checks the state of the application,
-in order to temporarily display a waiting page while not ready, refer to [Scale to zero with Sablier](#scale-to-zero-with-sablier) for more information.
+I've deliberately left out **Sablier** for the moment, to keep things simple, but basically this would simply add a
+middleware that checks the state of the application,
+in order to temporarily display a waiting page while not ready, refer
+to [Scale to zero with Sablier](#scale-to-zero-with-sablier) for more information.
 
 ### Installation
 
@@ -954,18 +1008,22 @@ Then copy the files from this project's _traefik_ directory into the _/opt/apps/
 - _docker-compose.yml_ : The Traefik service definition
 - _traefik.yml_ : The Traefik static configuration
 - _.env_ : The secrets read by the service (DNS provider token, CrowdSec bouncer key), to fill in
-- _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (if you want it restricted with **basic authentication**),
+- _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (if you want it restricted
+  with **basic authentication**),
   see [Generate basic authentication credentials](#generate-basic-authentication-credentials)
 
-Files should be ready to use, simply replace the e-mail address (`admin@example.com`) in the _traefik.yaml_ file with your e-mail address.
+Files should be ready to use, simply replace the e-mail address (`admin@example.com`) in the _traefik.yaml_ file with
+your e-mail address.
 
 You will also need to create the **JSON** file to hold the certificates, see [TLS certificates](#tls-certificates).
 
-Anyway you will find below more details about each file (see [Configuration files details](#configuration-files-details)) and some further configuration.
+Anyway you will find below more details about each file
+(see [Configuration files details](#configuration-files-details)) and some further configuration.
 
 ### Generate basic authentication credentials
 
-If you want the Traefik dashboard to be protected with **basic authentication** rather than via PocketID, allowed users have to be added to the _credentials.txt_ file.
+If you want the Traefik dashboard to be protected with **basic authentication** rather than via PocketID, allowed users
+have to be added to the _credentials.txt_ file.
 
 You can generate a user/password using **htpasswd** :
 
@@ -984,7 +1042,8 @@ You can generate a user/password using **htpasswd** :
 Then copy the output to the _credentials.txt_ file.
 
 > [!NOTE]
-> Actually as Traefik will be accessible only from local network and through VPN, we don't really need to set up authentication,
+> Actually as Traefik will be accessible only from local network and through VPN, we don't really need to set up
+authentication,
 > but it's more for demonstration, and it's always better to have 2 layers of security than one.
 
 ### TLS certificates
@@ -992,14 +1051,16 @@ Then copy the output to the _credentials.txt_ file.
 <img src="images/logo-letsencrypt.svg" alt="Let's Encrypt logo" height="72"/>
 
 To enable **HTTPS** on our websites, we need to get **TLS certificates** from a **certificate authority**.
-A TLS certificate certifies, in a way, the authenticity of a website (actually it proves that we have the ownership of the public key used for TLS encryption),
+A TLS certificate certifies, in a way, the authenticity of a website (actually it proves that we have the ownership of
+the public key used for TLS encryption),
 preventing hackers from intercepting any data transmitted between a device and the site.
 
 We will use **Let's Encrypt**, a nonprofit certificate authority which provide free TLS certificates.
 
-**Let's Encrypt** can automatically generate certificates via Traefik, for that we need to create a `acme.json` file that will hold the generated certificates
-(file is mapped to a volume in the**Compose** file),
-so that the certificates are persisted between container restarts (not generated each time which could raise Let's Encrypt rate limits), we also need to change
+**Let's Encrypt** can automatically generate certificates via Traefik, for that we need to create a `acme.json` file
+that will hold the generated certificates (file is mapped to a volume in the **Compose** file),
+so that the certificates are persisted between container restarts (not generated each time which could raise Let's
+Encrypt rate limits), we also need to change
 the permissions so that Traefik can access and edit this file :
 
 ```bash
@@ -1010,7 +1071,8 @@ chmod 600 /opt/apps/traefik/acme.json
 
 #### HTTP challenge
 
-If you use **HTTP challenge**, Let's Encrypt will validate that you control the domain names by trying to reach the web server through HTTP or HTTPS.
+If you use **HTTP challenge**, Let's Encrypt will validate that you control the domain names by trying to reach the web
+server through HTTP or HTTPS.
 So you must open and port forward ports `80` or `443` for the TLS certificate to be issued correctly.
 
 The corresponding certificate resolver configuration would be :
@@ -1024,15 +1086,18 @@ tlsChallenge: { }
 
 #### DNS challenge
 
-When using **DNS challenge**, Let's Encrypt will validate that you control the domain names by querying the DNS system for a TXT record under the target domain name.
+When using **DNS challenge**, Let's Encrypt will validate that you control the domain names by querying the DNS system
+for a TXT record under the target domain name.
 So you **don't** need to open HTTP or HTTPS port on your router.
 
-First, check that your DNS provider is supported by Traefik to automate the DNS verification, a list can be found here : https://doc.traefik.io/traefik/https/acme/.
+First, check that your DNS provider is supported by Traefik to automate the DNS verification, a list can be found
+here : https://doc.traefik.io/traefik/https/acme/.
 
 Then :
 
 1. Create an **access token** / **API key** from your provider interface
-2. Add the necessary **environment variables** required by your provider to the _.env_ file next to the Compose file (loaded with `env_file`), i.e. :
+2. Add the necessary **environment variables** required by your provider to the _.env_ file next to the Compose file
+   (loaded with `env_file`), i.e. :
    ```shell
    MYPROVIDER_ACCESS_TOKEN=<access_token_here>
    ```
@@ -1046,11 +1111,14 @@ dnsChallenge:
 
 ### IP whitelisting
 
-We will set up **IP whitelisting** so that we can allow only traffic from the local network or from the VPN for some of our services.
-Indeed, even if we do not have defined public subdomains for these services, they can still be reached via the IP address
-(actually in that case Traefik will not route the request, but it is still better to have this additional security).
+We will set up **IP whitelisting** so that we can allow only traffic from the local network or from the VPN for some of
+our services.
+Indeed, even if we do not have defined public subdomains for these services, they can still be reached via the IP
+address (actually in that case Traefik will not route the request, but it is still better to have this additional
+security).
 
-Basically it involves creating a **Traefik middleware** for defining the IP whitelist and apply it to the needed services.
+Basically it involves creating a **Traefik middleware** for defining the IP whitelist and apply it to the needed
+services.
 It is declared once, in the dynamic configuration directory :
 
 :page_facing_up: _traefik/dynamic/vpn-whitelist.yml_ :
@@ -1068,33 +1136,44 @@ http:
 So we allow exactly 2 **IP ranges** :
 
 - the **local IP range** : IPs assigned to the devices on your local network (computers, mobile devices, ...)
-- the **WireGuard subnet** : the VPN peers keep their tunnel address when they reach Traefik, as WireGuard runs on the host and the peers' traffic is not NATed towards the containers
+- the **WireGuard subnet** : the VPN peers keep their tunnel address when they reach Traefik, as WireGuard runs on the
+  host and the peers' traffic is not NATed towards the containers
 
 That way :
 
 - Requests coming from the local network come with a local address assigned by the router DHCP, and are **accepted**.
 - Requests coming from the internet through VPN come with a `10.0.0.x` address, and are **accepted**.
-- Requests coming from the internet without VPN come with a public IP address and are **rejected**, as it does not match any whitelisted address.
+- Requests coming from the internet without VPN come with a public IP address and are **rejected**, as it does not match
+  any whitelisted address.
 
 > [!NOTE]
-> A request from your own network to a name that resolves to your **public IP** goes through the NAT loopback of the router and reaches Traefik with the **public IP** as source : rejected as well.
-> So the private services must resolve to the LAN address of the mini PC for the devices that use them (Pi-Hole's local DNS records, see [Pi-hole](#pi-hole)), and a container that has to call
-> another one (Portainer or the Traefik plugin fetching a token from PocketID) must use the **internal** name (i.e. `http://pocketid:1411`), never the public URL.
+> A request from your own network to a name that resolves to your **public IP** goes through the NAT loopback of the
+router and reaches Traefik with the **public IP** as source : rejected as well.
+> So the private services must resolve to the LAN address of the mini PC for the devices that use them (Pi-Hole's local
+DNS records, see [Pi-hole](#pi-hole)), and a container that has to call
+> another one (Portainer or the Traefik plugin fetching a token from PocketID) must use the **internal** name (i.e.
+`http://pocketid:1411`), never the public URL.
 
 > [!WARNING]
 > Never whitelist a **Docker network range**
-> A container is not a trusted client, and with the [network segmentation](#network-segmentation) below, a whitelisted Docker range would let a compromised public container
+> A container is not a trusted client, and with the [network segmentation](#network-segmentation) below, a whitelisted
+Docker range would let a compromised public container
 > walk straight into the private services.
 
-Then it just needs to be referenced in the `middlewares` list of every router that must stay private (`vpn-whitelist@file`), as you will see in the services definitions.
-Keep in mind that it only protects the requests that go **through Traefik** : what a container can reach directly on the Docker networks is the job of the network segmentation.
+Then it just needs to be referenced in the `middlewares` list of every router that must stay private
+(`vpn-whitelist@file`), as you will see in the services definitions.
+Keep in mind that it only protects the requests that go **through Traefik** : what a container can reach directly on the
+Docker networks is the job of the network segmentation.
 
 ### Network segmentation
 
-Every service behind the reverse proxy must share a Docker network with Traefik to be reachable by name, but containers on the same network can also talk
-**to each other** directly, without going through Traefik and its middlewares. With a single shared network, a vulnerability in one of the applications exposed
-to the internet (an old PHP website, a photo gallery, an API) gives an attacker a foothold from which every other container is one HTTP request away :
-Pi-Hole's admin interface, Portainer (and through it the Docker socket, i.e. root on the host), the Traefik dashboard, ...
+Every service behind the reverse proxy must share a Docker network with Traefik to be reachable by name, but containers
+on the same network can also talk **to each other** directly, without going through Traefik and its middlewares. With a
+single shared network, a vulnerability in one of the applications exposed
+to the internet (an old PHP website, a photo gallery, an API) gives an attacker a foothold from which every other
+container is one HTTP request away :
+Pi-Hole's admin interface, Portainer (and through it the Docker socket, i.e. root on the host), the Traefik
+dashboard, ...
 The IP whitelist does not help there, it never sees this traffic.
 
 So Traefik sits on two networks, and nothing else is allowed to be on both :
@@ -1104,17 +1183,24 @@ So Traefik sits on two networks, and nothing else is allowed to be on both :
 | `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Portainer, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ... | local network and VPN only (`vpn-whitelist`) |
 | `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, ...                               | anyone                                       |
 
-A compromised public container can then only see Traefik and the other public applications, never the private ones. A few rules go with it :
+A compromised public container can then only see Traefik and the other public applications, never the private ones. A
+few rules go with it :
 
-- a public application never joins `traefik-private-net`, a private one never joins `traefik-public-net`, and no application joins both
-- the databases stay on the private network of their own stack (`lychee-net`, `defrag-life-net`, ...), never on a Traefik network
+- a public application never joins `traefik-private-net`, a private one never joins `traefik-public-net`, and no
+  application joins both
+- the databases stay on the private network of their own stack (`lychee-net`, `defrag-life-net`, ...), never on a
+  Traefik network
 - containers holding the **Docker socket** (Portainer, Sablier) are private by construction
-- PocketID stays private : a public application that would authenticate through it does so with the browser, through the public URL and Traefik, it does not need a shared network
+- PocketID stays private : a public application that would authenticate through it does so with the browser, through the
+  public URL and Traefik, it does not need a shared network
 
 > [!NOTE]
-> To migrate an existing setup that used a single `traefik-net` network : update the Traefik Compose file and run it (`docker-compose up -d` creates both networks and recreates Traefik),
-> then update every other stack (`traefik-private-net` or `traefik-public-net` depending on its exposure) and run `docker-compose up -d` on each : the containers are recreated on their new network,
-> the volumes are untouched. Once nothing is attached to the old network anymore, remove it with `docker network rm traefik-net`. Don't forget the stacks that are not in this repository.
+> To migrate an existing setup that used a single `traefik-net` network : update the Traefik Compose file and run it
+(`docker-compose up -d` creates both networks and recreates Traefik),
+> then update every other stack (`traefik-private-net` or `traefik-public-net` depending on its exposure) and run
+`docker-compose up -d` on each : the containers are recreated on their new network,
+> the volumes are untouched. Once nothing is attached to the old network anymore, remove it with
+`docker network rm traefik-net`. Don't forget the stacks that are not in this repository.
 
 ### Configuration files details
 
@@ -1182,15 +1268,21 @@ accessLog:
 This config file :
 
 - enables the Traefik **dashboard** (UI that provides a detailed overview of the current configuration)
-- defines 2 **entrypoints**, named `web` (for port `80`) and `websecure` (for port `443`) so that we can receive requests on these ports
-- defines a `docker` provider so that we can use **container labels** for retrieving routing configuration. We have configured it to **not** expose containers by default, so
+- defines 2 **entrypoints**, named `web` (for port `80`) and `websecure` (for port `443`) so that we can receive
+  requests on these ports
+- defines a `docker` provider so that we can use **container labels** for retrieving routing configuration. We have
+  configured it to **not** expose containers by default, so
   that containers that do not have a `traefik.enable=true` label are ignored from the resulting routing configuration
 - defines a `default` **certificate resolver** for Let's Encrypt to automatically generate certificates
 - set log level to `info` (you can set it to `debug` when you need more information on what's going on)
-- writes the **access log** as JSON lines in _/var/log/traefik/access.log_ (a folder bound in the Compose file), one line per request with the client IP, the router and the status code :
-  the fastest way to understand why a request is rejected, and the input of [CrowdSec](#crowdsec). Request headers are dropped from the log by default, the `User-Agent` is kept for the CrowdSec scenarios
-- declares the Traefik **plugins** used by the middlewares (Sablier, OIDC authentication, CrowdSec bouncer), downloaded when Traefik starts
-- sets the `crowdsec` middleware on the `websecure` **entrypoint**, so that every HTTPS request is checked against the CrowdSec decisions before reaching any router
+- writes the **access log** as JSON lines in _/var/log/traefik/access.log_ (a folder bound in the Compose file), one
+  line per request with the client IP, the router and the status code :
+  the fastest way to understand why a request is rejected, and the input of [CrowdSec](#crowdsec). Request headers are
+  dropped from the log by default, the `User-Agent` is kept for the CrowdSec scenarios
+- declares the Traefik **plugins** used by the middlewares (Sablier, OIDC authentication, CrowdSec bouncer), downloaded
+  when Traefik starts
+- sets the `crowdsec` middleware on the `websecure` **entrypoint**, so that every HTTPS request is checked against the
+  CrowdSec decisions before reaching any router
 
 #### Service definition :
 
@@ -1258,15 +1350,23 @@ This **Compose** file mainly :
 
 - exposes ports `80` and `443` to receive incoming HTTP/HTTPS requests
 - binds the _logs_ folder where the access log is written, shared read-only with the [CrowdSec](#crowdsec) container
-- defines two **networks** : `traefik-private-net` for the services that must stay private (reachable from the local network and the VPN only) and `traefik-public-net` for the services exposed to the internet, see [Network segmentation](#network-segmentation)
-- loads its secrets from the _.env_ file (see [Environment variables](#environment-variables-)) : the DNS provider access token used to issue Let's Encrypt certificates through **DNS challenge**, and the CrowdSec bouncer key
-- defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our service
+- defines two **networks** : `traefik-private-net` for the services that must stay private (reachable from the local
+  network and the VPN only) and `traefik-public-net` for the services exposed to the internet,
+  see [Network segmentation](#network-segmentation)
+- loads its secrets from the _.env_ file (see [Environment variables](#environment-variables-)) : the DNS provider
+  access token used to issue Let's Encrypt certificates through **DNS challenge**, and the CrowdSec bouncer key
+- defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our
+  service
 - defines `httpsonly` **router** and **middleware** responsible for automatically redirecting HTTP requests to HTTPS
-- configures `dashboard` and `api` routers to use secure HTTPS endpoint with our certificate resolver to generate related Let's Encrypt certificates
-- secures dashboard and API endpoints with the `vpn-whitelist` middleware (requests from the local network and the VPN only) and the `traefik-auth` middleware (authentication through [PocketID](#pocketid), basic authentication being the alternative)
+- configures `dashboard` and `api` routers to use secure HTTPS endpoint with our certificate resolver to generate
+  related Let's Encrypt certificates
+- secures dashboard and API endpoints with the `vpn-whitelist` middleware (requests from the local network and the VPN
+  only) and the `traefik-auth` middleware (authentication through [PocketID](#pocketid), basic authentication being the
+  alternative)
 
 > [!CAUTION]
-> The order in which the middlewares are defined in relation to a router is important, they will be applied in the same order as their declaration.
+> The order in which the middlewares are defined in relation to a router is important, they will be applied in the same
+order as their declaration.
 
 #### Environment variables :
 
@@ -1279,9 +1379,12 @@ MYPROVIDER_ACCESS_TOKEN=<access_token_here>
 CROWDSEC_BOUNCER_KEY=<bouncer_key>
 ```
 
-- `MYPROVIDER_ACCESS_TOKEN` is the token of your DNS provider, its name depends on the provider (see [DNS challenge](#dns-challenge))
-- `CROWDSEC_BOUNCER_KEY` is read by the `crowdsec` middleware in _dynamic/crowdsec.yml_ through a template (dynamic configuration files are Go templates, `{{ env "..." }}` reads a variable of the Traefik container),
-  so that no secret sits in a configuration file. Same value as `BOUNCER_KEY_traefik` in _crowdsec/.env_ (see [CrowdSec](#crowdsec))
+- `MYPROVIDER_ACCESS_TOKEN` is the token of your DNS provider, its name depends on the provider
+  (see [DNS challenge](#dns-challenge))
+- `CROWDSEC_BOUNCER_KEY` is read by the `crowdsec` middleware in _dynamic/crowdsec.yml_ through a template (dynamic
+  configuration files are Go templates, `{{ env "..." }}` reads a variable of the Traefik container),
+  so that no secret sits in a configuration file. Same value as `BOUNCER_KEY_traefik` in _crowdsec/.env_
+  (see [CrowdSec](#crowdsec))
 
 ### Run
 
@@ -1317,23 +1420,31 @@ So you can reach the dashboard at https://traefik.example.com.
   </tr>
 </table>
 
-We will install **WireGuard**, **Pi-hole** and **Unbound** to create a virtual private network (VPN) with ad-blocking and DNS privacy/caching capabilities.
+We will install **WireGuard**, **Pi-hole** and **Unbound** to create a virtual private network (VPN) with ad-blocking
+and DNS privacy/caching capabilities.
 
-**WireGuard** is a free and open-source modern VPN that utilizes state-of-the-art cryptography to securely encapsulates **IP packets** over **UDP**,
-in order to lower the environment attack surface. As a VPN it establishes a secure connection between a computer and the internet
-by making all the traffic going through an encrypted **tunnel**. The point of self-hosting our own VPN server is to ensure
-a **private** and **secure** connection to our services from the internet, without having to trust third-party VPN providers,
+**WireGuard** is a free and open-source modern VPN that utilizes state-of-the-art cryptography to securely encapsulates
+**IP packets** over **UDP**,
+in order to lower the environment attack surface. As a VPN it establishes a secure connection between a computer and the
+internet
+by making all the traffic going through an encrypted **tunnel**. The point of self-hosting our own VPN server is to
+ensure
+a **private** and **secure** connection to our services from the internet, without having to trust third-party VPN
+providers,
 and to keep complete freedom and control over the browsing data.
 
 **Pi-hole** is a network-level ad blocking and internet tracker blocking application.
-It has the ability to block traditional website advertisements as well as advertisements in unconventional places such as mobile apps ads.
+It has the ability to block traditional website advertisements as well as advertisements in unconventional places such
+as mobile apps ads.
 It can also be used as a **DNS** server and has a built-in **DHCP** server.
 
-**Unbound** is a validating, recursive, caching **DNS resolver**, that has the ability to contact **DNS authority** servers directly
+**Unbound** is a validating, recursive, caching **DNS resolver**, that has the ability to contact **DNS authority**
+servers directly
 in order to validate and cache the queries on your network and serve them to you directly,
 so you don’t have to rely on your ISP or third-party DNS resolvers (like Cloudflare or Google).
 
-So the idea is that every client in any network can use the VPN to reach our applications while taking advantage of Pi-Hole and Unbound :
+So the idea is that every client in any network can use the VPN to reach our applications while taking advantage of
+Pi-Hole and Unbound :
 
 ```mermaid
 flowchart TB
@@ -1386,7 +1497,8 @@ flowchart TB
     UNBOUND -- DNS resolution --> INTERNET
 ```
 
-**WireGuard** runs directly on the host (kernel module, managed by `wg-quick`), **Pi-Hole** and **Unbound** run as two small **Compose** stacks.
+**WireGuard** runs directly on the host (kernel module, managed by `wg-quick`), **Pi-Hole** and **Unbound** run as two
+small **Compose** stacks.
 Everything about performance is in [VPN connection speed](#vpn-connection-speed).
 
 ### Installation
@@ -1397,7 +1509,8 @@ First, create the folders that will hold data and configuration :
 sudo mkdir -p /opt/apps/pihole /opt/apps/unbound
 ```
 
-Then from this project's _pihole_ and _unbound_ directories, copy the _docker-compose.yml_ files into _/opt/apps/pihole_ and _/opt/apps/unbound_ respectively.
+Then from this project's _pihole_ and _unbound_ directories, copy the _docker-compose.yml_ files into _/opt/apps/pihole_
+and _/opt/apps/unbound_ respectively.
 For more details about these files, see [Configuration files details](#configuration-files-details-1).
 
 WireGuard itself is a Debian package :
@@ -1414,17 +1527,20 @@ Now let's take a look at the configuration for each service.
 
 <img src="images/logo-wireguard-text.svg" alt="WireGuard logo" height="64"/>
 
-WireGuard runs **directly on the host** : the kernel module is part of Debian, `wg-quick` manages the interface, and the peers are managed in the configuration file
-(or with the `wg` command). Compared to running it in a container, this removes a few hops for every packet (Docker bridge, `veth` pair, a second NAT layer and the userland proxy)
+WireGuard runs **directly on the host** : the kernel module is part of Debian, `wg-quick` manages the interface, and the
+peers are managed in the configuration file (or with the `wg` command). Compared to running it in a container, this
+removes a few hops for every packet (Docker bridge, `veth` pair, a second NAT layer and the userland proxy)
 and makes the network stack much easier to observe and tune.
 
-Generate the keys (`wg genkey | tee private.key | wg pubkey > public.key`, on the server and on each peer) and create the configuration :
+Generate the keys (`wg genkey | tee private.key | wg pubkey > public.key`, on the server and on each peer) and create
+the configuration :
 
 ```bash
 sudo nano /etc/wireguard/wg0.conf
 ```
 
-:page_facing_up: _/etc/wireguard/wg0.conf_ (`enp1s0` is the LAN interface of the mini PC, `%i` is replaced by the interface name) :
+:page_facing_up: _/etc/wireguard/wg0.conf_ (`enp1s0` is the LAN interface of the mini PC, `%i` is replaced by the
+interface name) :
 
 ```ini
 [Interface]
@@ -1453,19 +1569,29 @@ sudo chmod 600 /etc/wireguard/wg0.conf
 sudo systemctl enable --now wg-quick@wg0
 ```
 
-The `PostUp` line looks scary, but each piece has a reason (and `wg-quick` runs the hooks with `set -e`, so anything that may legitimately fail has to be guarded with `|| true` or a `-C` check, else the interface is torn down) :
+The `PostUp` line looks scary, but each piece has a reason (and `wg-quick` runs the hooks with `set -e`, so anything
+that may legitimately fail has to be guarded with `|| true` or a `-C` check, else the interface is torn down) :
 
-- `DOCKER-USER` **fast path** : Docker sets the `FORWARD` policy to `DROP` and inserts about a hundred rules (four per bridge network) that **every relayed packet** walks through.
-  The `DOCKER-USER` chain is evaluated first and is never flushed by Docker, so accepting the tunnel traffic there short-circuits the whole chain.
+- `DOCKER-USER` **fast path** : Docker sets the `FORWARD` policy to `DROP` and inserts about a hundred rules (four per
+  bridge network) that **every relayed packet** walks through.
+  The `DOCKER-USER` chain is evaluated first and is never flushed by Docker, so accepting the tunnel traffic there
+  short-circuits the whole chain.
   The plain `FORWARD` rules are a fallback in case `wg0` comes up before Docker at boot.
-- **NAT** : the peers' traffic leaves with the mini PC address (on my machine the rule was already set globally, keeping it here makes the file self-contained).
-- **TCPMSS clamp** : TCP inside the tunnel can carry `1380` bytes per segment at most, clamping the MSS on the SYN packets prevents fragmentation and black holes for the relayed connections.
-- `NOTRACK` : connection tracking is useless for the encrypted UDP flow (WireGuard authenticates every packet itself), this saves a lookup per packet.
-- `cake` : gives every flow inside the tunnel its own queue and keeps the latency low. Without it, the `fq_codel` queue of the physical interface sees the whole tunnel as a **single flow**,
-  so a big download can starve a video stream or a call. `860mbit` is what a gigabit link carries once the tunnel overhead is added, it costs nothing measurable.
+- **NAT** : the peers' traffic leaves with the mini PC address (on my machine the rule was already set globally, keeping
+  it here makes the file self-contained).
+- **TCPMSS clamp** : TCP inside the tunnel can carry `1380` bytes per segment at most, clamping the MSS on the SYN
+  packets prevents fragmentation and black holes for the relayed connections.
+- `NOTRACK` : connection tracking is useless for the encrypted UDP flow (WireGuard authenticates every packet itself),
+  this saves a lookup per packet.
+- `cake` : gives every flow inside the tunnel its own queue and keeps the latency low. Without it, the `fq_codel` queue
+  of the physical interface sees the whole tunnel as a **single flow**,
+  so a big download can starve a video stream or a call. `860mbit` is what a gigabit link carries once the tunnel
+  overhead is added, it costs nothing measurable.
 
-The **DNS** pushed to the peers is the tunnel address of the server, `10.0.0.1` : Docker publishes Pi-Hole's port `53` on **every** address of the host, including this one,
-so the peers reach Pi-Hole (then Unbound) without any extra route, and it also works in split tunnel mode since the address is inside the tunnel subnet.
+The **DNS** pushed to the peers is the tunnel address of the server, `10.0.0.1` : Docker publishes Pi-Hole's port `53`
+on **every** address of the host, including this one,
+so the peers reach Pi-Hole (then Unbound) without any extra route, and it also works in split tunnel mode since the
+address is inside the tunnel subnet.
 
 ##### Peers configuration
 
@@ -1489,22 +1615,33 @@ PersistentKeepalive = 25
 > [!TIP]
 > A few things I learned the hard way about the peers configuration :
 >
-> - At home, use the **LAN IP address** of the server as endpoint (`192.168.0.16:51820`), not the public hostname : going through the public IP from inside the LAN
->   makes the router do **NAT loopback** (hairpin) in software, which cost me about half of the throughput (350/440 Mbit/s instead of 570/860).
->   Easiest is to keep two tunnels on the device : a "home" one with the LAN endpoint and an "away" one with the public hostname.
-> - At home, a **full tunnel** brings nothing : the traffic leaves through the same router anyway, it only adds encryption and relaying work for the server
->   (and costs about 40 % of the download speed, see [VPN connection speed](#vpn-connection-speed)).
->   Use a **split tunnel** (`AllowedIPs` limited to the VPN subnet, here `10.0.0.0/24`, which contains the DNS address so that the DNS still goes through the tunnel), or simply no tunnel at all
->   with the device DNS pointing to the mini PC : the ad blocking is done at DNS level, it is identical in all cases.
-> - `0.0.0.0/1, 128.0.0.0/1` also disables the **kill switch** and the **DNS leak protection** of the Windows client (only a `0.0.0.0/0` route enables them),
->   so Windows silently falls back to the router DNS if Pi-Hole does not answer within about a second.
-> - Never point a client to an address the server holds on a **secondary interface** (Wi-Fi, USB adapter), see the warning below.
+> - At home, use the **LAN IP address** of the server as endpoint (`192.168.0.16:51820`), not the public hostname :
+    going through the public IP from inside the LAN
+    > makes the router do **NAT loopback** (hairpin) in software, which cost me about half of the throughput (350/440
+    Mbit/s instead of 570/860).
+    > Easiest is to keep two tunnels on the device : a "home" one with the LAN endpoint and an "away" one with the
+    public hostname.
+> - At home, a **full tunnel** brings nothing : the traffic leaves through the same router anyway, it only adds
+    encryption and relaying work for the server
+    > (and costs about 40 % of the download speed, see [VPN connection speed](#vpn-connection-speed)).
+    > Use a **split tunnel** (`AllowedIPs` limited to the VPN subnet, here `10.0.0.0/24`, which contains the DNS address
+    so that the DNS still goes through the tunnel), or simply no tunnel at all
+    > with the device DNS pointing to the mini PC : the ad blocking is done at DNS level, it is identical in all cases.
+> - `0.0.0.0/1, 128.0.0.0/1` also disables the **kill switch** and the **DNS leak protection** of the Windows client
+    (only a `0.0.0.0/0` route enables them),
+    > so Windows silently falls back to the router DNS if Pi-Hole does not answer within about a second.
+> - Never point a client to an address the server holds on a **secondary interface** (Wi-Fi, USB adapter), see the
+    warning below.
 
 > [!WARNING]
-> Connect the server to the LAN through **one interface only**. I had the Wi-Fi of the mini PC connected to the same network "just in case", plus a USB Ethernet adapter left over from a test.
-> Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic for the main address through the Wi-Fi or the USB adapter,
-> NetworkManager detected its own Wi-Fi as an address conflict and dropped the USB adapter address for hours at each DHCP renewal, and the client I had pointed to that address
-> lost its tunnel at random and got a fraction of the throughput when it worked. Disable the Wi-Fi (`sudo nmcli radio wifi off`) and unplug what you don't use.
+> Connect the server to the LAN through **one interface only**. I had the Wi-Fi of the mini PC connected to the same
+network "just in case", plus a USB Ethernet adapter left over from a test.
+> Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic
+for the main address through the Wi-Fi or the USB adapter,
+> NetworkManager detected its own Wi-Fi as an address conflict and dropped the USB adapter address for hours at each
+DHCP renewal, and the client I had pointed to that address
+> lost its tunnel at random and got a fraction of the throughput when it worked. Disable the Wi-Fi
+(`sudo nmcli radio wifi off`) and unplug what you don't use.
 
 #### Pi-hole
 
@@ -1512,17 +1649,25 @@ PersistentKeepalive = 25
 
 The Compose file will run a **Pi-Hole** instance which need to be configured.
 
-First, Pi-Hole must accept the queries coming from other interfaces than its own Docker network (the VPN peers, the LAN) :
-by default it only answers "local" requests, and "local" for Pi-Hole is the Docker bridge network. The Compose file sets this once and for all with the
-`FTLCONF_dns_listeningMode: 'all'` environment variable (the equivalent of _Settings -> DNS -> Interface settings -> "Permit all origins"_ in the web UI).
+First, Pi-Hole must accept the queries coming from other interfaces than its own Docker network (the VPN peers, the
+LAN) :
+by default it only answers "local" requests, and "local" for Pi-Hole is the Docker bridge network. The Compose file sets
+this once and for all with the
+`FTLCONF_dns_listeningMode: 'all'` environment variable (the equivalent of _Settings -> DNS -> Interface settings -> "
+Permit all origins"_ in the web UI).
 
-The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik labels anymore, the router is declared in a file of
-Traefik's **dynamic configuration** directory instead (see [Traefik routing](#traefik-routing) below), restricted to the local network and the VPN peers.
+The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik
+labels anymore, the router is declared in a file of
+Traefik's **dynamic configuration** directory instead (see [Traefik routing](#traefik-routing) below), restricted to the
+local network and the VPN peers.
 
 > [!IMPORTANT]
-> Chicken and egg : the private services have **no public DNS record** (see [Domain and subdomains](#domain-and-subdomains)), so `pihole.example.com` can only be resolved
-> by Pi-Hole itself through a **local DNS record**... which is created in the web UI you cannot reach yet. Until it exists the browser gets `NXDOMAIN` (or, if a public record
-> for the name still exists, reaches Traefik through the NAT loopback of the router with the public IP as source and gets a `403`, see [IP whitelisting](#ip-whitelisting)).
+> Chicken and egg : the private services have **no public DNS record**
+(see [Domain and subdomains](#domain-and-subdomains)), so `pihole.example.com` can only be resolved
+> by Pi-Hole itself through a **local DNS record**... which is created in the web UI you cannot reach yet. Until it
+exists the browser gets `NXDOMAIN` (or, if a public record
+> for the name still exists, reaches Traefik through the NAT loopback of the router with the public IP as source and
+gets a `403`, see [IP whitelisting](#ip-whitelisting)).
 > Create the first record from the command line, it is applied immediately :
 >
 > ```bash
@@ -1530,11 +1675,15 @@ Traefik's **dynamic configuration** directory instead (see [Traefik routing](#tr
 > sudo docker exec pihole nslookup pihole.example.com 127.0.0.1
 > ```
 >
-> Then make sure the device you use has Pi-Hole as DNS server (`192.168.0.16`, see [IP settings](#ip-settings)), flush its cache (`ipconfig /flushdns` on Windows) and restart the browser.
-> `--config dns.hosts` **replaces** the whole list : to add entries later from the command line, repeat the complete list, or simply use the web UI once it is reachable.
+> Then make sure the device you use has Pi-Hole as DNS server (`192.168.0.16`, see [IP settings](#ip-settings)), flush
+its cache (`ipconfig /flushdns` on Windows) and restart the browser.
+> `--config dns.hosts` **replaces** the whole list : to add entries later from the command line, repeat the complete
+list, or simply use the web UI once it is reachable.
 
-I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy, with an OIDC middleware backed by **PocketID** (see [PocketID](#pocketid)),
-and the [network segmentation](#network-segmentation) keeps the container out of reach of the applications exposed to the internet.
+I don't set a Pi-Hole **password** : authentication is handled in front of it by the reverse proxy, with an OIDC
+middleware backed by **PocketID** (see [PocketID](#pocketid)),
+and the [network segmentation](#network-segmentation) keeps the container out of reach of the applications exposed to
+the internet.
 The image generates a random password at first start, remove it (or set yours) with :
 
 ```bash
@@ -1544,10 +1693,14 @@ sudo docker exec -it pihole pihole setpassword
 In _Settings -> DNS_, untick every public upstream and add **Unbound** as custom upstream DNS server : `10.2.0.200#53`
 (its static address in the `pihole-net` Docker network, see [Services definition](#services-definition)).
 
-Then we need to add **local DNS records** so that the domain names can be resolved from VPN or local network (remember the DNS requests of the VPN peers and of the configured devices go through Pi-Hole).
-We simply need to associate domain names with the internal IP address of the mini PC, so they can be handled by the reverse proxy.
+Then we need to add **local DNS records** so that the domain names can be resolved from VPN or local network (remember
+the DNS requests of the VPN peers and of the configured devices go through Pi-Hole).
+We simply need to associate domain names with the internal IP address of the mini PC, so they can be handled by the
+reverse proxy.
 
-Go to _Settings -> Local DNS Records_ (or repeat the `pihole-FTL --config dns.hosts` command above with the complete list) and add a **DNS record entry** for every subdomain that must only be reachable from the local network or through VPN :
+Go to _Settings -> Local DNS Records_ (or repeat the `pihole-FTL --config dns.hosts` command above with the complete
+list) and add a **DNS record entry** for every subdomain that must only be reachable from the local network or through
+VPN :
 
 ```
 dashboard.example.com               192.168.0.16
@@ -1563,17 +1716,23 @@ goatcounter.example.com             192.168.0.16
 ...
 ```
 
-Add the **public** services as well (Lychee, Defrag-life, ...), even though they have a public DNS record. Without a local record, a device at home resolves them to the
-**public IP** and the traffic loops through the **NAT loopback** of the router : it costs about half of the throughput (measured in [VPN connection speed](#vpn-connection-speed)),
-and Traefik sees the requests coming from your public IP address instead of the device's one, so they are treated like internet traffic by the IP whitelist and by [CrowdSec](#crowdsec)
-(a misbehaving device at home could get your whole household banned from your own sites). With a local record, everything stays on the LAN.
+Add the **public** services as well (Lychee, Defrag-life, ...), even though they have a public DNS record. Without a
+local record, a device at home resolves them to the **public IP** and the traffic loops through the **NAT loopback** of
+the router : it costs about half of the throughput (measured in [VPN connection speed](#vpn-connection-speed)),
+and Traefik sees the requests coming from your public IP address instead of the device's one, so they are treated like
+internet traffic by the IP whitelist and by [CrowdSec](#crowdsec)
+(a misbehaving device at home could get your whole household banned from your own sites). With a local record,
+everything stays on the LAN.
 
 > [!NOTE]
-> Consequence for the VPN peers away from home : they use Pi-Hole through the tunnel, so these names resolve to `192.168.0.16` for them too, which is only reachable
-> with a **full tunnel** or with `192.168.0.0/24` added to `AllowedIPs`. Do that on the *away* profile only : on the *home* profile, routing the LAN subnet through the tunnel would send
+> Consequence for the VPN peers away from home : they use Pi-Hole through the tunnel, so these names resolve to
+`192.168.0.16` for them too, which is only reachable
+> with a **full tunnel** or with `192.168.0.0/24` added to `AllowedIPs`. Do that on the *away* profile only : on the
+*home* profile, routing the LAN subnet through the tunnel would send
 > the traffic to your printer or TV through the mini PC.
 
-You can also configure rate limiting (default to **1000 queries per minute**), domain whitelisting, DNS settings, etc. but I will not go through all Pi-Hole configuration, the
+You can also configure rate limiting (default to **1000 queries per minute**), domain whitelisting, DNS settings, etc.
+but I will not go through all Pi-Hole configuration, the
 default should work just fine.
 
 If it is working you should be able to see activity in the dashboard.
@@ -1584,8 +1743,10 @@ If it is working you should be able to see activity in the dashboard.
 
 <img src="images/logo-unbound.svg" alt="Unbound logo" height="128"/>
 
-The first time you will run **Unbound**, it may fail because a few files included in the default configuration will be missing (at least in the image version I'm using),
-indeed the following files are included in the default _unbound.conf_ file (which should have been created correctly in _/etc/unbound/unbound.conf_) :
+The first time you will run **Unbound**, it may fail because a few files included in the default configuration will be
+missing (at least in the image version I'm using),
+indeed the following files are included in the default _unbound.conf_ file (which should have been created correctly in
+_/etc/unbound/unbound.conf_) :
 
 - _/opt/unbound/etc/unbound/a-records.conf_
 - _/opt/unbound/etc/unbound/srv-records.conf_
@@ -1594,26 +1755,33 @@ indeed the following files are included in the default _unbound.conf_ file (whic
 You could manually create these files (you can find default ones from the Unbound **GitHub** repository),
 and then mount them into the Unbound container, before running again the Compose file.
 
-But that way it would run Unbound in **forwarder** mode, meaning that the DNS server will forward all the queries to **Cloudflare**.
-This was my first try and a **DNS leak test** confirmed that it uses Cloudflare, indeed the default _forward-records.conf_ file includes the following forwarding rules :
+But that way it would run Unbound in **forwarder** mode, meaning that the DNS server will forward all the queries to
+**Cloudflare**.
+This was my first try and a **DNS leak test** confirmed that it uses Cloudflare, indeed the default
+_forward-records.conf_ file includes the following forwarding rules :
 
 ```
 forward-addr: 1.1.1.1@853#cloudflare-dns.com
 forward-addr: 1.0.0.1@853#cloudflare-dns.com
 ```
 
-So, if you want to run Unbound **without forwarding**, just remove or comment the lines that includes the above files from the _unbound.conf_ file.
-Do not create any of these files at all and do not bind them in the container, just remove the includes from the _unbound.conf_ file.
+So, if you want to run Unbound **without forwarding**, just remove or comment the lines that includes the above files
+from the _unbound.conf_ file.
+Do not create any of these files at all and do not bind them in the container, just remove the includes from the
+_unbound.conf_ file.
 
 A DNS leak test should now show your IP address as DNS server.
 
 > [!IMPORTANT]
-> If you use the default _forward-records.conf_ file, Unbound will run in **forwarder** mode, meaning that it will forward all queries to **Cloudflare**.
+> If you use the default _forward-records.conf_ file, Unbound will run in **forwarder** mode, meaning that it will
+forward all queries to **Cloudflare**.
 > To remove the default forwarding to Cloudflare and make your unbound container a recursive-only server,
 > edit the _unbound.conf_ file and remove include of the _forward-records.conf_ file.
 
-Then there are a few settings in _unbound.conf_ that are **essential** when Unbound runs in a container. I ran for months with a resolver that returned
-`SERVFAIL` for most names that were not already in cache (`login.live.com`, `www.apple.com`, the Twitch video servers, ...), cached names being served fine,
+Then there are a few settings in _unbound.conf_ that are **essential** when Unbound runs in a container. I ran for
+months with a resolver that returned
+`SERVFAIL` for most names that were not already in cache (`login.live.com`, `www.apple.com`, the Twitch video
+servers, ...), cached names being served fine,
 which made streams randomly fail to start and Windows painfully slow at boot when the tunnel was up :
 
 ```
@@ -1632,7 +1800,8 @@ server:
     use-syslog: no
 ```
 
-A quick way to validate such changes without touching the running resolver is to start a **throwaway** Unbound with the modified file on the same Docker network,
+A quick way to validate such changes without touching the running resolver is to start a **throwaway** Unbound with the
+modified file on the same Docker network,
 and to compare both on names that are not cached :
 
 ```bash
@@ -1642,7 +1811,8 @@ sudo docker logs unbound-test | grep SERVFAIL
 sudo docker rm -f unbound-test
 ```
 
-With my original file 9 names out of 16 failed, with `do-ip6: no` alone all 16 succeeded, and `use-caps-for-id: no` on top made them faster.
+With my original file 9 names out of 16 failed, with `do-ip6: no` alone all 16 succeeded, and `use-caps-for-id: no` on
+top made them faster.
 
 Do not enable `log-queries` for daily use, Unbound logs a lot.
 
@@ -1716,24 +1886,32 @@ http:
 This **Compose** file :
 
 - defines the `pihole-net` **network** with the subnet `10.2.0.0/24` (shared with Unbound)
-- references the `traefik-private-net` Traefik network so that the web UI can be reached through the reverse proxy (the router itself is declared on the Traefik side, see below)
+- references the `traefik-private-net` Traefik network so that the web UI can be reached through the reverse proxy (the
+  router itself is declared on the Traefik side, see below)
 - defines the `pihole` service :
-    - publishes port `53` (TCP and UDP) on **every address of the host**, which is what makes Pi-Hole reachable from the LAN (`192.168.0.16`)
+    - publishes port `53` (TCP and UDP) on **every address of the host**, which is what makes Pi-Hole reachable from the
+      LAN (`192.168.0.16`)
       and from the VPN peers (`10.0.0.1`) without any extra rule
     - sets the timezone and `FTLCONF_dns_listeningMode: 'all'` (see [Pi-hole](#pi-hole))
     - assigns the **static IP address** `10.2.0.100`
     - binds the _/etc/pihole_ folder to keep the configuration and the databases
-    - adds the `NET_ADMIN`, `SYS_TIME` and `SYS_NICE` capabilities recommended by the Pi-Hole image (DHCP server, time synchronisation, scheduling priority)
+    - adds the `NET_ADMIN`, `SYS_TIME` and `SYS_NICE` capabilities recommended by the Pi-Hole image (DHCP server, time
+      synchronisation, scheduling priority)
 - it uses Traefik dynamic config file to :
-    - define the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-private-net` network)
+    - define the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared
+      `traefik-private-net` network)
     - define the **router** matching `pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate
     - restrict the web UI to the local network and the VPN peers with the `vpn-whitelist` middleware
-    - add a forward-auth middleware `pihole-auth` in front of it (I use PocketID) to require authentication (see [PocketID](#pocketid))
+    - add a forward-auth middleware `pihole-auth` in front of it (I use PocketID) to require authentication
+      (see [PocketID](#pocketid))
 
 > [!NOTE]
-> Do not lower the MTU of the Docker networks "to fit the tunnel" (I had `com.docker.network.driver.mtu: "1280"` on all of them for a long time) : the containers don't need it,
-> MSS clamping and PMTU discovery take care of TCP through the tunnel and DNS answers fit anyway. A small bridge MTU only means more packets for the same data
-> and a dependency on ICMP for the inbound traffic, and back when WireGuard itself ran in a container it forced the kernel to fragment every single encrypted packet.
+> Do not lower the MTU of the Docker networks "to fit the tunnel" (I had `com.docker.network.driver.mtu: "1280"` on all
+of them for a long time) : the containers don't need it,
+> MSS clamping and PMTU discovery take care of TCP through the tunnel and DNS answers fit anyway. A small bridge MTU
+only means more packets for the same data
+> and a dependency on ICMP for the inbound traffic, and back when WireGuard itself ran in a container it forced the
+kernel to fragment every single encrypted packet.
 
 :page_facing_up: _unbound/docker-compose.yml_ :
 
@@ -1758,12 +1936,15 @@ networks:
     external: true
 ```
 
-This **Compose** file only defines the `unbound` service, on the same (external) `pihole-net` network with the **static IP address** `10.2.0.200`,
-and binds the configuration folder so that _unbound.conf_ can be edited (see [Unbound](#unbound)). Unbound is not exposed at all, only Pi-Hole talks to it.
+This **Compose** file only defines the `unbound` service, on the same (external) `pihole-net` network with the **static
+IP address** `10.2.0.200`,
+and binds the configuration folder so that _unbound.conf_ can be edited (see [Unbound](#unbound)). Unbound is not
+exposed at all, only Pi-Hole talks to it.
 
 #### Traefik routing
 
-:page_facing_up: _traefik/dynamic/pihole.yml_ (to copy into _/opt/apps/traefik/dynamic/_, the directory watched by the `file` provider of _traefik.yml_) :
+:page_facing_up: _traefik/dynamic/pihole.yml_ (to copy into _/opt/apps/traefik/dynamic/_, the directory watched by the
+`file` provider of _traefik.yml_) :
 
 ```yaml
 http:
@@ -1786,10 +1967,13 @@ http:
         - pihole-auth@file
 ```
 
-It declares the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared `traefik-private-net` network) and the **router** matching
-`pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate, exactly what the Traefik labels used to do, but Traefik picks up the file
+It declares the `pihole` **service** pointing to the container on port `80` (reachable by name thanks to the shared
+`traefik-private-net` network) and the **router** matching
+`pihole.example.com` on the `websecure` entrypoint with a Let's Encrypt certificate, exactly what the Traefik labels
+used to do, but Traefik picks up the file
 without restarting anything. The `vpn-whitelist` middleware keeps the web UI private (local network and VPN peers only).
-The `pihole-auth` middleware is a forward-auth middleware (I use PocketID) to require authentication (see [PocketID](#pocketid)).
+The `pihole-auth` middleware is a forward-auth middleware (I use PocketID) to require authentication
+(see [PocketID](#pocketid)).
 
 ### Run
 
@@ -1809,23 +1993,32 @@ Unbound is not exposed, Pi-Hole is reachable at https://pihole.example.com.
 
 Each service should be resolvable through its **subdomain name**.
 
-When a user enters the URL in the browser, the browser need to know the IP address corresponding to the domain name, so it can send the queries to. For that it :
+When a user enters the URL in the browser, the browser need to know the IP address corresponding to the domain name, so
+it can send the queries to. For that it :
 
-1. Checks the **browser cache** (most browsers cache DNS data by default), and use the address corresponding to the provided name if found
+1. Checks the **browser cache** (most browsers cache DNS data by default), and use the address corresponding to the
+   provided name if found
 2. Checks the **OS cache** and return the address to the browser if found
-3. Checks the **local host table file** (usually _/etc/hosts_ on Linux/Mac systems and _C:\Windows\System32\Drivers\etc\hosts_ on Windows)
+3. Checks the **local host table file** (usually _/etc/hosts_ on Linux/Mac systems and _C:
+   \Windows\System32\Drivers\etc\hosts_ on Windows)
    to see if an entry matches the specified name, if so, it will directly return it to the browser
-4. Invokes the **local resolver**, on Windows, it is defined at the network adapter level, usually
-   _Control Panel > Network and Internet > Network Connections_ then in the advanced properties of the desired connection (Higher Priority Connection).
-   On Linux/Mac it is usually _/etc/resovl.conf_. In my Windows system it is automatically configured to point to my router local IP Address.
-   The resolver checks its cache to see if it already has the address for this name. If it does, it returns it immediately to the browser
+4. Invokes the **local resolver**, on Windows, it is defined at the network adapter level, usually _Control Panel >
+   Network and Internet > Network Connections_ then in the advanced properties of the desired connection (Higher
+   Priority Connection).
+   On Linux/Mac it is usually _/etc/resovl.conf_. In my Windows system it is automatically configured to point to my
+   router local IP Address.
+   The resolver checks its cache to see if it already has the address for this name. If it does, it returns it
+   immediately to the browser
 5. Checks the **router cache** and return the address to the browser if found
 6. Checks the **ISP cache** and return the address to the browser if found
-7. Checks the **ISP resolving name server** which will call the **root DNS servers** (root server <--> TLD server <--> Authoritative Name Server)
+7. Checks the **ISP resolving name server** which will call the **root DNS servers** (root server <--> TLD server <-->
+   Authoritative Name Server)
    to find the IP address from the DNS server responsible for the domain name
 
-In our case the requests from the **local network** should reach **Pi-hole** (directly, or through the router if it really forwards them, see [IP settings](#ip-settings)),
-so the IP resolving goes through **Pi-Hole** and **Unbound**. See [Network flow](#network-flow) later below for a more graphical representation of the network flow.
+In our case the requests from the **local network** should reach **Pi-hole** (directly, or through the router if it
+really forwards them, see [IP settings](#ip-settings)),
+so the IP resolving goes through **Pi-Hole** and **Unbound**. See [Network flow](#network-flow) later below for a more
+graphical representation of the network flow.
 
 You can first test that each service is resolvable using `nslookup` command, i.e. :
 
@@ -1838,26 +2031,34 @@ Name :     myapp.example.com
 Address:  192.168.0.16
 ```
 
-If the answering server is the router instead of Pi-Hole, the router does not forward the queries (see [IP settings](#ip-settings)).
-If names resolve fine once cached but fail (`SERVFAIL`) or take a second the first time, the problem is on Unbound's side, see the settings in [Unbound](#unbound).
+If the answering server is the router instead of Pi-Hole, the router does not forward the queries
+(see [IP settings](#ip-settings)).
+If names resolve fine once cached but fail (`SERVFAIL`) or take a second the first time, the problem is on Unbound's
+side, see the settings in [Unbound](#unbound).
 
-Then you can look for DNS leak using any online checker, to determine which DNS servers the browser is using to resolve domain names,
-it should end up showing your **public IP address**, not Cloudflare or Google, etc. as we use **Unbound** (see [Unbound](#unbound) for configuration).
+Then you can look for DNS leak using any online checker, to determine which DNS servers the browser is using to resolve
+domain names,
+it should end up showing your **public IP address**, not Cloudflare or Google, etc. as we use **Unbound**
+(see [Unbound](#unbound) for configuration).
 
-You could also use tools like **Wireshark** to look closely at DNS resolution or to confirm that the traffic is effectively going through the VPN when connected
-(in that case the "Protocol" column should be `WireGuard` for all queries). I will not go through a Wireshark tutorial, but it is a very
+You could also use tools like **Wireshark** to look closely at DNS resolution or to confirm that the traffic is
+effectively going through the VPN when connected (in that case the "Protocol" column should be `WireGuard` for all
+queries). I will not go through a Wireshark tutorial, but it is a very
 useful and interesting tool for viewing what going on in your network.
 
 ## Reachability
 
-To verify that the network is set up correctly, we can simply try to access some services and see if we can reach them or not,
+To verify that the network is set up correctly, we can simply try to access some services and see if we can reach them
+or not,
 from different device and connection type.
 
 > [!NOTE]
-> I simply temporarily added a `CNAME` record in my domain name registrar for the services to be checked, to point to my DDNS for testing the IP whitelisting,
+> I simply temporarily added a `CNAME` record in my domain name registrar for the services to be checked, to point to my
+DDNS for testing the IP whitelisting,
 > Traefik will not route request if you try to access a service via the public IP address.
 
-For example if we try to access a service that must be accessible only through VPN (and local network), here are the results :
+For example if we try to access a service that must be accessible only through VPN (and local network), here are the
+results :
 
 | Device | Connection | VPN status        | Public IP     | Remote address (request header) | Traefik       | Response                  |
 |--------|------------|-------------------|---------------|---------------------------------|---------------|---------------------------|
@@ -1875,10 +2076,12 @@ For example if we try to access a service that must be accessible only through V
 - `172.22.0.1` is the Traefik Bridge network IP address
 - `81.165.84.189` is the public IP address on the mobile 4G network
 
-These are expected results, we can see that the service is reachable from the local network and from anywhere when using the VPN,
+These are expected results, we can see that the service is reachable from the local network and from anywhere when using
+the VPN,
 and it is not accessible outside the local network if we don't use the VPN.
 
-We can also confirm this by looking at the **Traefik logs** (you have to set `level` to `debug` in _traefik.yml_ file to see the debug logs)
+We can also confirm this by looking at the **Traefik logs** (you have to set `level` to `debug` in _traefik.yml_ file to
+see the debug logs)
 which shows that the `vpn-whitelist` **middleware** blocks any IP address that is not whitelisted :
 
 > ```
@@ -1890,8 +2093,9 @@ which shows that the `vpn-whitelist` **middleware** blocks any IP address that i
 
 ## VPN connection speed
 
-To verify that the VPN is not killing the connection speed, first run an online **speed test** with and without the tunnel, from a **wired** device
-(Wi-Fi adds its own variability). These are my results with a symmetric gigabit fiber line, from the home PC :
+To verify that the VPN is not killing the connection speed, first run an online **speed test** with and without the
+tunnel, from a **wired** device (Wi-Fi adds its own variability). These are my results with a symmetric gigabit fiber
+line, from the home PC :
 
 | Test (home PC, Ethernet)                                 | Download / upload (Mbit/s) |
 |----------------------------------------------------------|----------------------------|
@@ -1900,29 +2104,38 @@ To verify that the VPN is not killing the connection speed, first run an online 
 | Full tunnel, endpoint = LAN IP of the server             | 570 / 860                  |
 | Full tunnel, endpoint = public hostname (router hairpin) | 350 / 440                  |
 
-The upload is fine, the hairpin case is explained in [Peers configuration](#peers-configuration), and the download ceiling took me an evening of measurements to understand.
+The upload is fine, the hairpin case is explained in [Peers configuration](#peers-configuration), and the download
+ceiling took me an evening of measurements to understand.
 Here is what I learned, so you don't have to.
 
 ### Configure MTU
 
-Most **Ethernet** connections have an MTU of `1500`. You can confirm this on your network by running the `ping` command with the right parameters :
+Most **Ethernet** connections have an MTU of `1500`. You can confirm this on your network by running the `ping` command
+with the right parameters :
 
 ```console
 ping www.google.com -f -l 1472
 ping www.google.com -f -l 1473
 ```
 
-`1472` will work and `1473` will warn that the packet needs to be fragmented, because the **IPv4 header** is `20` bytes and the **ICMP header** is `8` bytes (`1472 + 20 + 8 = 1500`).
+`1472` will work and `1473` will warn that the packet needs to be fragmented, because the **IPv4 header** is `20` bytes
+and the **ICMP header** is `8` bytes (`1472 + 20 + 8 = 1500`).
 
-WireGuard adds its own headers, `60` bytes on IPv4 and `80` bytes on IPv6, so the tunnel MTU must be `1500 - 80 = 1420` (the `wg-quick` default).
-Beware of tools defaulting to `1450` (WireGuard UI did) : that produces `1510` bytes packets that get fragmented, and a **fragmented tunnel is dramatically slow** (a few percent of the line rate).
-Set `1420` on the server and on every peer, and don't go lower : a smaller MTU only means more packets for the same data.
+WireGuard adds its own headers, `60` bytes on IPv4 and `80` bytes on IPv6, so the tunnel MTU must be `1500 - 80 = 1420`
+(the `wg-quick` default).
+Beware of tools defaulting to `1450` (WireGuard UI did) : that produces `1510` bytes packets that get fragmented, and a
+**fragmented tunnel is dramatically slow** (a few percent of the line rate).
+Set `1420` on the server and on every peer, and don't go lower : a smaller MTU only means more packets for the same
+data.
 
 ### Measure where the limit is
 
-Speed tests only give the end result. To know **which part** of the path limits, use **iPerf 3** between the peer and the server, in both directions, in **UDP** and in **TCP**.
-Install `iperf3` on the server (`sudo apt install iperf3`) and on the client (Windows builds are available on iperf.fr), run `iperf3 -s` on the client (allow it in the Windows firewall),
-then from the server, with the tunnel up (`10.0.0.2` being the tunnel address of the peer and `192.168.0.12` its LAN address) :
+Speed tests only give the end result. To know **which part** of the path limits, use **iPerf 3** between the peer and
+the server, in both directions, in **UDP** and in **TCP**.
+Install `iperf3` on the server (`sudo apt install iperf3`) and on the client (Windows builds are available on iperf.fr),
+run `iperf3 -s` on the client (allow it in the Windows firewall),
+then from the server, with the tunnel up (`10.0.0.2` being the tunnel address of the peer and `192.168.0.12` its LAN
+address) :
 
 ```bash
 # reference : LAN, no tunnel, both directions
@@ -1945,31 +2158,45 @@ ss -ti dst 10.0.0.2                     # rtt, cwnd and retrans of the running c
 My results on the N100 :
 
 - LAN without tunnel : **940 Mbit/s** both ways, zero retransmission. Card, cable, router and PC are fine.
-- Tunnel, UDP : **900+ Mbit/s** both ways with **0.00 % loss** at line rate. The whole path, encryption on the N100 and decryption on the PC included, carries the full gigabit.
+- Tunnel, UDP : **900+ Mbit/s** both ways with **0.00 % loss** at line rate. The whole path, encryption on the N100 and
+  decryption on the PC included, carries the full gigabit.
 - Tunnel, TCP, upload (peer to internet) : 860 to 930 Mbit/s.
-- Tunnel, TCP, download (internet to peer) : **550 to 600 Mbit/s**, whatever I tried, with `rx_missed` climbing on the server (50 to 1000 per second) while the CPU never went above 70 % on the busiest core.
+- Tunnel, TCP, download (internet to peer) : **550 to 600 Mbit/s**, whatever I tried, with `rx_missed` climbing on the
+  server (50 to 1000 per second) while the CPU never went above 70 % on the busiest core.
 
-So the limit is neither the CPU nor WireGuard, it is the **network card**. The Realtek RTL8168H of this mini PC (`r8169` driver) has a **single queue**,
-a single interrupt handled by a single core, and a **receive ring of 256 descriptors** (hardware maximum), which holds about 3 ms of gigabit traffic.
-When the card receives *and* transmits at ~600 Mbit/s at the same time, which is exactly what relaying a download through the tunnel does, the ring overflows during the small
-scheduling gaps of the receive path, and the dropped frames make the TCP senders on the internet back off. "Polite" senders (speed test servers) settle around 560 Mbit/s,
-aggressive ones (public iPerf servers with 10 Gbit/s uplinks) push ~850 Mbit/s through at the price of tens of thousands of retransmissions.
-The upload is not affected because the plaintext sent out benefits from segmentation offload (far fewer packets to handle), and UDP is not affected because it does not react to drops.
+So the limit is neither the CPU nor WireGuard, it is the **network card**. The Realtek RTL8168H of this mini PC (`r8169`
+driver) has a **single queue**,
+a single interrupt handled by a single core, and a **receive ring of 256 descriptors** (hardware maximum), which holds
+about 3 ms of gigabit traffic.
+When the card receives *and* transmits at ~600 Mbit/s at the same time, which is exactly what relaying a download
+through the tunnel does, the ring overflows during the small
+scheduling gaps of the receive path, and the dropped frames make the TCP senders on the internet back off. "Polite"
+senders (speed test servers) settle around 560 Mbit/s,
+aggressive ones (public iPerf servers with 10 Gbit/s uplinks) push ~850 Mbit/s through at the price of tens of thousands
+of retransmissions.
+The upload is not affected because the plaintext sent out benefits from segmentation offload (far fewer packets to
+handle), and UDP is not affected because it does not react to drops.
 
-For the record, here is what does **not** move that ceiling (I measured each one) : pinning the card interrupt to a dedicated core and steering the rest with RPS, interrupt coalescing
-(receive coalescing even multiplied the drops by 30), threaded NAPI with real-time priority, real-time `ksoftirqd`, a bigger NAPI budget, disabling Ethernet flow control, TSO/GSO,
-`cake` on the tunnel interface, an ingress shaper, a fast path in iptables. Some of them lower the CPU usage, none of them changes the size of the receive ring.
+For the record, here is what does **not** move that ceiling (I measured each one) : pinning the card interrupt to a
+dedicated core and steering the rest with RPS, interrupt coalescing (receive coalescing even multiplied the drops by
+30), threaded NAPI with real-time priority, real-time `ksoftirqd`, a bigger NAPI budget, disabling Ethernet flow
+control, TSO/GSO,
+`cake` on the tunnel interface, an ingress shaper, a fast path in iptables. Some of them lower the CPU usage, none of
+them changes the size of the receive ring.
 
 What does help :
 
-- **Don't use a full tunnel at home**, see [Peers configuration](#peers-configuration) : a split tunnel, or no tunnel at all with the DNS pointing to Pi-Hole, gives the same ad blocking at 920 Mbit/s.
+- **Don't use a full tunnel at home**, see [Peers configuration](#peers-configuration) : a split tunnel, or no tunnel at
+  all with the DNS pointing to Pi-Hole, gives the same ad blocking at 920 Mbit/s.
   Away from home, the remote connection is the limit anyway.
-- If you really want line rate through the tunnel, the fix is hardware : a **multi-queue** network card (for example an Intel i226 on an M.2 A+E adapter, in place of the unused Wi-Fi card,
+- If you really want line rate through the tunnel, the fix is hardware : a **multi-queue** network card (for example an
+  Intel i226 on an M.2 A+E adapter, in place of the unused Wi-Fi card,
   brings 4 queues and receive rings up to 4096 descriptors).
 
 ### Network card settings
 
-Two settings of the `r8169` driver are worth changing anyway, they lower the CPU cost of the upload and of the LAN traffic. Put them as `post-up` commands of the interface
+Two settings of the `r8169` driver are worth changing anyway, they lower the CPU cost of the upload and of the LAN
+traffic. Put them as `post-up` commands of the interface
 in _/etc/network/interfaces_ so that they survive a reboot :
 
 ```
@@ -1984,7 +2211,8 @@ If `dmesg` ever shows `NETDEV WATCHDOG` for the interface, remove the first line
 
 ## Network flow
 
-For the following examples, we will consider that the **user** enters http://myapp.example.com in the **browser** for the first time (no **DNS record** found in cache).
+For the following examples, we will consider that the **user** enters http://myapp.example.com in the **browser** for
+the first time (no **DNS record** found in cache).
 
 ### Without VPN
 
@@ -2002,116 +2230,116 @@ from your local network holding your homelab (on the left), or from any other lo
 
 ```mermaid
 flowchart TB
-   style HOSTING_PROVIDER fill:#4d683b,color:#fff
-   style DDNS_PROVIDER fill:#69587b,color:#fff
-   style INTERNET_SERVICE_PROVIDER fill:#205566,color:#fff
-   style SINGLE_BOARD_COMPUTER fill:#665151,color:#fff
-   style CONTAINER_ENGINE fill:#664343,color:#fff
-   style TRAEFIK_CONTAINER fill:#663535,color:#fff
-   style PIHOLE_CONTAINER fill:#663535,color:#fff
-   style UNBOUND_CONTAINER fill:#663535,color:#fff
-   style MYAPP_CONTAINER fill:#663535,color:#fff
-   style TRAEFIK_ROUTER fill:#806030,color:#fff
-   style TRAEFIK_MIDDLEWARE fill:#806030,color:#fff
-   DOMAIN(example.com)
-   SUBDOMAIN_MYAPP(myapp.example.com)
-   DDNS(myddns.ddns.net)
-   ROUTER_PUBLIC_IP[public IP]
-   ROUTER_PORT80{{80/tcp}}
-   ROUTER_PORT443{{443/tcp}}
-   ROUTER_DNS[DNS]
-   DOCKER_PIHOLE_PORT53{{53/udp}}
-   DOCKER_TRAEFIK_PORT443{{443/tcp}}
-   DOCKER_TRAEFIK_PORT80{{80/tcp}}
-   DOCKER_MYAPP_PORT{{port/tcp}}
-   DOCKER_UNBOUND_PORT53{{53/udp}}
-   TRAEFIK_ROUTER_MYAPP(myapp.example.com)
-   TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
-   ROOT_DNS_SERVERS[Root DNS servers]
+    style HOSTING_PROVIDER fill: #4d683b, color: #fff
+    style DDNS_PROVIDER fill: #69587b, color: #fff
+    style INTERNET_SERVICE_PROVIDER fill: #205566, color: #fff
+    style SINGLE_BOARD_COMPUTER fill: #665151, color: #fff
+    style CONTAINER_ENGINE fill: #664343, color: #fff
+    style TRAEFIK_CONTAINER fill: #663535, color: #fff
+    style PIHOLE_CONTAINER fill: #663535, color: #fff
+    style UNBOUND_CONTAINER fill: #663535, color: #fff
+    style MYAPP_CONTAINER fill: #663535, color: #fff
+    style TRAEFIK_ROUTER fill: #806030, color: #fff
+    style TRAEFIK_MIDDLEWARE fill: #806030, color: #fff
+    DOMAIN(example.com)
+    SUBDOMAIN_MYAPP(myapp.example.com)
+    DDNS(myddns.ddns.net)
+    ROUTER_PUBLIC_IP[public IP]
+    ROUTER_PORT80{{80/tcp}}
+    ROUTER_PORT443{{443/tcp}}
+    ROUTER_DNS[DNS]
+    DOCKER_PIHOLE_PORT53{{53/udp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_MYAPP_PORT{{port/tcp}}
+    DOCKER_UNBOUND_PORT53{{53/udp}}
+    TRAEFIK_ROUTER_MYAPP(myapp.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    ROOT_DNS_SERVERS[Root DNS servers]
 
-   subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
-      DOMAIN
-      SUBDOMAIN_MYAPP
-   end
+    subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
+        DOMAIN
+        SUBDOMAIN_MYAPP
+    end
 
-   subgraph DDNS_PROVIDER[DYNAMIC DNS PROVIDER]
-      DDNS
-   end
+    subgraph DDNS_PROVIDER[DYNAMIC DNS PROVIDER]
+        DDNS
+    end
 
-   subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
-      ROUTER_PUBLIC_IP
-      ROUTER_PORT80
-      ROUTER_PORT443
-      ROUTER_DNS
-   end
+    subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
+        ROUTER_PUBLIC_IP
+        ROUTER_PORT80
+        ROUTER_PORT443
+        ROUTER_DNS
+    end
 
-   subgraph SINGLE_BOARD_COMPUTER[BANANA PI M5]
-      subgraph CONTAINER_ENGINE[DOCKER]
-         subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
-            DOCKER_MYAPP_PORT
-         end
-
-         subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
-            DOCKER_UNBOUND_PORT53
-         end
-
-         subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
-            DOCKER_PIHOLE_PORT53
-         end
-
-         subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-            DOCKER_TRAEFIK_PORT443
-            DOCKER_TRAEFIK_PORT80
-
-            subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
-               TRAEFIK_ROUTER_MYAPP
+    subgraph SINGLE_BOARD_COMPUTER[BANANA PI M5]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
+                DOCKER_MYAPP_PORT
             end
 
-            subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-               TRAEFIK_MIDDLEWARE_REDIRECT
+            subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
+                DOCKER_UNBOUND_PORT53
             end
-         end
 
-      end
+            subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
+                DOCKER_PIHOLE_PORT53
+            end
 
-   end
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
 
-   CLIENT((client)) --->|" http‎://myapp.example.com "| BROWSER
-   BROWSER((browser)) -->|HTTP| ROUTER_PUBLIC_IP
-   DOMAIN <-->|subdomain| SUBDOMAIN_MYAPP
-   SUBDOMAIN_MYAPP <-->|CNAME| DDNS
-   DDNS <-->|DynDNS| ROUTER_PUBLIC_IP
-   ROUTER_PUBLIC_IP --> ROUTER_PORT80
-   ROUTER_PUBLIC_IP --> ROUTER_PORT443
-   ROUTER_PORT443 -->|port forward| DOCKER_TRAEFIK_PORT443
-   ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
-   DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-   DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-   TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
-   TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
-   TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
-   BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
-   LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER_DNS
-   ROUTER_DNS <-->|Banana Pi M5 static IP| DOCKER_PIHOLE_PORT53
-   DOCKER_PIHOLE_PORT53 <-->|DNS| DOCKER_UNBOUND_PORT53
-   UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
-   linkStyle 0 stroke-width: 4px, stroke: red
-   linkStyle 1 stroke-width: 4px, stroke: red
-   linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 4 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 5 stroke-width: 4px, stroke: red
-   linkStyle 8 stroke-width: 4px, stroke: red
-   linkStyle 9 stroke-width: 4px, stroke: red
-   linkStyle 10 stroke-width: 4px, stroke: red
-   linkStyle 11 stroke-width: 4px, stroke: red
-   linkStyle 12 stroke-width: 4px, stroke: red
-   linkStyle 13 stroke-width: 4px, stroke: red
-   linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-   linkStyle 18 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_MYAPP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                end
+            end
+
+        end
+
+    end
+
+    CLIENT((client)) --->|" http‎://myapp.example.com "| BROWSER
+    BROWSER((browser)) -->|HTTP| ROUTER_PUBLIC_IP
+    DOMAIN <-->|subdomain| SUBDOMAIN_MYAPP
+    SUBDOMAIN_MYAPP <-->|CNAME| DDNS
+    DDNS <-->|DynDNS| ROUTER_PUBLIC_IP
+    ROUTER_PUBLIC_IP --> ROUTER_PORT80
+    ROUTER_PUBLIC_IP --> ROUTER_PORT443
+    ROUTER_PORT443 -->|port forward| DOCKER_TRAEFIK_PORT443
+    ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
+    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
+    BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
+    LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER_DNS
+    ROUTER_DNS <-->|Banana Pi M5 static IP| DOCKER_PIHOLE_PORT53
+    DOCKER_PIHOLE_PORT53 <-->|DNS| DOCKER_UNBOUND_PORT53
+    UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
+    linkStyle 0 stroke-width: 4px, stroke: red
+    linkStyle 1 stroke-width: 4px, stroke: red
+    linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 4 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 5 stroke-width: 4px, stroke: red
+    linkStyle 8 stroke-width: 4px, stroke: red
+    linkStyle 9 stroke-width: 4px, stroke: red
+    linkStyle 10 stroke-width: 4px, stroke: red
+    linkStyle 11 stroke-width: 4px, stroke: red
+    linkStyle 12 stroke-width: 4px, stroke: red
+    linkStyle 13 stroke-width: 4px, stroke: red
+    linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 18 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
 ```
 
 </td>
@@ -2233,11 +2461,15 @@ flowchart TB
 </tr>
 </table>
 
-From the **local network** (left), Pi-Hole answers with its **local DNS record** (yellow dotted line), so the browser gets the mini PC's **internal IP**
-and reaches the **reverse proxy** directly on the LAN, without going through the public IP (no port forwarding, no NAT loopback).
-From **any other location** (right), the name is resolved publicly through the client's **DNS resolver** and the request reaches the mini PC on port **80** (HTTP)
+From the **local network** (left), Pi-Hole answers with its **local DNS record** (yellow dotted line), so the browser
+gets the mini PC's **internal IP**
+and reaches the **reverse proxy** directly on the LAN, without going through the public IP (no port forwarding, no NAT
+loopback).
+From **any other location** (right), the name is resolved publicly through the client's **DNS resolver** and the request
+reaches the mini PC on port **80** (HTTP)
 after being **port forwarded** by the **ISP router**.
-In both cases the reverse proxy redirects the request to port **443** (HTTPS) thanks to the **HTTPS redirect middleware**, which finally routes it to the target application (red line).
+In both cases the reverse proxy redirects the request to port **443** (HTTPS) thanks to the **HTTPS redirect
+middleware**, which finally routes it to the target application (red line).
 
 ### With VPN
 
@@ -2387,13 +2619,16 @@ Here, first the client needs to connect to the **VPN server** through his prefer
 The request for VPN connection reaches the mini PC on UDP port **51820** (VPN port)
 after being routed by the **CNAME record** to our **dynamic DNS** and then **port forwarded** by our **router**.
 
-The **DNS resolving** always go through **Pi-Hole** and **Unbound** (yellow dotted line), to resolve the VPN server and the application.
+The **DNS resolving** always go through **Pi-Hole** and **Unbound** (yellow dotted line), to resolve the VPN server and
+the application.
 
 The request for the application is handled by Pi-Hole DNS local record which route it to the mini PC IP address,
-to be handled by the **reverse proxy**, and is then redirected to port **443** (HTTPS) thanks to the **HTTPS redirect middleware**,
+to be handled by the **reverse proxy**, and is then redirected to port **443** (HTTPS) thanks to the **HTTPS redirect
+middleware**,
 which finally route it to the target application (red line).
 
-If in any way the request arrives to Traefik with an unauthorized IP address, it will be rejected thanks to the **IP whitelist** middleware.
+If in any way the request arrives to Traefik with an unauthorized IP address, it will be rejected thanks to the **IP
+whitelist** middleware.
 
 # Install services
 
@@ -2401,17 +2636,22 @@ If in any way the request arrives to Traefik with an unauthorized IP address, it
 
 <img src="images/logo-pocketid.svg" alt="PocketID logo" height="128"/>
 
-We will use **PocketID** to add a single sign-on in front of the services that don't have a proper authentication of their own (Pi-Hole, the Traefik dashboard),
+We will use **PocketID** to add a single sign-on in front of the services that don't have a proper authentication of
+their own (Pi-Hole, the Traefik dashboard),
 and as identity provider for the services that support OpenID Connect natively (Portainer).
 
-PocketID is a small self-hosted **OpenID Connect** (OIDC) provider with a twist : users don't have passwords, they authenticate with **passkeys** only
-(a hardware key, or the passkey manager of the phone, the browser or a password manager). Nothing to remember, nothing to phish, and one login for every service.
+PocketID is a small self-hosted **OpenID Connect** (OIDC) provider with a twist : users don't have passwords, they
+authenticate with **passkeys** only (a hardware key, or the passkey manager of the phone, the browser or a password
+manager). Nothing to remember, nothing to phish, and one login for every service.
 
 There are two ways to plug a service on it :
 
-- services that speak OIDC natively (Portainer, ...) get their own **OIDC client** in PocketID and show a "login with PocketID" button
-- services that don't (Pi-Hole, the Traefik dashboard) are put behind the [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth) **Traefik plugin** :
-  a middleware that redirects the browser to PocketID, checks the token it comes back with and keeps a session cookie, so that the service behind never sees an unauthenticated request
+- services that speak OIDC natively (Portainer, ...) get their own **OIDC client** in PocketID and show a "login with
+  PocketID" button
+- services that don't (Pi-Hole, the Traefik dashboard) are put behind
+  the [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth) **Traefik plugin** :
+  a middleware that redirects the browser to PocketID, checks the token it comes back with and keeps a session cookie,
+  so that the service behind never sees an unauthenticated request
 
 Here is an overview of the network flow when a service is protected by the middleware :
 
@@ -2479,8 +2719,10 @@ flowchart LR
 
 ### Setting up
 
-Create the folders and the **encryption key** (PocketID encrypts its secrets at rest with it : keep that file with your backups, without it the database is unusable).
-The container runs as user `1000:1001` (see the _.env_ file), so give it the ownership of the data folder and of the key :
+Create the folders and the **encryption key** (PocketID encrypts its secrets at rest with it : keep that file with your
+backups, without it the database is unusable).
+The container runs as user `1000:1001` (see the _.env_ file), so give it the ownership of the data folder and of the
+key :
 
 ```bash
 sudo mkdir -p /opt/apps/pocketid/data
@@ -2491,32 +2733,49 @@ sudo chmod 600 /opt/apps/pocketid/encryption_key
 
 Then :
 
-- copy the _.env_ and _docker-compose.yml_ files from this project's _pocketid_ directory into the _/opt/apps/pocketid_ directory, and adapt the _.env_ file to your domain
-- copy the _pocketid.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
-- declare the `traefik-oidc-auth` **plugin** in the _traefik.yml_ static configuration (see below) and restart Traefik, plugins are downloaded when it starts
+- copy the _.env_ and _docker-compose.yml_ files from this project's _pocketid_ directory into the _/opt/apps/pocketid_
+  directory, and adapt the _.env_ file to your domain
+- copy the _pocketid.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- declare the `traefik-oidc-auth` **plugin** in the _traefik.yml_ static configuration (see below) and restart Traefik,
+  plugins are downloaded when it starts
 
-Run the Compose file (see [Run](#run-2)), then open https://pocketid.example.com : on first start the setup page (`/setup`) creates the **administrator** account and registers its first **passkey**.
+Run the Compose file (see [Run](#run-2)), then open https://pocketid.example.com : on first start the setup page
+(`/setup`) creates the **administrator** account and registers its first **passkey**.
 
 Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
 
-- for a service put behind the Traefik middleware, the callback URL is the service URL followed by `/oidc/callback` (the default `CallbackUri` of the plugin), for example `https://pihole.example.com/oidc/callback`,
-  and **PKCE** enabled. Copy the generated client ID and secret into the `ClientId` / `ClientSecret` fields of the corresponding middleware in _pocketid.yml_,
-  and give the middleware a random 32 characters `Secret` (`openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32; echo`) : this one is not a PocketID secret,
-  it is the key the plugin uses to encrypt its own session cookie. The plugin expects exactly **32 characters**, and each middleware must have its own.
+- for a service put behind the Traefik middleware, the callback URL is the service URL followed by `/oidc/callback` (the
+  default `CallbackUri` of the plugin), for example `https://pihole.example.com/oidc/callback`,
+  and **PKCE** enabled. Copy the generated client ID and secret into the `ClientId` / `ClientSecret` fields of the
+  corresponding middleware in _pocketid.yml_,
+  and give the middleware a random 32 characters `Secret`
+  (`openssl rand -base64 48 | tr -dc 'A-Za-z0-9' | head -c 32; echo`) : this one is not a PocketID secret,
+  it is the key the plugin uses to encrypt its own session cookie. The plugin expects exactly **32 characters**, and
+  each middleware must have its own.
   Traefik picks up the change without restart
-- for a service with native OIDC support, use the callback URL it documents and its own settings page. **Portainer** (_Settings -> Authentication -> OAuth -> Custom_) needs the client ID and secret,
-  `openid profile email` as scopes, **PKCE disabled** on the PocketID side as Portainer does not support it, and three endpoints : the **authorization URL** is the public one
-  (`https://pocketid.example.com/authorize`, the browser follows it), but the **access token URL** and the **resource URL** must be the **internal** ones
-  (`http://pocketid:1411/api/oidc/token` and `http://pocketid:1411/api/oidc/userinfo`). These two calls are made by the Portainer container itself : through the public URL
-  these two calls are made by the Portainer container itself, and reaching PocketID directly on the Docker network is the shortest path. Since the alias and the
+- for a service with native OIDC support, use the callback URL it documents and its own settings page. **Portainer**
+  (_Settings -> Authentication -> OAuth -> Custom_) needs the client ID and secret,
+  `openid profile email` as scopes, **PKCE disabled** on the PocketID side as Portainer does not support it, and three
+  endpoints : the **authorization URL** is the public one (`https://pocketid.example.com/authorize`, the browser follows
+  it), but the **access token URL** and the **resource URL** must be the **internal** ones
+  (`http://pocketid:1411/api/oidc/token` and `http://pocketid:1411/api/oidc/userinfo`). These two calls are made by the
+  Portainer container itself : through the public URL
+  these two calls are made by the Portainer container itself, and reaching PocketID directly on the Docker network is
+  the shortest path. Since the alias and the
   `pocketid-whitelist` middleware described below, the public URLs would work just as well here
-- most OIDC libraries, however, **verify that the issuer announced by the provider matches the URL they queried** (Homebox and its `go-oidc` for instance), so they cannot use the internal URL at all :
-  querying `http://pocketid:1411` returns `https://pocketid.example.com` as issuer and they refuse. Those applications must use the **public** issuer URL, which means their container has to reach it.
+- most OIDC libraries, however, **verify that the issuer announced by the provider matches the URL they queried**
+  (Homebox and its `go-oidc` for instance), so they cannot use the internal URL at all :
+  querying `http://pocketid:1411` returns `https://pocketid.example.com` as issuer and they refuse. Those applications
+  must use the **public** issuer URL, which means their container has to reach it.
   Two small additions make that work, and they serve every future application :
-    - Traefik carries a **network alias** with the provider's public name on the private network (see [Service definition](#service-definition-)), so that the containers resolve it to Traefik itself,
+    - Traefik carries a **network alias** with the provider's public name on the private network
+      (see [Service definition](#service-definition-)), so that the containers resolve it to Traefik itself,
       without any hard coded IP address and without depending on Pi-Hole for the container DNS
-    - the PocketID router uses the `pocketid-whitelist` middleware instead of `vpn-whitelist` : same ranges plus the **private** Docker network, so that a container is allowed to fetch the discovery
-      document and to exchange the token. The **public** Docker network is deliberately left out, an application exposed to the internet must not reach the provider this way
+    - the PocketID router uses the `pocketid-whitelist` middleware instead of `vpn-whitelist` : same ranges plus the
+      **private** Docker network, so that a container is allowed to fetch the discovery
+      document and to exchange the token. The **public** Docker network is deliberately left out, an application exposed
+      to the internet must not reach the provider this way
   ```mermaid
   flowchart LR
       APP[application container] -->|1 . resolves pocketid.example.com| DNS[[Docker DNS : alias on Traefik]]
@@ -2524,7 +2783,8 @@ Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
       TRAEFIK -->|3 . pocketid-whitelist accepts the private network| POCKETID[PocketID]
   ```
 
-Finally, to protect a service with the middleware, add it to the `middlewares` list of its router, after the IP whitelist, as done for Pi-Hole :
+Finally, to protect a service with the middleware, add it to the `middlewares` list of its router, after the IP
+whitelist, as done for Pi-Hole :
 
 ```yaml
       middlewares:
@@ -2533,9 +2793,12 @@ Finally, to protect a service with the middleware, add it to the `middlewares` l
 ```
 
 > [!NOTE]
-> The `pocketid` router is itself behind the `vpn-whitelist` middleware because every service I protect with it is only reachable from the local network or the VPN.
-> If one day a **public** service is put behind the middleware, the login page must be reachable from the internet too : remove the whitelist from the `pocketid` router only,
-> the login page is designed to be public (passkeys cannot be brute-forced or phished). PocketID itself stays on the private network (see [Network segmentation](#network-segmentation)).
+> The `pocketid` router is itself behind the `vpn-whitelist` middleware because every service I protect with it is only
+reachable from the local network or the VPN.
+> If one day a **public** service is put behind the middleware, the login page must be reachable from the internet too :
+remove the whitelist from the `pocketid` router only,
+> the login page is designed to be public (passkeys cannot be brute-forced or phished). PocketID itself stays on the
+private network (see [Network segmentation](#network-segmentation)).
 
 ### Details
 
@@ -2624,17 +2887,24 @@ experimental:
 
 Things to notice :
 
-- PocketID's data (SQLite database, uploaded logos) lives in the _data_ folder, and the **encryption key** is mounted read-only from the host
+- PocketID's data (SQLite database, uploaded logos) lives in the _data_ folder, and the **encryption key** is mounted
+  read-only from the host
 - the settings come from the _.env_ file (see [Environment variables](#environment-variables))
-- it runs in its own **network** (`pocketid-net`) but must also share the same network as Traefik (`traefik-private-net`), both to be reachable by the reverse proxy
+- it runs in its own **network** (`pocketid-net`) but must also share the same network as Traefik
+  (`traefik-private-net`), both to be reachable by the reverse proxy
   and so that the plugin can talk to it directly by container name
 - the Traefik dynamic config file :
     - creates a **service** which will point to our container application running on port `1411`
-    - creates an HTTP **router** that will match `pocketid.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - assigns the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-    - adds a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-    - defines one **middleware per protected service** (`traefik-auth` for the Traefik dashboard, `pihole-auth` for Pi-Hole), each with its own OIDC client and session,
-      all pointing to PocketID through the **internal** URL `http://pocketid:1411/` : the token exchange stays inside the Docker network instead of looping through the reverse proxy
+    - creates an HTTP **router** that will match `pocketid.example.com` URL on our `websecure` **entrypoint** to point
+      to our service
+    - assigns the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
+      reachable only from local network or through VPN)
+    - adds a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's
+      encrypt certificates
+    - defines one **middleware per protected service** (`traefik-auth` for the Traefik dashboard, `pihole-auth` for
+      Pi-Hole), each with its own OIDC client and session,
+      all pointing to PocketID through the **internal** URL `http://pocketid:1411/` : the token exchange stays inside
+      the Docker network instead of looping through the reverse proxy
 - the plugin itself is declared once in the static configuration, Traefik downloads it from its plugin catalog at start
 
 #### Environment variables
@@ -2651,12 +2921,17 @@ PUID=1000
 PGID=1001
 ```
 
-- `APP_URL` is the public URL, it is also the OIDC **issuer** written in every token, so it must match the router's host exactly
-- there is no `INTERNAL_APP_URL` here on purpose : it makes the discovery document advertise the **token** and **userinfo** endpoints as `http://pocketid:1411/...`,
-  for every client and whatever URL the document was fetched from. Clients whose library refuses plain HTTP (CrowdSec Web UI) then break on the token exchange.
-  With the network alias and `pocketid-whitelist`, the containers reach the public HTTPS endpoints directly, so it is no longer needed
+- `APP_URL` is the public URL, it is also the OIDC **issuer** written in every token, so it must match the router's host
+  exactly
+- there is no `INTERNAL_APP_URL` here on purpose : it makes the discovery document advertise the **token** and
+  **userinfo** endpoints as `http://pocketid:1411/...`,
+  for every client and whatever URL the document was fetched from. Clients whose library refuses plain HTTP (CrowdSec
+  Web UI) then break on the token exchange.
+  With the network alias and `pocketid-whitelist`, the containers reach the public HTTPS endpoints directly, so it is no
+  longer needed
 - `ENCRYPTION_KEY_FILE` points to the key mounted read-only in the container
-- `TRUST_PROXY` makes PocketID take the client IP addresses from the headers set by Traefik (audit log, rate limiting), which is required behind a reverse proxy
+- `TRUST_PROXY` makes PocketID take the client IP addresses from the headers set by Traefik (audit log, rate limiting),
+  which is required behind a reverse proxy
 - `MAXMIND_LICENSE_KEY` is optional, with a free MaxMind licence key the audit log shows where the logins come from
 - `PUID` / `PGID` are the user and group the application runs as, hence the ownership of the data folder and of the key
 
@@ -2672,7 +2947,8 @@ You should end-up with a running `pocketid` container.
 
 It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
 
-The application is available at https://pocketid.example.com, where the first visit creates the administrator account and its passkey (see [Setting up](#setting-up)).
+The application is available at https://pocketid.example.com, where the first visit creates the administrator account
+and its passkey (see [Setting up](#setting-up)).
 
 <img src="images/screen-pocketid.png" alt="PocketID screenshot"/>
 
@@ -2680,16 +2956,21 @@ The application is available at https://pocketid.example.com, where the first vi
 
 <img src="images/logo-crowdsec.svg" alt="CrowdSec logo" height="128"/>
 
-We will use **CrowdSec** to detect and block the attackers knocking on the reverse proxy : scanners looking for `/.env` or `/wp-login.php`, brute force attempts, known exploits, bad bots.
+We will use **CrowdSec** to detect and block the attackers knocking on the reverse proxy : scanners looking for `/.env`
+or `/wp-login.php`, brute force attempts, known exploits, bad bots.
 
-CrowdSec is an open source, collaborative **intrusion prevention system** : a **security engine** reads logs, matches them against **scenarios** from a community hub
-and takes **decisions** (ban an IP address for a few hours), and a **bouncer** enforces them where the traffic enters. In return for the signals it shares, the engine also receives the
-**community blocklist** : IP addresses currently attacking other CrowdSec users are blocked before they even try anything here.
+CrowdSec is an open source, collaborative **intrusion prevention system** : a **security engine** reads logs, matches
+them against **scenarios** from a community hub
+and takes **decisions** (ban an IP address for a few hours), and a **bouncer** enforces them where the traffic enters.
+In return for the signals it shares, the engine also receives the **community blocklist** : IP addresses currently
+attacking other CrowdSec users are blocked before they even try anything here.
 
 In our setup the only door open to the internet is Traefik, so everything happens there :
 
-- the **security engine** runs in a container on the private Traefik network and reads the Traefik **access log** through a shared folder (no Docker socket involved)
-- the **bouncer** is a Traefik **plugin**, declared as a middleware on the `websecure` entrypoint : every HTTPS request is checked against the current decisions before reaching any router,
+- the **security engine** runs in a container on the private Traefik network and reads the Traefik **access log**
+  through a shared folder (no Docker socket involved)
+- the **bouncer** is a Traefik **plugin**, declared as a middleware on the `websecure` entrypoint : every HTTPS request
+  is checked against the current decisions before reaching any router,
   private services included (harmless : the local network and the VPN peers are trusted and never blocked)
 
 Here is an overview of the network flow :
@@ -2764,11 +3045,16 @@ openssl rand -base64 48
 
 Then :
 
-- copy the _.env_, _docker-compose.yml_ and _acquis.yml_ files from this project's _crowdsec_ directory into the _/opt/apps/crowdsec_ directory, and put the key in `BOUNCER_KEY_traefik` of the _.env_ file
-- put the **same** key in `CROWDSEC_BOUNCER_KEY` of Traefik's _.env_ file, and copy the _crowdsec.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
-- update Traefik : the access log now goes to a file with the `User-Agent` header kept, the plugin is declared and the `crowdsec@file` middleware is set on the `websecure` entrypoint
-  in _traefik.yml_ (see [Static configuration file](#static-configuration-file-)), and the _logs_ folder is bound in Traefik's _docker-compose.yml_ (see [Service definition](#service-definition-))
-- copy the _logrotate_ file from this project's _traefik_ directory to _/etc/logrotate.d/traefik_ : the access log is rotated daily and kept 7 days, Traefik reopens it on the `USR1` signal
+- copy the _.env_, _docker-compose.yml_ and _acquis.yml_ files from this project's _crowdsec_ directory into the
+  _/opt/apps/crowdsec_ directory, and put the key in `BOUNCER_KEY_traefik` of the _.env_ file
+- put the **same** key in `CROWDSEC_BOUNCER_KEY` of Traefik's _.env_ file, and copy the _crowdsec.yml_ file from this
+  project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- update Traefik : the access log now goes to a file with the `User-Agent` header kept, the plugin is declared and the
+  `crowdsec@file` middleware is set on the `websecure` entrypoint
+  in _traefik.yml_ (see [Static configuration file](#static-configuration-file-)), and the _logs_ folder is bound in
+  Traefik's _docker-compose.yml_ (see [Service definition](#service-definition-))
+- copy the _logrotate_ file from this project's _traefik_ directory to _/etc/logrotate.d/traefik_ : the access log is
+  rotated daily and kept 7 days, Traefik reopens it on the `USR1` signal
 
 ### Details
 
@@ -2869,28 +3155,43 @@ http:
 
 Things to notice :
 
-- the security engine only joins `traefik-private-net` : the bouncer reaches its **local API** at `crowdsec:8080` by name, nothing is published on the host
-- `COLLECTIONS` and `PARSERS` are installed from the hub at the first start : `crowdsecurity/traefik` (the access log parser and the base HTTP scenarios), `crowdsecurity/http-cve`
-  (known exploits) and `crowdsecurity/whitelists` (private IP ranges are never banned, so a misbehaving device at home cannot lock you out)
-- `BOUNCER_KEY_traefik` (from the _.env_ file) registers the `traefik` bouncer with the given key at start, no manual `cscli bouncers add` needed, the middleware reads the same key
+- the security engine only joins `traefik-private-net` : the bouncer reaches its **local API** at `crowdsec:8080` by
+  name, nothing is published on the host
+- `COLLECTIONS` and `PARSERS` are installed from the hub at the first start : `crowdsecurity/traefik` (the access log
+  parser and the base HTTP scenarios), `crowdsecurity/http-cve`
+  (known exploits) and `crowdsecurity/whitelists` (private IP ranges are never banned, so a misbehaving device at home
+  cannot lock you out)
+- `BOUNCER_KEY_traefik` (from the _.env_ file) registers the `traefik` bouncer with the given key at start, no manual
+  `cscli bouncers add` needed, the middleware reads the same key
   from Traefik's own _.env_ file through a template, so that the key never appears in a configuration file
-- the **volumes** hold the acquisition file (which log to read, and which parser applies to it â€” mounted as _/etc/crowdsec/acquis.yaml_, the path CrowdSec expects), the configuration (hub items, local API and community API credentials, all created automatically)
-  and the data (SQLite database of alerts and decisions, downloaded blocklists), the Traefik _logs_ folder is mounted **read-only**
-- the middleware runs in **stream** mode : it pulls the decisions from the local API every `updateIntervalSeconds` and answers from its cache, nothing is called on the request path.
+- the **volumes** hold the acquisition file (which log to read, and which parser applies to it â€” mounted as
+  _/etc/crowdsec/acquis.yaml_, the path CrowdSec expects), the configuration (hub items, local API and community API
+  credentials, all created automatically)
+  and the data (SQLite database of alerts and decisions, downloaded blocklists), the Traefik _logs_ folder is mounted
+  **read-only**
+- the middleware runs in **stream** mode : it pulls the decisions from the local API every `updateIntervalSeconds` and
+  answers from its cache, nothing is called on the request path.
   If the local API becomes unreachable, the plugin keeps serving with the decisions it already has and logs errors
-- `clientTrustedIPs` makes the bouncer skip the local network and the VPN peers entirely, in addition to the CrowdSec side whitelist
-- as the middleware sits on the **entrypoint**, it runs before the routers and their own middlewares (IP whitelist, authentication) for every request on `443`, present and future services alike
+- `clientTrustedIPs` makes the bouncer skip the local network and the VPN peers entirely, in addition to the CrowdSec
+  side whitelist
+- as the middleware sits on the **entrypoint**, it runs before the routers and their own middlewares (IP whitelist,
+  authentication) for every request on `443`, present and future services alike
 
 > [!NOTE]
-> Your own **public IP** is not a private range. If some of your traffic reached Traefik through the NAT loopback of the router (a name resolving to the public IP, see [IP whitelisting](#ip-whitelisting)),
-> a noisy test could ban you from your own services : `cscli decisions delete --ip <your_public_ip>` lifts it. With local DNS records for the private **and** the public services (see [Pi-hole](#pi-hole)), the devices at home never take that path.
+> Your own **public IP** is not a private range. If some of your traffic reached Traefik through the NAT loopback of the
+router (a name resolving to the public IP, see [IP whitelisting](#ip-whitelisting)),
+> a noisy test could ban you from your own services : `cscli decisions delete --ip <your_public_ip>` lifts it. With
+local DNS records for the private **and** the public services (see [Pi-hole](#pi-hole)), the devices at home never take
+that path.
 >
-> The engine shares the alerts it raises (attacking IP address and scenario) with CrowdSec's central API, that is what feeds the community blocklist everybody benefits from.
+> The engine shares the alerts it raises (attacking IP address and scenario) with CrowdSec's central API, that is what
+feeds the community blocklist everybody benefits from.
 > If you don't want that, remove the `api.server.online_client` section from _config.yaml_.
 
 ### Run
 
-Start the security engine first, so that the bouncer finds its local API, then recreate Traefik (the static configuration changed, and the plugin is downloaded at that moment) :
+Start the security engine first, so that the bouncer finds its local API, then recreate Traefik (the static
+configuration changed, and the plugin is downloaded at that moment) :
 
 ```bash
 sudo docker-compose -f /opt/apps/crowdsec/docker-compose.yml up -d
@@ -2906,7 +3207,8 @@ sudo docker exec crowdsec cscli metrics                # "Acquisition Metrics" :
 sudo docker logs traefik 2>&1 | grep -i crowdsec       # plugin loaded, no error
 ```
 
-To test the bouncer independently of the scenarios, ban an outside address (your phone on 4G for example) for a few minutes and try to reach a public service from it :
+To test the bouncer independently of the scenarios, ban an outside address (your phone on 4G for example) for a few
+minutes and try to reach a public service from it :
 
 ```bash
 sudo docker exec crowdsec cscli decisions add --ip <phone_public_ip> --duration 5m --reason "bouncer test"
@@ -2914,20 +3216,24 @@ sudo docker exec crowdsec cscli decisions list
 sudo docker exec crowdsec cscli decisions delete --ip <phone_public_ip>
 ```
 
-The phone must get a `403` from Traefik while the decision is active. To test the scenarios, from the same phone request a dozen pages a scanner would try
-(`/.env`, `/wp-login.php`, `/phpmyadmin/`, `/.git/config`, ...) on a public service : after a few of them `cscli alerts list` shows a `http-probing` or `http-sensitive-files` alert
+The phone must get a `403` from Traefik while the decision is active. To test the scenarios, from the same phone request
+a dozen pages a scanner would try (`/.env`, `/wp-login.php`, `/phpmyadmin/`, `/.git/config`, ...) on a public service :
+after a few of them `cscli alerts list` shows a `http-probing` or `http-sensitive-files` alert
 and the phone is banned for four hours (the default duration) — lift it with `cscli decisions delete`.
 
 ## CrowdSec Web UI
 
 <img src="images/logo-crowdsec-web-ui.svg" alt="CrowdSec Web UI logo" height="128"/>
 
-[CrowdSec](#crowdsec) is driven from the command line with `cscli`, which is fine for a check now and then but tedious to browse.
-**CrowdSec Web UI** is a small third-party dashboard that reads the same **local API** and shows the alerts, the active decisions, the bouncers and the metrics,
+[CrowdSec](#crowdsec) is driven from the command line with `cscli`, which is fine for a check now and then but tedious
+to browse. **CrowdSec Web UI** is a small third-party dashboard that reads the same **local API** and shows the alerts,
+the active decisions, the bouncers and the metrics,
 with the country and the AS of every attacker, filters, and the ability to ban or unban an address in two clicks.
 
-It is a plain HTTP application, it holds no Docker socket and no privilege : it only needs a **machine account** on the CrowdSec local API,
-so it sits on the private network like the other administration tools. It authenticates its users against [PocketID](#pocketid) with its own OIDC support.
+It is a plain HTTP application, it holds no Docker socket and no privilege : it only needs a **machine account** on the
+CrowdSec local API,
+so it sits on the private network like the other administration tools. It authenticates its users
+against [PocketID](#pocketid) with its own OIDC support.
 
 Here is an overview of the network flow :
 
@@ -2981,7 +3287,7 @@ flowchart LR
 
             TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
             DOCKER_APP_PORT -->|machine account : alerts, decisions, metrics| DOCKER_CROWDSEC_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign-on, through the Traefik alias| DOCKER_POCKETID_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
 ```
@@ -2998,32 +3304,47 @@ sudo docker exec crowdsec cscli machines add crowdsec-web-ui --password "$PW" -f
 
 Then :
 
-- copy the _.env_ and _docker-compose.yml_ files from this project's _crowdsec-web-ui_ directory into the _/opt/apps/crowdsec-web-ui_ directory,
+- copy the _.env_ and _docker-compose.yml_ files from this project's _crowdsec-web-ui_ directory into the
+  _/opt/apps/crowdsec-web-ui_ directory,
   and put the generated password in `CONFIG_INSTANCE_LAPI_AUTH_PASSWORD`
-- copy the _crowdsec-web-ui.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
-- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** : `https://crowdsec.example.com/api/auth/oidc/callback`,
-  and **PKCE disabled**, as the application does not send a `code_challenge` (like Portainer, and for the same reason : it is a confidential client, the client secret
-  is what protects the code exchange). Then put its client ID in `CONFIG_AUTH_OIDC_CLIENT_ID` and its secret in `CONFIG_AUTH_OIDC_CLIENT_SECRET`.
+- copy the _crowdsec-web-ui.yml_ file from this project's _traefik/dynamic_ directory into the
+  _/opt/apps/traefik/dynamic_ directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
+  `https://crowdsec.example.com/api/auth/oidc/callback`,
+  and **PKCE disabled**, as the application does not send a `code_challenge` (like Portainer, and for the same reason :
+  it is a confidential client, the client secret
+  is what protects the code exchange). Then put its client ID in `CONFIG_AUTH_OIDC_CLIENT_ID` and its secret in
+  `CONFIG_AUTH_OIDC_CLIENT_SECRET`.
   No middleware on the router : the application talks to PocketID itself
-- add a **local DNS record** `crowdsec.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not published on the internet
+- add a **local DNS record** `crowdsec.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
 
 > [!TIP]
-> If PocketID answers **`access_denied` — "you are not allowed to access this service"** right after the login, the problem is not in the middleware :
-> the OIDC client restricts access to some **user groups** and your account is not in them. Remove the restriction on the client, or add your group.
+> If PocketID answers **`access_denied` — "you are not allowed to access this service"** right after the login, the
+problem is not in the middleware :
+> the OIDC client restricts access to some **user groups** and your account is not in them. Remove the restriction on
+the client, or add your group.
 > The error comes from PocketID (look at the domain in the address bar), the application is not even reached.
 
 > [!NOTE]
-> This service uses the **native OIDC** support of the application rather than the Traefik plugin used by Pi-Hole, so that the UI knows who is connected
-> and can apply its **admin / read-only** roles. Its OIDC library only accepts **HTTPS** issuers (`only requests to HTTPS are allowed`), so the internal
-> `http://pocketid:1411` URL cannot be used : it goes through the public issuer, reachable from the container thanks to the Traefik network alias and the
+> This service uses the **native OIDC** support of the application rather than the Traefik plugin used by Pi-Hole, so
+that the UI knows who is connected
+> and can apply its **admin / read-only** roles. Its OIDC library only accepts **HTTPS** issuers
+(`only requests to HTTPS are allowed`), so the internal
+> `http://pocketid:1411` URL cannot be used : it goes through the public issuer, reachable from the container thanks to
+the Traefik network alias and the
 > `pocketid-whitelist` middleware described in [PocketID](#pocketid).
 >
-> `CONFIG_AUTH_ENABLED` stays on `auto` : the built-in account (password, TOTP, passkeys) created on the first visit remains available and is your way back in
+> `CONFIG_AUTH_ENABLED` stays on `auto` : the built-in account (password, TOTP, passkeys) created on the first visit
+remains available and is your way back in
 > if the OIDC login ever breaks.
 >
-> Roles are decided by **group mapping**, and `CONFIG_AUTH_OIDC_UNMATCHED_ROLE` defaults to `deny` : without any group configured, a user who authenticates
-> perfectly is still rejected with *OIDC user is not authorized*, and nothing is written in the logs since it is a decision, not an error.
-> Either declare the groups as above, or set `CONFIG_AUTH_OIDC_UNMATCHED_ROLE` to `admin` and let PocketID alone decide who may use the client.
+> Roles are decided by **group mapping**, and `CONFIG_AUTH_OIDC_UNMATCHED_ROLE` defaults to `deny` : without any group
+configured, a user who authenticates
+> perfectly is still rejected with *OIDC user is not authorized*, and nothing is written in the logs since it is a
+decision, not an error.
+> Either declare the groups as above, or set `CONFIG_AUTH_OIDC_UNMATCHED_ROLE` to `admin` and let PocketID alone decide
+who may use the client.
 
 ### Details
 
@@ -3116,16 +3437,22 @@ http:
 
 Things to notice :
 
-- it only joins `traefik-private-net` : it reaches the CrowdSec local API at `crowdsec:8080` by container name, and nothing is published on the host
-- `CONFIG_INSTANCE_LAPI_AUTH_*` are the credentials of the machine account registered with `cscli machines add`. A **machine** account is required :
+- it only joins `traefik-private-net` : it reaches the CrowdSec local API at `crowdsec:8080` by container name, and
+  nothing is published on the host
+- `CONFIG_INSTANCE_LAPI_AUTH_*` are the credentials of the machine account registered with `cscli machines add`. A
+  **machine** account is required :
   a bouncer API key like the one used by the Traefik plugin can only read the decisions, not the alerts
-- the _data_ volume holds the UI's own SQLite database (its accounts, its notification rules, the GeoNames data used to locate the attackers), not CrowdSec data
-- the router only carries the IP whitelist : the single sign-on is done by the application itself, adding an authentication middleware would mean logging in twice
+- the _data_ volume holds the UI's own SQLite database (its accounts, its notification rules, the GeoNames data used to
+  locate the attackers), not CrowdSec data
+- the router only carries the IP whitelist : the single sign-on is done by the application itself, adding an
+  authentication middleware would mean logging in twice
 - deleting alerts from the UI additionally requires its source IP to be trusted by CrowdSec, see the note below
 
 > [!WARNING]
-> To allow **alert deletion**, the UI's IP must be listed in `api.server.trusted_ips` of CrowdSec's _config.yaml_ (in _/opt/apps/crowdsec/config/_), then restart the container.
-> Use the **private** network range only, never the `172.16.0.0/12` the project suggests : that range also covers `traefik-public-net`, so the applications exposed
+> To allow **alert deletion**, the UI's IP must be listed in `api.server.trusted_ips` of CrowdSec's _config.yaml_ (in
+_/opt/apps/crowdsec/config/_), then restart the container.
+> Use the **private** network range only, never the `172.16.0.0/12` the project suggests : that range also covers
+`traefik-public-net`, so the applications exposed
 > to the internet would be trusted too, which is exactly what [Network segmentation](#network-segmentation) avoids.
 >
 > ```yaml
@@ -3147,12 +3474,15 @@ Simply run the Compose file :
 sudo docker-compose -f /opt/apps/crowdsec-web-ui/docker-compose.yml up -d
 ```
 
-You should end-up with a running `crowdsec-web-ui` container, and Traefik picks up the dynamic configuration file without restarting.
+You should end-up with a running `crowdsec-web-ui` container, and Traefik picks up the dynamic configuration file
+without restarting.
 
-The application is available at https://crowdsec.example.com. On the first visit it asks you to create the local administrator account, then the PocketID button appears on the login page.
+The application is available at https://crowdsec.example.com. On the first visit it asks you to create the local
+administrator account, then the PocketID button appears on the login page.
 
 > [!NOTE]
-> This is a third-party project, unrelated to the CrowdSec company, and it only publishes a `latest` tag : keep an eye on it when you pull the images.
+> This is a third-party project, unrelated to the CrowdSec company, and it only publishes a `latest` tag : keep an eye
+on it when you pull the images.
 
 ## Portainer
 
@@ -3160,7 +3490,8 @@ The application is available at https://crowdsec.example.com. On the first visit
 
 We will use **Portainer** to easily manage our Docker containers.
 
-Portainer is an open source web interface that allows to create, modify, restart, monitor... Docker containers, images, volumes, networks and more.
+Portainer is an open source web interface that allows to create, modify, restart, monitor... Docker containers, images,
+volumes, networks and more.
 
 Here is an overview of the network flow :
 
@@ -3220,7 +3551,8 @@ Create a folder to hold the configuration :
 sudo mkdir /opt/apps/portainer
 ```
 
-Then simply copy the _docker-compose.yml_ file from this project's _portainer_ directory into the _/opt/apps/portainer_ directory.
+Then simply copy the _docker-compose.yml_ file from this project's _portainer_ directory into the _/opt/apps/portainer_
+directory.
 
 ### Details
 
@@ -3283,10 +3615,14 @@ Things to notice :
 - Portainer's data is bound to a **Docker volume** named `portainer-vol`
 - It uses Traefik dynamic config file to :
     - create a **service** which will point to our container application running on port `9000`
-    - create an HTTP **router** that will match `portainer.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own **network** (`portainer-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
+    - create an HTTP **router** that will match `portainer.example.com` URL on our `websecure` **entrypoint** to point
+      to our service
+    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
+      reachable only from local network or through VPN)
+    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's
+      encrypt certificates
+- It runs in its own **network** (`portainer-net`) but must also share the same network as Traefik
+  (`traefik-private-net`) so it can be auto discovered
 
 ### Run
 
@@ -3312,7 +3648,8 @@ On first start, you will be asked to create the **initial administrator user**.
 
 As our services will use some MySQL/MariaDB databases, we will use **PhpMyAdmin** to easily manage our databases.
 
-**PhpMyAdmin** is a free software tool intended to handle the administration of MySQL over the Web, it supports a wide range of operations on **MySQL** and **MariaDB** (managing
+**PhpMyAdmin** is a free software tool intended to handle the administration of MySQL over the Web, it supports a wide
+range of operations on **MySQL** and **MariaDB** (managing
 databases,
 tables, columns, relations, indexes, users, permissions, etc.).
 
@@ -3374,7 +3711,8 @@ Create a folder to hold the configuration :
 sudo mkdir /opt/apps/phpmyadmin
 ```
 
-Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ directory into the _/opt/apps/phpmyadmin_ directory.
+Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ directory into the
+_/opt/apps/phpmyadmin_ directory.
 
 ### Details
 
@@ -3431,15 +3769,22 @@ http:
 
 Things to notice :
 
-- We mount a _theme_ directory to use a custom theme (dark theme named `darkwolf`), so just copy the theme data from official repository https://www.phpmyadmin.net/themes/
+- We mount a _theme_ directory to use a custom theme (dark theme named `darkwolf`), so just copy the theme data from
+  official repository https://www.phpmyadmin.net/themes/
 - It uses Traefik dynamic config file to :
-   - create a **service** which will point to our container application running on port `80`
-   - create an HTTP **router** that will match `phpmyadmin.example.com` URL on our `websecure` **entrypoint** to point to our service
-   - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-   - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own **network** (`phpmyadmin-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
-- The `phpmyadmin` network will have to be added to any MySQL/MariaDB database container that we want to make reachable from PhpMyAdmin
-- We set the environment variable `PMA_ARBITRARY` to `1` to tell PhpMyAdmin to allow connection to any arbitrary database server (we will be able to specify the server on login
+    - create a **service** which will point to our container application running on port `80`
+    - create an HTTP **router** that will match `phpmyadmin.example.com` URL on our `websecure` **entrypoint** to point
+      to our service
+    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
+      reachable only from local network or through VPN)
+    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's
+      encrypt certificates
+- It runs in its own **network** (`phpmyadmin-net`) but must also share the same network as Traefik
+  (`traefik-private-net`) so it can be auto discovered
+- The `phpmyadmin` network will have to be added to any MySQL/MariaDB database container that we want to make reachable
+  from PhpMyAdmin
+- We set the environment variable `PMA_ARBITRARY` to `1` to tell PhpMyAdmin to allow connection to any arbitrary
+  database server (we will be able to specify the server on login
   screen)
 
 ### Run
@@ -3525,16 +3870,19 @@ First, create a folder to hold the configuration :
 sudo mkdir /opt/apps/homer
 ```
 
-Also create an _assets_ directory to hold the application assets and the main configuration file, it will be mounted in the container.
+Also create an _assets_ directory to hold the application assets and the main configuration file, it will be mounted in
+the container.
 
 ```bash
 mkdir /opt/apps/homer/assets
 ```
 
-By default, on first run, it installs in this directory some example configuration files and assets (favicons, ...), we have disabled this by setting the environment
+By default, on first run, it installs in this directory some example configuration files and assets (favicons, ...), we
+have disabled this by setting the environment
 variable `INIT_ASSETS` to `0` (default `1`).
 
-Note that this _assets_ directory **must** have the same **gid** / **uid** that the container user have (default `1000:1000`), so make sure to execute :
+Note that this _assets_ directory **must** have the same **gid** / **uid** that the container user have (default
+`1000:1000`), so make sure to execute :
 
 ```bash
 chown -R 1000:1000 /opt/apps/homer/assets/
@@ -3608,11 +3956,15 @@ Things to notice :
 - It sets the `IPV6_DISABLE` environment variable to `1`to disable listening on IPv6 (we don't use IPv6)
 - It sets a user with **uid** and **gid** `1000` to run the application in the container
 - It uses Traefik dynamic config file to :
-   - create a **service** which will point to our container application running on port `8080`
-   - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point to our service
-   - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-   - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own network (`homer-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
+    - create a **service** which will point to our container application running on port `8080`
+    - create an HTTP **router** that will match `dashboard.example.com` URL on our `websecure` **entrypoint** to point
+      to our service
+    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
+      reachable only from local network or through VPN)
+    - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt
+      certificates
+- It runs in its own network (`homer-net`) but must also share the same network as Traefik (`traefik-private-net`) so it
+  can be auto discovered
 
 #### Configuration file
 
@@ -3826,8 +4178,10 @@ sudo mkdir /opt/apps/dashdot
 ```
 
 Then :
+
 - copy the _docker-compose.yml_ file from this project's _dashdot_ directory into the _/opt/apps/dashdot_ directory
-- copy the _dashdot.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+- copy the _dashdot.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
 
 ### Details
 
@@ -3886,11 +4240,16 @@ Things to notice :
 - Dashdot's data is bound to the current directory (read-only)
 - It uses Traefik dynamic config file to :
     - create a **service** which will point to our container application running on port `3001`
-    - create an HTTP **router** that will match `dashdot.example.com` URL on our `websecure` **entrypoint** to point to our service
-    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application reachable only from local network or through VPN)
-    - assign the `sablier-dashdot` **middleware** so that on-demand stop/start of the container can be done through Sablier
-- It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-private-net`) so it can be auto discovered
+    - create an HTTP **router** that will match `dashdot.example.com` URL on our `websecure` **entrypoint** to point to
+      our service
+    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's
+      encrypt certificates
+    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
+      reachable only from local network or through VPN)
+    - assign the `sablier-dashdot` **middleware** so that on-demand stop/start of the container can be done through
+      Sablier
+- It runs in its own **network** (`dashdot-net`) but must also share the same network as Traefik (`traefik-private-net`)
+  so it can be auto discovered
 
 ### Run
 
@@ -3969,6 +4328,7 @@ sudo mkdir /opt/apps/lychee
 ```
 
 Then copy :
+
 - the _docker-compose.yml_ file from this project's _lychee_ directory into the _/opt/apps/lychee_ directory.
 - the _lychee.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory.
 
@@ -4062,12 +4422,17 @@ http:
 Things to notice :
 
 - It binds some volumes for configuration, uploads, symbolic links and logs
-- It sets some environment variables for timezone, database connection, admin user and password, application URL and trusted proxies
+- It sets some environment variables for timezone, database connection, admin user and password, application URL and
+  trusted proxies
 - It uses Traefik dynamic config file to :
-   - create a **service** which will point to our container application running on port `80`
-   - create an HTTP **router** that will match `lychee.example.com` URL on our `websecure` **entrypoint** to point to our service
-   - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
-- It runs in its own network (`lychee-net`) but must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as it is exposed to the internet (see [Network segmentation](#network-segmentation))
+    - create a **service** which will point to our container application running on port `80`
+    - create an HTTP **router** that will match `lychee.example.com` URL on our `websecure` **entrypoint** to point to
+      our service
+    - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt
+      certificates
+- It runs in its own network (`lychee-net`) but must also join the **public** network of Traefik (`traefik-public-net`)
+  to be reachable by the reverse proxy, as it is exposed to the internet
+  (see [Network segmentation](#network-segmentation))
 
 ### Run
 
@@ -4089,11 +4454,15 @@ The application will be available at https://lychee.example.com.
 
 <img src="images/logo-homebox.svg" alt="Homebox logo" height="128"/>
 
-**Homebox** is a simple inventory for the house : what you own, where it is stored, when it was bought, the warranty, the receipts and the manuals attached to it,
-with labels, a QR code per item and a full text search. Useful when the insurance asks for a list, or just to remember in which box something ended up.
+**Homebox** is a simple inventory for the house : what you own, where it is stored, when it was bought, the warranty,
+the receipts and the manuals attached to it,
+with labels, a QR code per item and a full text search. Useful when the insurance asks for a list, or just to remember
+in which box something ended up.
 
-It is a small Go application with an embedded database, it needs nothing else. It is reachable from the local network and the VPN only,
-and it is our example of an application doing **OIDC natively** against [PocketID](#pocketid), with its public issuer URL.
+It is a small Go application with an embedded database, it needs nothing else. It is reachable from the local network
+and the VPN only,
+and it is our example of an application doing **OIDC natively** against [PocketID](#pocketid), with its public issuer
+URL.
 
 Here is an overview of the network flow :
 
@@ -4140,7 +4509,7 @@ flowchart LR
             end
 
             TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign-on, through the Traefik alias| DOCKER_POCKETID_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
 ```
@@ -4155,18 +4524,27 @@ sudo mkdir /opt/apps/homebox
 
 Then :
 
-- copy the _.env_ and _docker-compose.yml_ files from this project's _homebox_ directory into the _/opt/apps/homebox_ directory
-- copy the _homebox.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
-- create an OIDC client in [PocketID](#pocketid) with the callback URL Homebox documents, then fill `HBOX_OIDC_CLIENT_ID` and `HBOX_OIDC_CLIENT_SECRET`
+- copy the _.env_ and _docker-compose.yml_ files from this project's _homebox_ directory into the _/opt/apps/homebox_
+  directory
+- copy the _homebox.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL Homebox documents, then fill
+  `HBOX_OIDC_CLIENT_ID` and `HBOX_OIDC_CLIENT_SECRET`
 - generate the pepper used to hash the API keys (`openssl rand -base64 32`) and put it in `HBOX_AUTH_API_KEY_PEPPER`
-- add a **local DNS record** `homebox.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not published on the internet
+- add a **local DNS record** `homebox.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not
+  published on the internet
 
 > [!IMPORTANT]
-> `HBOX_OIDC_ISSUER_URL` must be the **public** URL, **without a trailing slash** (Homebox is [sensitive to it](https://github.com/sysadminsmedia/homebox/issues/1151)),
-> and it must match character for character the `issuer` returned by the provider : its OIDC library refuses any difference. The internal URL `http://pocketid:1411`
-> therefore cannot be used, it answers with the public issuer and Homebox rejects it with `issuer URL provided to client ... did not match`.
-> That the container can nonetheless reach the public URL is exactly what the Traefik **network alias** and the `pocketid-whitelist` middleware are for,
-> see [PocketID](#pocketid). Without them the container does not even resolve the name, since the private services have no public DNS record.
+> `HBOX_OIDC_ISSUER_URL` must be the **public** URL, **without a trailing slash** (Homebox
+is [sensitive to it](https://github.com/sysadminsmedia/homebox/issues/1151)),
+> and it must match character for character the `issuer` returned by the provider : its OIDC library refuses any
+difference. The internal URL `http://pocketid:1411`
+> therefore cannot be used, it answers with the public issuer and Homebox rejects it with
+`issuer URL provided to client ... did not match`.
+> That the container can nonetheless reach the public URL is exactly what the Traefik **network alias** and the
+`pocketid-whitelist` middleware are for,
+> see [PocketID](#pocketid). Without them the container does not even resolve the name, since the private services have
+no public DNS record.
 
 ### Details
 
@@ -4241,13 +4619,19 @@ http:
 Things to notice :
 
 - the data (SQLite database, uploaded receipts and pictures) lives in a **Docker volume** named `homebox-data-vol`
-- it runs in its own network (`homebox-net`) but must also join the **private** network of Traefik (`traefik-private-net`) to be reachable by the reverse proxy,
+- it runs in its own network (`homebox-net`) but must also join the **private** network of Traefik
+  (`traefik-private-net`) to be reachable by the reverse proxy,
   which is also what lets it reach PocketID, see [Network segmentation](#network-segmentation)
-- the Traefik dynamic config file creates the **service** pointing to the container on port `7745`, the HTTP **router** matching `homebox.example.com`
-  on the `websecure` entrypoint with a Let's Encrypt certificate, and applies the IP whitelist. No authentication middleware : Homebox does the single sign-on itself
-- `HBOX_OPTIONS_TRUST_PROXY` makes Homebox read the client address and the protocol from the headers set by Traefik, which is required behind a reverse proxy
-- `HBOX_OPTIONS_ALLOW_LOCAL_LOGIN` and `HBOX_OIDC_AUTO_REDIRECT` are commented out : the first one disables the local accounts once the single sign-on works,
-  the second one sends the user straight to PocketID without showing the login page. Enable them only when you are sure the OIDC login works, otherwise you lock yourself out
+- the Traefik dynamic config file creates the **service** pointing to the container on port `7745`, the HTTP **router**
+  matching `homebox.example.com`
+  on the `websecure` entrypoint with a Let's Encrypt certificate, and applies the IP whitelist. No authentication
+  middleware : Homebox does the single sign-on itself
+- `HBOX_OPTIONS_TRUST_PROXY` makes Homebox read the client address and the protocol from the headers set by Traefik,
+  which is required behind a reverse proxy
+- `HBOX_OPTIONS_ALLOW_LOCAL_LOGIN` and `HBOX_OIDC_AUTO_REDIRECT` are commented out : the first one disables the local
+  accounts once the single sign-on works,
+  the second one sends the user straight to PocketID without showing the login page. Enable them only when you are sure
+  the OIDC login works, otherwise you lock yourself out
 
 #### Environment variables
 
@@ -4259,7 +4643,8 @@ HBOX_AUTH_API_KEY_PEPPER=<pepper_auth_api_key>
 ```
 
 - `HBOX_OIDC_CLIENT_SECRET` is the secret of the PocketID client
-- `HBOX_AUTH_API_KEY_PEPPER` is the value Homebox mixes into the hash of the API keys it issues. Set it once and keep it : changing it invalidates every existing key
+- `HBOX_AUTH_API_KEY_PEPPER` is the value Homebox mixes into the hash of the API keys it issues. Set it once and keep
+  it : changing it invalidates every existing key
 
 ### Run
 
@@ -4269,7 +4654,8 @@ Simply run the Compose file :
 sudo docker-compose -f /opt/apps/homebox/docker-compose.yml up -d
 ```
 
-You should end-up with a running `homebox` container, and Traefik picks up the dynamic configuration file without restarting.
+You should end-up with a running `homebox` container, and Traefik picks up the dynamic configuration file without
+restarting.
 
 The application is available at https://homebox.example.com, with a button to log in through PocketID.
 
@@ -4277,12 +4663,15 @@ The application is available at https://homebox.example.com, with a button to lo
 
 <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="128"/>
 
-**GoatCounter** counts the visits on the public websites. It is deliberately minimal : no cookies, no tracking across sites, no personal data stored
-(the visitor IP is only used to derive the country and to compute a daily hash, it is never kept), which also means no consent banner to display.
+**GoatCounter** counts the visits on the public websites. It is deliberately minimal : no cookies, no tracking across
+sites, no personal data stored (the visitor IP is only used to derive the country and to compute a daily hash, it is
+never kept), which also means no consent banner to display.
 A single Go binary with an embedded SQLite database, a few megabytes of memory.
 
-Unlike every other tool of this guide, it is **exposed to the internet** : the tracking script and the endpoint that collects the hits must be reachable by the visitors
-of the public websites. It therefore sits on the **public** network and relies on [CrowdSec](#crowdsec) like the other public applications. Only the **collecting endpoints** are open ;
+Unlike every other tool of this guide, it is **exposed to the internet** : the tracking script and the endpoint that
+collects the hits must be reachable by the visitors
+of the public websites. It therefore sits on the **public** network and relies on [CrowdSec](#crowdsec) like the other
+public applications. Only the **collecting endpoints** are open ;
 the dashboard is put behind [PocketID](#pocketid) with a second router, see below.
 
 Here is an overview of the network flow :
@@ -4324,7 +4713,6 @@ flowchart LR
                 end
 
                 TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
-
                 TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER
             end
 
@@ -4337,7 +4725,7 @@ flowchart LR
             end
 
             TRAEFIK_ROUTER_SITE --> DOCKER_WEBSITE_PORT
-            TRAEFIK_ROUTER_APP -->|X-Forwarded-For : the visitor IP| DOCKER_APP_PORT
+            TRAEFIK_ROUTER_APP -->|X - Forwarded - For : the visitor IP| DOCKER_APP_PORT
             TRAEFIK_ROUTER_DASH --> TRAEFIK_MIDDLEWARE_OIDC
             TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
         end
@@ -4354,33 +4742,43 @@ sudo mkdir /opt/apps/goatcounter
 
 Then :
 
-- copy the _docker-compose.yml_ file from this project's _goatcounter_ directory into the _/opt/apps/goatcounter_ directory
-- copy the _goatcounter.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
-- add a **public** DNS record for `goatcounter.example.com` (a `CNAME` to your dynamic DNS, like the other public services, see [Domain and subdomains](#domain-and-subdomains)),
-  **and** a local DNS record pointing to the mini PC (see [Pi-hole](#pi-hole)) so that your own devices do not go through the NAT loopback of the router
-- create an OIDC client and its `goatcounter-auth` middleware as described in [PocketID](#pocketid), with the callback URL `https://goatcounter.example.com/oidc/callback`
+- copy the _docker-compose.yml_ file from this project's _goatcounter_ directory into the _/opt/apps/goatcounter_
+  directory
+- copy the _goatcounter.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- add a **public** DNS record for `goatcounter.example.com` (a `CNAME` to your dynamic DNS, like the other public
+  services, see [Domain and subdomains](#domain-and-subdomains)), **and** a local DNS record pointing to the mini PC
+  (see [Pi-hole](#pi-hole)) so that your own devices do not go through the NAT loopback of the router
+- create an OIDC client and its `goatcounter-auth` middleware as described in [PocketID](#pocketid), with the callback
+  URL `https://goatcounter.example.com/oidc/callback`
 - start the service (see [Run](#run-10)), then create the site and its administrator account :
 
   ```bash
   sudo docker exec -it goatcounter goatcounter db create site -vhost=goatcounter.example.com -user.email=you@example.com
   ```
 
-  It asks for a password. The `-vhost` **must** match the `Host()` of the router : GoatCounter is multi-site and dispatches on the `Host` header.
+  It asks for a password. The `-vhost` **must** match the `Host()` of the router : GoatCounter is multi-site and
+  dispatches on the `Host` header.
 
 Finally, add the tracking script to the websites you want to count, just before `</body>` :
 
 ```html
+
 <script data-goatcounter="https://goatcounter.example.com/count"
         async src="https://goatcounter.example.com/count.js"></script>
 ```
 
 > [!TIP]
-> The script must run on **every** page, but there is no need to edit them one by one : put it once in the shared header or footer that all the pages already include
-> (`include 'header.php'` and friends). If the site has no such common template, PHP-FPM can append a file to every script without touching a single page,
-> with `php_value[auto_append_file] = /var/www/html/goatcounter.php` in its pool configuration — beware that it appends to *every* PHP response, which would corrupt
+> The script must run on **every** page, but there is no need to edit them one by one : put it once in the shared header
+or footer that all the pages already include
+> (`include 'header.php'` and friends). If the site has no such common template, PHP-FPM can append a file to every
+script without touching a single page,
+> with `php_value[auto_append_file] = /var/www/html/goatcounter.php` in its pool configuration — beware that it appends
+to *every* PHP response, which would corrupt
 > the ones that are not HTML (JSON, generated images, downloads).
 >
-> Serving the script from your own domain rather than from a third party CDN also makes it far less likely to be stopped by ad blockers.
+> Serving the script from your own domain rather than from a third party CDN also makes it far less likely to be stopped
+by ad blockers.
 
 ### Details
 
@@ -4469,39 +4867,56 @@ http:
 
 Things to notice :
 
-- `-tls=http` is **not optional** : GoatCounter defaults to `acme` in production and would try to obtain its own Let's Encrypt certificates, in competition with Traefik.
+- `-tls=http` is **not optional** : GoatCounter defaults to `acme` in production and would try to obtain its own Let's
+  Encrypt certificates, in competition with Traefik.
   Here TLS is terminated by the reverse proxy and GoatCounter only serves plain HTTP on its port
-- `-automigrate` comes from the image's default command and is kept : pending schema migrations are applied at start, which matters when pulling a new image
-- the data (SQLite database) lives in a **named volume** rather than a bind mount : the container runs as a non-root user, a bind mount would need the matching
+- `-automigrate` comes from the image's default command and is kept : pending schema migrations are applied at start,
+  which matters when pulling a new image
+- the data (SQLite database) lives in a **named volume** rather than a bind mount : the container runs as a non-root
+  user, a bind mount would need the matching
   ownership on the host
-- there are **two routers on the same host**, split by path and separated by an explicit `priority`. The public one carries **no middleware** : an IP whitelist would
-  block the visitors and an authentication middleware would block the collection. The other one, matching everything else, carries the IP whitelist **and** the PocketID
-  middleware : the dashboard is only used from the local network or the VPN, and since the host is public it must not depend on the authentication middleware alone.
+- there are **two routers on the same host**, split by path and separated by an explicit `priority`. The public one
+  carries **no middleware** : an IP whitelist would
+  block the visitors and an authentication middleware would block the collection. The other one, matching everything
+  else, carries the IP whitelist **and** the PocketID
+  middleware : the dashboard is only used from the local network or the VPN, and since the host is public it must not
+  depend on the authentication middleware alone.
   The CrowdSec bouncer applies to both, since it sits on the `websecure` entrypoint
-- it joins `traefik-public-net`, so it cannot reach the private services, see [Network segmentation](#network-segmentation)
-- GoatCounter reads the visitor address from the `X-Forwarded-For` header set by Traefik, there is nothing to configure for that
+- it joins `traefik-public-net`, so it cannot reach the private services,
+  see [Network segmentation](#network-segmentation)
+- GoatCounter reads the visitor address from the `X-Forwarded-For` header set by Traefik, there is nothing to configure
+  for that
 
 > [!WARNING]
-> Splitting a host between a public router and an authenticated one is effective but unforgiving : if a collecting path ends up on the wrong side, the tracking
-> request is answered with a redirection to PocketID, the browser reports nothing and you **silently lose visits**. Check the paths your visitors really request
+> Splitting a host between a public router and an authenticated one is effective but unforgiving : if a collecting path
+ends up on the wrong side, the tracking
+> request is answered with a redirection to PocketID, the browser reports nothing and you **silently lose visits**.
+Check the paths your visitors really request
 > before and after the change, the Traefik access log gives them :
 >
 > ```bash
 > grep '"RequestHost":"goatcounter.example.com"' /opt/apps/traefik/logs/access.log | grep -oE '"RequestPath":"[^"]+"' | sort | uniq -c | sort -rn
 > ```
 >
-> Note also that GoatCounter has its own login : behind the middleware you would authenticate twice. To keep a single login, mark the site as **public** in its
-> settings so that the statistics no longer require a GoatCounter account, and let PocketID be the only gate — at the cost of world readable statistics should a
+> Note also that GoatCounter has its own login : behind the middleware you would authenticate twice. To keep a single
+login, mark the site as **public** in its
+> settings so that the statistics no longer require a GoatCounter account, and let PocketID be the only gate — at the
+cost of world readable statistics should a
 > path rule ever leak.
 
 > [!NOTE]
 > About the **locations** shown in the dashboard :
 >
-> - a **Countries** database is built into GoatCounter, countries work out of the box. **Regions** need the *Cities* version of the MaxMind database, given with the
->   `-geodb` flag (`-geodb maxmind:<account_id>:<license_key>` downloads and refreshes it automatically, or drop any `.mmdb` file in the data volume and it is picked up)
-> - the location is resolved **when the visit is recorded**, and stored. It is never recomputed : the visits collected before you enable or fix anything stay `Unknown` forever
-> - your own visits are always `Unknown`, since they come from the local network or from the VPN and a private address has no location. Testing from a phone only
->   proves something if the **VPN is turned off** on it, otherwise the visit arrives from the tunnel with a `10.0.0.x` address
+> - a **Countries** database is built into GoatCounter, countries work out of the box. **Regions** need the *Cities*
+    version of the MaxMind database, given with the
+    > `-geodb` flag (`-geodb maxmind:<account_id>:<license_key>` downloads and refreshes it automatically, or drop any
+    `.mmdb` file in the data volume and it is picked up)
+> - the location is resolved **when the visit is recorded**, and stored. It is never recomputed : the visits collected
+    before you enable or fix anything stay `Unknown` forever
+> - your own visits are always `Unknown`, since they come from the local network or from the VPN and a private address
+    has no location. Testing from a phone only
+    > proves something if the **VPN is turned off** on it, otherwise the visit arrives from the tunnel with a `10.0.0.x`
+    address
 
 ### Run
 
@@ -4511,7 +4926,8 @@ Simply run the Compose file :
 sudo docker-compose -f /opt/apps/goatcounter/docker-compose.yml up -d
 ```
 
-You should end-up with a running `goatcounter` container, and Traefik picks up the dynamic configuration file without restarting.
+You should end-up with a running `goatcounter` container, and Traefik picks up the dynamic configuration file without
+restarting.
 
 The dashboard is available at https://goatcounter.example.com, with the account created above.
 
@@ -4528,12 +4944,15 @@ The dashboard is available at https://goatcounter.example.com, with the account 
   </tr>
 </table>
 
-**Defrag-life** is a **PHP** / **MySQL** website I made in the early 2000's, about the **DeFRaG** mod of the **Quake 3 arena** game.
+**Defrag-life** is a **PHP** / **MySQL** website I made in the early 2000's, about the **DeFRaG** mod of the **Quake 3
+arena** game.
 The project can be found here : https://github.com/Yann39/defrag-life
 I simply keep hosting it as a _souvenir_, but it is a static snapshot, it is not intended to be used anymore.
 
-We will use **Nginx** as **HTTP server** along with the **PHP-FPM** module (**FastCGI Process Manager**) for processing PHP files.
-At the time of writing this is the preferred method of processing PHP pages with Nginx and is faster than traditional CGI-based methods.
+We will use **Nginx** as **HTTP server** along with the **PHP-FPM** module (**FastCGI Process Manager**) for processing
+PHP files.
+At the time of writing this is the preferred method of processing PHP pages with Nginx and is faster than traditional
+CGI-based methods.
 
 The website also requires a **MySQL** or **MariaDB** database, we will use MariaDB.
 
@@ -4620,7 +5039,8 @@ Then copy the following files from this project's _defrag-life_ directory into t
 - _default.conf_ : The Nginx configuration
 - _www\.conf_ : The PHP-FPM pool configuration
 
-And copy the _defrag-life.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory.
+And copy the _defrag-life.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+directory.
 
 ### Details
 
@@ -4650,11 +5070,14 @@ CMD ["php-fpm"]
 This **Dockerfile** allows us to create the Docker image for the **PHP-FPM** service,
 the image is based on the popular **Alpine Linux** project, which is much smaller than most distribution base images.
 
-In this Dockerfile we also install the **mysqli** extension which will be required to connect to the MariaDB database from PHP.
+In this Dockerfile we also install the **mysqli** extension which will be required to connect to the MariaDB database
+from PHP.
 
-Finally, we create a `phpuser` user that will run the process (for security purposes we always ensure that our images run as non-root).
+Finally, we create a `phpuser` user that will run the process (for security purposes we always ensure that our images
+run as non-root).
 
-In order to use this image, an **HTTP server** or a **reverse proxy** (such as **Nginx**, **Apache**, or other tool which speaks the **FastCGI** protocol) is required,
+In order to use this image, an **HTTP server** or a **reverse proxy** (such as **Nginx**, **Apache**, or other tool
+which speaks the **FastCGI** protocol) is required,
 that's why we use Nginx.
 
 #### Service definition
@@ -4744,24 +5167,33 @@ http:
 ```
 
 Here we define 3 services :
-- `nginx` : the HTTP server which will speak with the PHP-FPM service to interpret PHP files (whenever the server gets a PHP script request, it utilizes a proxy,
+
+- `nginx` : the HTTP server which will speak with the PHP-FPM service to interpret PHP files (whenever the server gets a
+  PHP script request, it utilizes a proxy,
   FastCGI connection to pass that request on to the PHP-FPM service)
-  - It defines 2 volumes to bind the website files and the Nginx configuration file (see [Nginx configuration file](#nginx-configuration-file))
+    - It defines 2 volumes to bind the website files and the Nginx configuration file
+      (see [Nginx configuration file](#nginx-configuration-file))
 - `php-fpm` : the PHP-FPM service responsible for processing PHP scripts
-  - It uses our own Dockerfile, see [Dockerfile](#dockerfile)
-  - It defines 2 volumes to bind the website files and the PHP-FPM pool configuration file (see [PHP-FPM configuration file](#php-fpm-configuration-file))
-  - It will run by default on port `9000`
+    - It uses our own Dockerfile, see [Dockerfile](#dockerfile)
+    - It defines 2 volumes to bind the website files and the PHP-FPM pool configuration file
+      (see [PHP-FPM configuration file](#php-fpm-configuration-file))
+    - It will run by default on port `9000`
 - `mariadb` : The MariaDB database that will hold the application data
-  - It uses our _.env_ file to retrieve environment variables values for database connection
-  - It defines a named volume `defrag-life-db-vol` that will hold the database data
-  - It will run by default on port `3306`
+    - It uses our _.env_ file to retrieve environment variables values for database connection
+    - It defines a named volume `defrag-life-db-vol` that will hold the database data
+    - It will run by default on port `3306`
 
 Then we use Traefik dynamic config file to :
-  - create a **service** which will point to our container application running on port `80`
-  - create an HTTP **router** that will match `quake.example.com` URL on our `websecure` **entrypoint** to point to our service
-  - add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt certificates
 
-All services run in a `defrag-life-net` **network**, the `nginx` front must also join the **public** network of Traefik (`traefik-public-net`) to be reachable by the reverse proxy, as the website is exposed to the internet (see [Network segmentation](#network-segmentation)),
+- create a **service** which will point to our container application running on port `80`
+- create an HTTP **router** that will match `quake.example.com` URL on our `websecure` **entrypoint** to point to our
+  service
+- add **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's encrypt
+  certificates
+
+All services run in a `defrag-life-net` **network**, the `nginx` front must also join the **public** network of Traefik
+(`traefik-public-net`) to be reachable by the reverse proxy, as the website is exposed to the internet
+(see [Network segmentation](#network-segmentation)),
 and `phpmyadmin-net` so that the database is reachable from PhpMyAdmin, see [PhpMyAdmin](#phpmyadmin).
 
 #### Environment variables
@@ -4840,14 +5272,16 @@ server {
 ```
 
 This is also a quite basic configuration file for PHP-FPM :
+
 - it listens for incoming requests on port `80` (and set it as default server, although it is the only one)
-- it sets the server name to an invalid server names which never intersect with any real name
-  (as they are only one server blocks for port `80`, Nginx will not even bother comparing `server_name` with a request's Host header,
+- it sets the server name to an invalid server names which never intersect with any real name (as they are only one
+  server blocks for port `80`, Nginx will not even bother comparing `server_name` with a request's Host header,
   all the requests would be directed there anyway)
 - it sets the root directory to `/var/www/html` for static content in the file system
 - it defines files that will be used as an index (_index.php_ and _index.html_)
 - it defines the location of error and access log files
-- it sets a location to match PHP files (`.php$` will match files ending with _.php_, _.php3_, etc.) to be processed by our PHP-FPM service
+- it sets a location to match PHP files (`.php$` will match files ending with _.php_, _.php3_, etc.) to be processed by
+  our PHP-FPM service
 - it sets a location to match _/ping_ endpoint to ping our PHP-FPM service
 
 ### Run
@@ -4859,6 +5293,7 @@ sudo docker-compose -f /opt/apps/defrag-life/docker-compose.yml up -d
 ```
 
 You should end-up with 3 running containers :
+
 - `defrag-life-nginx` : The HTTP server
 - `defrag-life-php` : The PHP-FPM service
 - `defrag-life-mariadb` : The MariaDB database
@@ -4937,27 +5372,30 @@ You will get access denied as you need a valid **JWT token**, but it confirms th
 
 <img src="images/logo-sablier.svg" alt="Sablier logo" height="128"/>
 
-Some of our services will be accessed quite rarely (i.e. UIs of monitoring tools, websites open only to family through VPN, etc.),
+Some of our services will be accessed quite rarely (i.e. UIs of monitoring tools, websites open only to family through
+VPN, etc.),
 it would be a shame to leave them running for days and waste resources while there are no requests, wouldn't it ?
 
-That's why we're going to use **Sablier**, a little tool that lets you start / stop containers on demand (also known as "scale-to-zero").
+That's why we're going to use **Sablier**, a little tool that lets you start / stop containers on demand (also known as
+"scale-to-zero").
 Basically it allows to start a container when a request arrives, and stop it after a period of inactivity.
 
 Sablier provides 2 strategies, a **dynamic strategy** which provides a waiting page while the container is not ready,
 and a **blocking strategy** which hangs the request until the container is ready.
 
-We will use the dynamic strategy, well suited for a user that would access a frontend directly and expects to see a loading page.
+We will use the dynamic strategy, well suited for a user that would access a frontend directly and expects to see a
+loading page.
 The blocking strategy is better suited for API communication.
 
 Basically here is how it works when using the dynamic strategy with Traefik :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill:#205566,color:#fff
-    style TRAEFIK_CONTAINER fill:#663535,color:#fff
-    style SABLIER_CONTAINER fill:#663535,color:#fff
-    style APP_CONTAINER fill:#663535,color:#fff
-    style TRAEFIK_MIDDLEWARE fill:#806030,color:#fff
+    style INCOMING_REQUEST fill: #205566, color: #fff
+    style TRAEFIK_CONTAINER fill: #663535, color: #fff
+    style SABLIER_CONTAINER fill: #663535, color: #fff
+    style APP_CONTAINER fill: #663535, color: #fff
+    style TRAEFIK_MIDDLEWARE fill: #806030, color: #fff
     DOCKER_SABLIER_PORT{{10000/tcp}}
     DOCKER_APP_PORT{{myapp port}}
     WAITING_PAGE(waiting page)
@@ -4975,52 +5413,56 @@ flowchart LR
     end
 
     subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-
         subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
             TRAEFIK_MIDDLEWARE_APP
         end
 
         TRAEFIK_MIDDLEWARE_APP -.->|request session status| DOCKER_SABLIER_PORT
-        DOCKER_SABLIER_PORT -.->|"return status header"| TRAEFIK_MIDDLEWARE_APP
-        TRAEFIK_MIDDLEWARE_APP -->|"ready"| DOCKER_APP_PORT
-        TRAEFIK_MIDDLEWARE_APP -->|"not ready"| WAITING_PAGE
+        DOCKER_SABLIER_PORT -.->|" return status header "| TRAEFIK_MIDDLEWARE_APP
+        TRAEFIK_MIDDLEWARE_APP -->|" ready "| DOCKER_APP_PORT
+        TRAEFIK_MIDDLEWARE_APP -->|" not ready "| WAITING_PAGE
         DOCKER_APP_PORT -.->|return instance status| DOCKER_SABLIER_PORT
-        DOCKER_SABLIER_PORT -.->|"check instance status"| DOCKER_APP_PORT
+        DOCKER_SABLIER_PORT -.->|" check instance status "| DOCKER_APP_PORT
     end
 ```
 
-When a request arrives, a **Traefik middleware** is responsible to contact Sablier to know if the target container is ready or not.
-Sablier asks for the container status to the **Docker provider**, then return the result to the proxy, to either serve the waiting page or redirect to the application.
+When a request arrives, a **Traefik middleware** is responsible to contact Sablier to know if the target container is
+ready or not.
+Sablier asks for the container status to the **Docker provider**, then return the result to the proxy, to either serve
+the waiting page or redirect to the application.
 It is done through a `X-Sablier-Status` request header value :
 
 ```mermaid
 sequenceDiagram
-    User->>Proxy: Website Request
-    Proxy->>Sablier: Reverse Proxy Plugin Request Session Status
-    Sablier->>Provider: Request Instance Status
-    Provider-->>Sablier: Response Instance Status
-    Sablier-->>Proxy: Returns the X-Sablier-Status Header
+    User ->> Proxy: Website Request
+    Proxy ->> Sablier: Reverse Proxy Plugin Request Session Status
+    Sablier ->> Provider: Request Instance Status
+    Provider -->> Sablier: Response Instance Status
+    Sablier -->> Proxy: Returns the X-Sablier-Status Header
     alt X-Sablier-Status` value is `not-ready`
-        Proxy-->>User: Serve the waiting page
+        Proxy -->> User: Serve the waiting page
         loop until `X-Sablier-Status` value is `ready`
-            User->>Proxy: Self-Reload Waiting Page
-            Proxy->>Sablier: Reverse Proxy Plugin Request Session Status
-            Sablier->>Provider: Request Instance Status
-            Provider-->>Sablier: Response Instance Status
-            Sablier-->>Proxy: Returns the waiting page
-            Proxy-->>User: Serve the waiting page
+            User ->> Proxy: Self-Reload Waiting Page
+            Proxy ->> Sablier: Reverse Proxy Plugin Request Session Status
+            Sablier ->> Provider: Request Instance Status
+            Provider -->> Sablier: Response Instance Status
+            Sablier -->> Proxy: Returns the waiting page
+            Proxy -->> User: Serve the waiting page
         end
     end
-    Proxy-->>User: Content
+    Proxy -->> User: Content
 ```
 
-As you see it continuously checks for instance status until it is ready, and will intend to start the underlying container if not started,
+As you see it continuously checks for instance status until it is ready, and will intend to start the underlying
+container if not started,
 or shut it down if it has reached the configured period of inactivity.
 
 > [!NOTE]
-> Note that you need one plugin configuration (one middleware) per application set if you want to start/stop them independently
+> Note that you need one plugin configuration (one middleware) per application set if you want to start/stop them
+independently
 > or if you want to have different theme, display name, loading strategy or session duration.
-> In the flow chart above, `sablier-app` is a dedicated middleware for "myapp" application, but you could have several of them.
+> In the flow chart above, `sablier-app` is a dedicated middleware for "myapp" application, but you could have several
+of them.
 
 ## Install Sablier
 
@@ -5075,9 +5517,11 @@ networks:
 
 Essentially :
 
-- We bind the Docker **socket** to the container because the Docker provider communicates with the _docker.sock_ socket to start and stop containers on demand
+- We bind the Docker **socket** to the container because the Docker provider communicates with the _docker.sock_ socket
+  to start and stop containers on demand
 - We specify the command to start the server with the parameter to set the provider name (docker)
-- It runs in its own **network** (`sablier-net`) but must also share the same network as Traefik (`traefik-net`) so it can be discovered
+- It runs in its own **network** (`sablier-net`) but must also share the same network as Traefik (`traefik-net`) so it
+  can be discovered
 
 ## Install Traefik plugin
 
@@ -5099,21 +5543,22 @@ You can take a look at the _apps/traefik/traefik.yml_ file from this repository.
 ## Configure target applications
 
 In order for Sablier to be able to contact the containers to start and stop them,
-we need to change the configuration of the target service to use a **dynamic configuration file** instead of **Docker labels**.
+we need to change the configuration of the target service to use a **dynamic configuration file** instead of **Docker
+labels**.
 Indeed, Traefik no longer has access to container labels when a container is not running.
 
 We will configure Sablier for the Dashdot application as an example, but it can be applied to any container :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill:#205566,color:#fff
-    style TRAEFIK_CONTAINER fill:#663535,color:#fff
-    style SABLIER_CONTAINER fill:#663535,color:#fff
-    style DASHDOT_CONTAINER fill:#663535,color:#fff
-    style TRAEFIK_ROUTER fill:#806030,color:#fff
-    style TRAEFIK_MIDDLEWARE fill:#806030,color:#fff
-    style SERVER_DEVICE fill:#665555,color:#fff
-    style CONTAINER_ENGINE fill:#664545,color:#fff
+    style INCOMING_REQUEST fill: #205566, color: #fff
+    style TRAEFIK_CONTAINER fill: #663535, color: #fff
+    style SABLIER_CONTAINER fill: #663535, color: #fff
+    style DASHDOT_CONTAINER fill: #663535, color: #fff
+    style TRAEFIK_ROUTER fill: #806030, color: #fff
+    style TRAEFIK_MIDDLEWARE fill: #806030, color: #fff
+    style SERVER_DEVICE fill: #665555, color: #fff
+    style CONTAINER_ENGINE fill: #664545, color: #fff
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_SABLIER_PORT{{10000/tcp}}
@@ -5163,11 +5608,13 @@ flowchart LR
     end
 ```
 
-In the above flow chart we have named the Traefik middleware `sablier-dashdot` because it is specific to the Dashdot application,
+In the above flow chart we have named the Traefik middleware `sablier-dashdot` because it is specific to the Dashdot
+application,
 but you can absolutely create one to manage several services, or one for each service.
 
 So let's transfer the labels from the service configuration file to a file in our Traefik dynamic configuration.
-I personally use a file per service, for example for Dashdot, the configuration will be held in a file _dashdot.yml_ in the dynamic folder :
+I personally use a file per service, for example for Dashdot, the configuration will be held in a file _dashdot.yml_ in
+the dynamic folder :
 
 Note that you need to define a volume to bind Traefik dynamic configuration to the container,
 in addition to the static configuration (simply create a _dynamic_ folder in _/opt/apps/traefik_) :
@@ -5223,9 +5670,11 @@ http:
 ```
 
 As you see, the only thing we added is the `sablier-dashdot` **middleware** reference,
-which defines the strategy to use to respond to any incoming HTTP request when the corresponding container is not running :
+which defines the strategy to use to respond to any incoming HTTP request when the corresponding container is not
+running :
 
-Then add the labels for the `sablier-dashdot` middleware configuration into the `sablier` service configuration (_docker_compose.yml_ file) :
+Then add the labels for the `sablier-dashdot` middleware configuration into the `sablier` service configuration
+(_docker_compose.yml_ file) :
 
 ```yaml
     labels:
@@ -5243,11 +5692,12 @@ Then add the labels for the `sablier-dashdot` middleware configuration into the 
 Add here any other middleware that would need a different configuration for other services.
 
 Basically, it defines a **Traefik middleware** to configure the Sablier plugin to :
-- Provide the name of the service(s) to be checked
+
+- Provide the name of the service (s) to be checked
 - The URL to Sablier
 - The session duration (will stop the container after that period)
 - The theme for the waiting page
-- The display name of the target service(s), to be displayed on the waiting page
+- The display name of the target service (s), to be displayed on the waiting page
 - The refresh frequency of the waiting page
 - Show the loading instances details
 
@@ -5261,10 +5711,11 @@ We have so far set up a structure with a folder per stack/container (in _/opt/ap
 That way each stack definition (Docker Compose file) and bind mount data is fully contained in that single folder.
 
 The only exception is **named volumes**, which store data in the _/var/lib/docker/volumes_ directory.
-This includes the databases of some applications, which could also be backed up separately using the tool associated with the database management system.
+This includes the databases of some applications, which could also be backed up separately using the tool associated
+with the database management system.
 
-This is the only data that really concerns us, thanks to Docker, the system has hardly been modified at all, so there's no need to back it up completely
-(like doing entire system image backup).
+This is the only data that really concerns us, thanks to Docker, the system has hardly been modified at all, so there's
+no need to back it up completely (like doing entire system image backup).
 
 So there are three things we have to worry about in terms of backup :
 
@@ -5272,7 +5723,8 @@ So there are three things we have to worry about in terms of backup :
 - the content of the _/var/lib/docker/volumes_, holding the Docker container named volumes data
 - the databases (i.e. MySQL for Defrag-Life website, MongoDB for Ackee application, ...)
 
-Later we can even place volume backups and database exports in the _/opt/apps_ directory so that we can back up everything in one place easily.
+Later we can even place volume backups and database exports in the _/opt/apps_ directory so that we can back up
+everything in one place easily.
 
 ## Files
 
@@ -5282,21 +5734,25 @@ Later we can even place volume backups and database exports in the _/opt/apps_ d
 
 The simplest way to back up the content of our N100 server is by using `rsync`.
 
-`rsync` (remote sync) is a utility for **transferring** and **synchronizing** files between a computer and a storage drive
+`rsync` (remote sync) is a utility for **transferring** and **synchronizing** files between a computer and a storage
+drive
 and across networked computers by comparing the modification times and sizes of files.
 
-We can use it to copy the file system (actually only required files) to another machine (such as a Windows computer on the local network,
+We can use it to copy the file system (actually only required files) to another machine (such as a Windows computer on
+the local network,
 or any external drive connected to it) through a mount point.
 
-1. First, make sure to have a folder on the machine that will hold the backup (Windows in my case) that is shared and have enough storage for the server backup :
+1. First, make sure to have a folder on the machine that will hold the backup (Windows in my case) that is shared and
+   have enough storage for the server backup :
 
-   - Create a folder to hold the backup data (i.e. _E:\data\N100 backup_),
-   - Right-click on the folder
-   - Select _Properties > Sharing tab_
-   - Click _Share..._ and choose the user with whom you want to share the folder (you can either use your default Windows user or create a specific user for that)
-   - Assign the appropriate permissions (at least Read access).
-   - Click Share, then Done.
-   - Take note of the network path of the share (i.e. \\DESKTOP-ABCDEF\N100 backup).
+    - Create a folder to hold the backup data (i.e. _E:\data\N100 backup_),
+    - Right-click on the folder
+    - Select _Properties > Sharing tab_
+    - Click _Share..._ and choose the user with whom you want to share the folder (you can either use your default
+      Windows user or create a specific user for that)
+    - Assign the appropriate permissions (at least Read access).
+    - Click Share, then Done.
+    - Take note of the network path of the share (i.e. \\DESKTOP-ABCDEF\N100 backup).
 
 2. Secondly, mount the shared Windows folder on the server :
 
@@ -5319,9 +5775,9 @@ or any external drive connected to it) through a mount point.
    ```
 
    Explanation:
-   - `-t cifs`: Specifies that you’re using the **CIFS** protocol
-   - `//DESKTOP-ABCDEF/N100 backup`: The network path to the Windows share
-   - `/mnt/windows`: The mount point on the server
+    - `-t cifs`: Specifies that you’re using the **CIFS** protocol
+    - `//DESKTOP-ABCDEF/N100 backup`: The network path to the Windows share
+    - `/mnt/windows`: The mount point on the server
 
    > [!NOTE]
    > You can create a file to hold the credentials for authentication, instead of specifying it in the command line
@@ -5346,35 +5802,40 @@ or any external drive connected to it) through a mount point.
    ```
 
    Explanation:
-   - `-aAXv`: Preserve permissions, ownership, timestamps, and device files, with verbose output
-   - `--exclude`: Exclude certain directories
-   - `/`: The root of the server, to be backed up (without excluded directories)
-   - `/home /opt/apps /var/lib/docker/volumes /var/log`: The 4 directories to be backed up
-   - `/mnt/windows`: The mount point on the server
+    - `-aAXv`: Preserve permissions, ownership, timestamps, and device files, with verbose output
+    - `--exclude`: Exclude certain directories
+    - `/`: The root of the server, to be backed up (without excluded directories)
+    - `/home /opt/apps /var/lib/docker/volumes /var/log`: The 4 directories to be backed up
+    - `/mnt/windows`: The mount point on the server
 
-Once the backup is complete, you can verify that the backup files are on the destination machine and that they contain all your server data.
+Once the backup is complete, you can verify that the backup files are on the destination machine and that they contain
+all your server data.
 
 > [!NOTE]
 > If you want to make a bit-for-bit clone of your entire disk, you can use the `dd` command.
-> However, it requires more storage and time, for the time being I prefer `rsync` for flexibility, file-based backups, and faster cloning of only necessary files
+> However, it requires more storage and time, for the time being I prefer `rsync` for flexibility, file-based backups,
+and faster cloning of only necessary files
 
 ### FreeFileSync
 
 <img src="images/logo-freefilesync.svg" alt="FreeFileSync logo" height="64"/>
 
-Another solution than [rsync](#rsync) is to simply use a tool from the Windows machine, to copy the _/opt/apps_ folder regularly through **SFTP**.
+Another solution than [rsync](#rsync) is to simply use a tool from the Windows machine, to copy the _/opt/apps_ folder
+regularly through **SFTP**.
 
 One awesome tool which I've been using for years for synchronizing my disks, is named **FreeFileSync**.
 
-**FreeFileSync** is a **folder comparison** and **synchronization** software that creates and manages backup copies of target files.
-Instead of copying every file every time, FreeFileSync determines the differences between a source and a target folder and transfers only the minimum amount of data needed.
+**FreeFileSync** is a **folder comparison** and **synchronization** software that creates and manages backup copies of
+target files.
+Instead of copying every file every time, FreeFileSync determines the differences between a source and a target folder
+and transfers only the minimum amount of data needed.
 
 Source and target folders can be **remote** folders (support for **Google Drive** and **FTP/SFTP**).
 
 FreeFileSync is Open Source software, available for Windows, macOS, and Linux.
 
-I will install the Windows version on my home Windows machine, which will be used as client to connect to the Banana Pi board through SFTP
-(SSH File Transfer Protocol, allows secure file transfer trough SSH encrypted connections).
+I will install the Windows version on my home Windows machine, which will be used as client to connect to the Banana Pi
+board through SFTP (SSH File Transfer Protocol, allows secure file transfer trough SSH encrypted connections).
 
 To do a mirror synchronization :
 
@@ -5405,7 +5866,8 @@ Refer to the documentation and tutorials on the software's website for more info
 ### Backup
 
 We can back up Docker volumes using `docker run` and `tar` command.
-This method involves creating a temporary container that mounts the named volume we want to back up, then using tar to produce an archive of the volume content.
+This method involves creating a temporary container that mounts the named volume we want to back up, then using tar to
+produce an archive of the volume content.
 
 For example to back up the Portainer volume `portainer-vol` to the current directory :
 
@@ -5414,15 +5876,19 @@ sudo docker run --rm --mount source=portainer-vol,target=/mybackup -v $(pwd):/ba
 ```
 
 - `--rm` will remove the container when it exits
-- `--mount source=portainer-vol,target=/mybackup` will mount the `portainer-vol` volume to the container mount point `/mybackup`
+- `--mount source=portainer-vol,target=/mybackup` will mount the `portainer-vol` volume to the container mount point
+  `/mybackup`
 - `-v $(pwd):/backup` bind mount the current directory into the container's `backup` directory to write the tar file to
-- `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick maintenance
-- `tar cvf /backup/portainer-vol-backup.tar /mybackup` will create an uncompressed tar file of all the files in the `/mybackup` directory
+- `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick
+  maintenance
+- `tar cvf /backup/portainer-vol-backup.tar /mybackup` will create an uncompressed tar file of all the files in the
+  `/mybackup` directory
 
 This will create a _portainer-vol-backup.tar_ archive in the current directory.
 The tar will contain a _mybackup_ directory containing all volume data.
 
-Then feel free to move it to the _/opt/apps/portainer_ directory if you want to back it up along with that directory when using FreeFileSync (see [Files](#files)),
+Then feel free to move it to the _/opt/apps/portainer_ directory if you want to back it up along with that directory
+when using FreeFileSync (see [Files](#files)),
 or simply move the backup file to an external server.
 
 > [!IMPORTANT]
@@ -5445,11 +5911,13 @@ To restore the volume :
    ```
 
 - `--rm` will remove the container when it exits
-- `--volumes-from newcontainer` mounts all the volumes from the `newcontainer` container into the new container being started
+- `--volumes-from newcontainer` mounts all the volumes from the `newcontainer` container into the new container being
+  started
 - `-v $(pwd):/backup` bind mount the current directory into the container's `/backup` directory to write the tar file to
-- `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick maintenance
-- `tar xvf /backup/portainer-vol-backup.tar --strip 1 -C /data` will extract the files from the tar archive in the `/data` directory of the container's filesystem
-  (without the parent directory thanks to `--strip 1`)
+- `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick
+  maintenance
+- `tar xvf /backup/portainer-vol-backup.tar --strip 1 -C /data` will extract the files from the tar archive in the
+  `/data` directory of the container's filesystem (without the parent directory thanks to `--strip 1`)
 
 Finally, you can compare the 2 volumes content to check that everything has been copied correctly :
 
@@ -5463,7 +5931,8 @@ When applicable, we can also back up the database directly.
 
 ### MySQL
 
-For **MySQL**, we can use **mysqldump**, a command-line utility that is used to generate or restore logical backups of MySQL databases.
+For **MySQL**, we can use **mysqldump**, a command-line utility that is used to generate or restore logical backups of
+MySQL databases.
 
 To export data :
 
@@ -5471,14 +5940,16 @@ To export data :
 mysqldump --complete-insert --skip-comments --skip-tz-utc --skip-opt --hex-blob --no-set-names --set-charset --column-statistics=0 --set-gtid-purged=OFF -P 3306 -h localhost -u <user> -p <dbname> > db_backup.sql
 ```
 
-If you don't have the **mysqldump** utility installed on your environment, you can use the one embedded in the MySQL container :
+If you don't have the **mysqldump** utility installed on your environment, you can use the one embedded in the MySQL
+container :
 
 ```shell
 docker exec <container_id> /usr/bin/mysqldump --complete-insert --skip-comments --skip-tz-utc --skip-opt --hex-blob --no-set-names --set-charset --column-statistics=0 --set-gtid-purged=OFF -P 6033 -h prdmysql.unil.ch -u <user> --password=<password_here> <dbname> > db_backup.sql
 ```
 
 > [!IMPORTANT]
-> Again there is a slight chance that a database gets inconsistent when backing up hot files, so prefer to stop services before proceeding,
+> Again there is a slight chance that a database gets inconsistent when backing up hot files, so prefer to stop services
+before proceeding,
 > but in a home lab with minimal load this is usually not an issue
 
 To import data :
@@ -5487,7 +5958,8 @@ To import data :
 mysql -P 3306 -h localhost -u <user> -p <dbname> < db_backup.sql
 ```
 
-Or again if you don't have the **mysqldump** utility installed on your environment, you can use the one from the MySQL container :
+Or again if you don't have the **mysqldump** utility installed on your environment, you can use the one from the MySQL
+container :
 
 ```shell
 docker exec -i <container_id> /usr/bin/mysql -P 3306 -h localhost -u <user> --password=<password_here> <dbname> < db_backup.sql
