@@ -73,8 +73,10 @@ up-to-date instructions.<br>
     8. [Lychee](#lychee)
     9. [Homebox](#homebox)
     10. [Goatcounter](#goatcounter)
-    11. [Defrag-life](#defrag-life)
-    12. [CCTeam](#ccteam)
+    11. [Prometheus](#prometheus)
+    12. [Grafana](#grafana)
+    13. [Defrag-life](#defrag-life)
+    14. [CCTeam](#ccteam)
 
    </details>
 5. <details>
@@ -137,6 +139,8 @@ These are the tools we are going to run :
 |         <img src="images/logo-homebox.svg" alt="Homebox logo" height="32"/>         | Homebox         | https://github.com/sysadminsmedia/homebox       | Inventory and organisation system for the home       |
 |       <img src="images/logo-omnitools.svg" alt="Omnitools logo" height="32"/>       | Omnitools       | https://github.com/iib0011/omni-tools           | Various online tools for everyday tasks              |
 |         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
+|      <img src="images/logo-prometheus.svg" alt="Prometheus logo" height="32"/>      | Prometheus      | https://github.com/prometheus/prometheus        | Metrics collection and time series database          |
+|         <img src="images/logo-grafana.svg" alt="Grafana logo" height="32"/>         | Grafana         | https://github.com/grafana/grafana              | Dashboards and visualization for metrics             |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
 |      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
@@ -1188,14 +1192,8 @@ few rules go with it :
 - containers holding the **Docker socket** (Portainer, Sablier) are private by construction
 - PocketID stays private : a public application that would authenticate through it does so with the browser, through the
   public URL and Traefik, it does not need a shared network
-
-> [!NOTE]
-> To migrate an existing setup that used a single `traefik-net` network : update the Traefik Compose file and run it
-(`docker-compose up -d` creates both networks and recreates Traefik),
-> then update every other stack (`traefik-private-net` or `traefik-public-net` depending on its exposure) and run
-`docker-compose up -d` on each : the containers are recreated on their new network,
-> the volumes are untouched. Once nothing is attached to the old network anymore, remove it with
-`docker network rm traefik-net`. Don't forget the stacks that are not in this repository.
+- a public application monitored by Prometheus shares a **dedicated** network with Prometheus only
+  (`prometheus-<app>-net`), never `prometheus-net` nor its own database network, see [Prometheus](#prometheus)
 
 ### Configuration files details
 
@@ -1689,7 +1687,7 @@ sudo mkdir -p /opt/apps/wgdashboard/data
 ```
 
 Then add a **local DNS record** `wgdashboard.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), start the
-container (see [Run](#run-2)) and open https://wgdashboard.example.com. The default credentials are `admin` / `admin`,
+container (see [Run](#run-1)) and open https://wgdashboard.example.com. The default credentials are `admin` / `admin`,
 change them immediately in the settings, where TOTP can also be enabled.
 
 Your existing peers appear on their own : the dashboard reads the very _wg0.conf_ the interface uses, so nothing has to
@@ -4821,7 +4819,7 @@ Then :
   (see [Pi-hole](#pi-hole)) so that your own devices do not go through the NAT loopback of the router
 - create an OIDC client and its `goatcounter-auth` middleware as described in [PocketID](#pocketid), with the callback
   URL `https://goatcounter.example.com/oidc/callback`
-- start the service (see [Run](#run-10)), then create the site and its administrator account :
+- start the service (see [Run](#run-11)), then create the site and its administrator account :
 
   ```bash
   sudo docker exec -it goatcounter goatcounter db create site -vhost=goatcounter.example.com -user.email=you@example.com
@@ -4993,6 +4991,617 @@ restarting.
 The dashboard is available at https://goatcounter.example.com, with the account created above.
 
 <img src="images/screen-goatcounter.png" alt="GoatCounter website screenshot"/>
+
+## Prometheus
+
+<img src="images/logo-prometheus.svg" alt="Prometheus logo" height="128"/>
+
+**Prometheus** collects **metrics** : at a regular interval it calls (_scrapes_) an HTTP endpoint exposed by each
+monitored application, and stores the values in its own time series database, queried with the **PromQL** language.
+It has no real dashboard, that is the job of [Grafana](#grafana), which reads its data.
+
+Here it monitors the **CCTeam GraphQL API** (see [CCTeam](#ccteam)) : request rate, errors and response times, per
+operation and per GraphQL field, plus the JVM, the database connection pool, ... that **Spring Boot** exposes out of the
+box through **Actuator** and **Micrometer**.
+
+It is an administration tool, so it sits on the **private** network and is only reachable from the local network and
+the VPN. Prometheus has **no native OIDC support** (only basic authentication and TLS, through a web configuration
+file), so its web interface is put behind [PocketID](#pocketid) with the Traefik plugin, like Pi-Hole.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style CCTEAM_CONTAINER fill: #663535
+    style GRAFANA_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{9090/tcp}}
+    DOCKER_CCTEAM_PORT{{5001/tcp\nGraphQL API}}
+    DOCKER_CCTEAM_MANAGEMENT_PORT{{8081/tcp\nactuator}}
+    DOCKER_GRAFANA_PORT{{3000/tcp}}
+    TRAEFIK_ROUTER_APP(prometheus.example.com)
+    TRAEFIK_ROUTER_CCTEAM(ccteam.example.com)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
+                    TRAEFIK_ROUTER_APP
+                    TRAEFIK_ROUTER_CCTEAM
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                    TRAEFIK_MIDDLEWARE_OIDC
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+            end
+
+            subgraph APP_CONTAINER[PROMETHEUS CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph CCTEAM_CONTAINER[CCTEAM CONTAINER]
+                DOCKER_CCTEAM_PORT
+                DOCKER_CCTEAM_MANAGEMENT_PORT
+            end
+
+            subgraph GRAFANA_CONTAINER[GRAFANA CONTAINER]
+                DOCKER_GRAFANA_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
+            TRAEFIK_ROUTER_CCTEAM --> DOCKER_CCTEAM_PORT
+            DOCKER_APP_PORT -->|scrape every 15 s, prometheus - ccteam - net| DOCKER_CCTEAM_MANAGEMENT_PORT
+            DOCKER_GRAFANA_PORT -->|PromQL queries, prometheus - net| DOCKER_APP_PORT
+        end
+    end
+```
+
+The monitoring stack uses its own networks, on top of the Traefik ones :
+
+| Network                 | Who                                                   | Why                                                     |
+|-------------------------|-------------------------------------------------------|---------------------------------------------------------|
+| `traefik-private-net`   | Traefik, Prometheus, Grafana                          | web interfaces behind Traefik, Grafana reaches PocketID |
+| `prometheus-net`        | Prometheus, Grafana                                   | Grafana queries Prometheus directly                     |
+| `prometheus-ccteam-net` | Prometheus, the CCTeam **application** container only | Prometheus scrapes the API                              |
+
+The scraping network is dedicated on purpose. CCTeam is **exposed to the internet**, it is the container most likely to
+be compromised one day :
+
+- if CCTeam joined `prometheus-net`, it could reach Grafana, and the Prometheus API which has no authentication
+- if Prometheus joined `ccteam-net`, it could reach the **database** of CCTeam
+
+With `prometheus-ccteam-net`, the API and Prometheus only see each other. The database stays on `ccteam-net`, and
+Grafana is not reachable from the application.
+This is a deliberate, limited exception to the rules of [Network segmentation](#network-segmentation) : a compromised
+CCTeam container could query Prometheus directly, but only Prometheus, and only to read metrics (the admin and lifecycle
+APIs are disabled, see below). A monitored application never joins `prometheus-net`, each one gets its own
+`prometheus-<app>-net`.
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/prometheus
+```
+
+Then :
+
+- copy the _docker-compose.yml_ and _prometheus.yml_ files from this project's _prometheus_ directory into the
+  _/opt/apps/prometheus_ directory
+- copy the _prometheus.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client and its `prometheus-auth` middleware as described in [PocketID](#pocketid), with the callback
+  URL `https://prometheus.example.com/oidc/callback` and **PKCE** enabled. Restrict the client to your administrators
+  group (_Allowed user groups_), nobody else has anything to do there
+- add a **local DNS record** `prometheus.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
+
+On the **application** side, the Spring Boot API needs the `spring-boot-starter-actuator` and
+`micrometer-registry-prometheus` dependencies, and the following properties :
+
+```properties
+# Actuator on a dedicated port, not routed by Traefik : the metrics are never exposed to the internet
+management.server.port=                                                     8081
+management.endpoints.web.exposure.include=                                  health,prometheus
+# Tag added to every metric, used by the Grafana dashboard to select the application
+management.metrics.tags.application=                                        ccteam-graphql
+# Histogram buckets, needed to compute percentiles (p95, p99) in Prometheus
+management.metrics.distribution.percentiles-histogram.graphql.request=      true
+management.metrics.distribution.percentiles-histogram.graphql.datafetcher=  true
+```
+
+And its container joins the scraping network, see the _docker-compose.yml_ file of the _ccteam_ directory :
+
+```yaml
+    networks:
+      - ccteam-net
+      - traefik-public-net
+      # Scraped by Prometheus on the management port (8081), which is not routed by Traefik
+      - prometheus-ccteam-net
+```
+
+> [!IMPORTANT]
+> The **management port** is what keeps the metrics private. Without it, the actuator is served on the application port,
+the one Traefik routes to the internet, and `https://ccteam.example.com/ccteam-gql/actuator/prometheus` would be
+readable by anyone : GraphQL operation names, response times, JVM version, ...
+>
+> With a dedicated port, the metrics endpoint is only reachable from the Docker network, so it does not need any
+authentication : the application does not need a Spring Security filter chain (basic authentication for instance) for
+it anymore. If your application has a **catch-all** filter chain (`anyRequest().authenticated()`), permit the actuator
+endpoints explicitly (`EndpointRequest.toAnyEndpoint()`), otherwise Prometheus gets a `401`.
+>
+> Note that the servlet `context-path` does not apply to the management port : the endpoint is `/actuator/prometheus`,
+not `/ccteam-gql/actuator/prometheus`.
+
+> [!NOTE]
+> The **histograms** are what allow computing percentiles, but each one produces a few dozen series (one per bucket),
+per operation, per GraphQL field and per outcome. That is fine for an API of this size, but keep an eye on the number
+of series from time to time (`scrape_samples_scraped{job="ccteam-graphql"}`) : if it keeps growing, a label has too many
+distinct values.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    networks:
+      # Queried by Grafana
+      - prometheus-net
+      # To be reachable by Traefik
+      - traefik-private-net
+      # To scrape the CCTeam API, shared with ccteam-app only (not with its database)
+      - prometheus-ccteam-net
+
+networks:
+
+  prometheus-net:
+    name: prometheus-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+
+  # Created by this stack, the ccteam stack joins it : start Prometheus first
+  prometheus-ccteam-net:
+    name: prometheus-ccteam-net
+
+volumes:
+
+  prometheus-data:
+```
+
+#### Configuration file
+
+:page_facing_up: _prometheus.yml_ :
+
+```yaml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [ localhost:9090 ]
+
+  # CCTeam GraphQL (Spring Boot)
+  # The actuator listens on a dedicated management port (management.server.port=8081), not routed by Traefik,
+  # so the metrics are never exposed to the internet. The servlet context-path does not apply on this port.
+  - job_name: ccteam-graphql
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ ccteam-app:8081 ]
+```
+
+#### Traefik routing
+
+:page_facing_up: _prometheus.yml_ (Traefik dynamic configuration) :
+
+```yaml
+http:
+  services:
+    prometheus:
+      loadBalancer:
+        servers:
+          - url: http://prometheus:9090
+
+  routers:
+    prometheus:
+      rule: 'Host(`prometheus.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: prometheus
+      # Prometheus has no native OIDC support, the authentication is done by Traefik (see PocketID)
+      middlewares:
+        - vpn-whitelist@file
+        - prometheus-auth@file
+```
+
+And the middleware, in _pocketid.yml_ :
+
+```yaml
+    prometheus-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+```
+
+Things to notice :
+
+- the targets are reached **by container name** (`ccteam-app:8081`) on the shared network, nothing is published on the
+  host
+- the data is kept **30 days** (`--storage.tsdb.retention.time`), in the `prometheus-data` volume
+- `--web.enable-lifecycle` is deliberately **not** set : it would let anyone who reaches port 9090 stop Prometheus
+  (`POST /-/quit`) without any authentication. To reload the configuration after a change, send it a signal instead :
+  `sudo docker kill -s HUP prometheus`
+- the admin API (deleting series, snapshots) is not enabled either, the API only allows reading
+- Grafana does not go through Traefik nor through the PocketID middleware : it queries `http://prometheus:9090`
+  directly on `prometheus-net`
+- adding an application to monitor means : a scrape job in _prometheus.yml_, and a new `prometheus-<app>-net` network
+  shared between Prometheus and that application only
+
+### Run
+
+Prometheus creates the `prometheus-net` and `prometheus-ccteam-net` networks, so start it **before** CCTeam and
+Grafana, which join them as external networks :
+
+```bash
+sudo docker-compose -f /opt/apps/prometheus/docker-compose.yml up -d
+```
+
+You should end-up with a running `prometheus` container, and Traefik picks up the dynamic configuration file without
+restarting.
+
+The web interface is available at https://prometheus.example.com, after the PocketID login. Check the
+**Status -> Targets** page : the `ccteam-graphql` job must be **UP**.
+
+Then check that the metrics are **not** reachable from the internet : from a phone on mobile data (VPN turned off),
+https://ccteam.example.com/ccteam-gql/actuator/prometheus must answer `404`.
+
+## Grafana
+
+<img src="images/logo-grafana.svg" alt="Grafana logo" height="128"/>
+
+**Grafana** is the dashboard tool on top of [Prometheus](#prometheus) : it runs the PromQL queries and displays the
+results as graphs, tables, gauges, ... with alerting capabilities if needed.
+
+Nothing is configured by hand : the Prometheus **data source** and the **dashboards** are _provisioned_ from files at
+startup, so the whole configuration lives in this repository and a fresh container comes up ready to use.
+
+Like the other administration tools it sits on the **private** network. Unlike Prometheus, it supports **OIDC
+natively** (generic OAuth), so it authenticates its users against [PocketID](#pocketid) itself, with roles mapped from
+the PocketID groups. The local login form is disabled : PocketID is the only way in.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style PROMETHEUS_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{3000/tcp}}
+    DOCKER_PROMETHEUS_PORT{{9090/tcp}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    TRAEFIK_ROUTER_APP(grafana.example.com)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+            end
+
+            subgraph APP_CONTAINER[GRAFANA CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph PROMETHEUS_CONTAINER[PROMETHEUS CONTAINER]
+                DOCKER_PROMETHEUS_PORT
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+            DOCKER_APP_PORT -->|PromQL queries, prometheus - net| DOCKER_PROMETHEUS_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
+        end
+    end
+```
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/grafana
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files, and the _provisioning_ and _dashboards_ folders, from this project's
+  _grafana_ directory into the _/opt/apps/grafana_ directory
+- copy the _grafana.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
+  `https://grafana.example.com/login/generic_oauth`, and **PKCE** enabled. Restrict it to your administrators group
+  (_Allowed user groups_), then put its client ID and secret in `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` of the _.env_
+  file. No middleware on the router : the application talks to PocketID itself
+- give the local admin account a strong random password in the _.env_ file (`openssl rand -base64 32`), you will never
+  have to type it
+- add a **local DNS record** `grafana.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
+
+> [!NOTE]
+> The **roles** come from the PocketID groups, through `GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH` : the members of
+`super_admins` are **Grafana server admins**, everybody else is a **viewer**.
+>
+> Grafana has two levels of permissions : the **organization** roles (`Viewer`, `Editor`, `Admin`), which manage the
+dashboards, the data sources and the members of an organization, and the **server admin**, which manages the whole
+instance (organizations, all the users, server settings). The `GrafanaAdmin` value gives both, and requires
+`GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN`. `Admin` alone would not be enough here, since the local admin account
+is not usable anymore.
+>
+> A few things to know about it :
+>
+> - the `groups` claim contains the **name** of the PocketID group, not its friendly name
+> - the role is computed again at **every login** : a role changed from the Grafana interface is overwritten at the next
+    login, PocketID is the source of truth
+> - if the group does not match (wrong name, `groups` scope not allowed on the client), the login still works, but as
+    a **viewer**, with no admin left to fix it : check the group before the first login
+
+> [!NOTE]
+> Grafana always creates a **local admin** account on its first start, it cannot be removed. It is made unusable
+instead : no login form (`GF_AUTH_DISABLE_LOGIN_FORM`) and no basic authentication on the API
+(`GF_AUTH_BASIC_ENABLED`), otherwise `admin:<password>` would still open `/api/...`. `GF_AUTH_OAUTH_AUTO_LOGIN` redirects
+straight to PocketID, without an intermediate login page.
+>
+> If the OIDC login ever breaks, comment these three lines, recreate the container, and log in with the local admin.
+> Also note that `GF_SECURITY_ADMIN_PASSWORD` is only applied on the **first** start, it is then stored in the Grafana
+database.
+
+> [!NOTE]
+> The token and user info endpoints are the **public** URLs of PocketID : Grafana calls them from its container,
+through the Traefik network alias and the `pocketid-whitelist` middleware described in [PocketID](#pocketid).
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      # Grafana always creates a local admin account on the first start, it cannot be removed.
+      # It is unusable since the login form and basic authentication are disabled (see below), but it must
+      # still have a strong password : it is only applied on the first start (then stored in the Grafana database)
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_SERVER_ROOT_URL: https://grafana.example.com
+
+      # Native OIDC authentication against PocketID (callback URL : https://grafana.example.com/login/generic_oauth)
+      # The container resolves pocketid.example.com to Traefik thanks to the alias on traefik-private-net (see PocketID)
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_NAME: PocketID
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET in .env}
+      GF_AUTH_GENERIC_OAUTH_SCOPES: openid email profile groups
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://pocketid.example.com/authorize
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: https://pocketid.example.com/api/oidc/token
+      GF_AUTH_GENERIC_OAUTH_API_URL: https://pocketid.example.com/api/oidc/userinfo
+      GF_AUTH_GENERIC_OAUTH_USE_PKCE: "true"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
+      # Members of the PocketID group "super_admins" are Grafana server admins (the local admin is not usable),
+      # everybody else is a viewer
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(groups[*], 'super_admins') && 'GrafanaAdmin' || 'Viewer'"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: "true"
+
+      # PocketID only : no local login form, no basic authentication on the API, direct redirection to PocketID.
+      # If the OIDC login is broken, comment these three lines temporarily to log in with the local admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_OAUTH_AUTO_LOGIN: "true"
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      # To query Prometheus directly, without going through Traefik
+      - prometheus-net
+      # To be reachable by Traefik, and to reach PocketID
+      - traefik-private-net
+
+networks:
+
+  prometheus-net:
+    name: prometheus-net
+    external: true
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+
+volumes:
+
+  grafana-data:
+```
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+# Local admin account, unusable (no login form) but it must have a strong password : openssl rand -base64 32
+GRAFANA_ADMIN_USER=<username>
+GRAFANA_ADMIN_PASSWORD=<password>
+
+# PocketID OIDC client
+OIDC_CLIENT_ID=<oidc_client_id>
+OIDC_CLIENT_SECRET=<oidc_client_secret>
+```
+
+#### Provisioning
+
+:page_facing_up: _provisioning/datasources/prometheus.yml_ :
+
+```yaml
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+```
+
+:page_facing_up: _provisioning/dashboards/dashboards.yml_ :
+
+```yaml
+apiVersion: 1
+
+providers:
+  - name: homelab
+    folder: Homelab
+    type: file
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+```
+
+The _dashboards_ folder holds the dashboards as JSON files, loaded into the **Homelab** folder of Grafana. The
+_spring-graphql.json_ dashboard shows, for the selected application :
+
+- the **GraphQL requests** : requests per second, error rate, average and p95 response time, requests by outcome and
+  operation type, p50 / p95 / p99 percentiles over time
+- the **GraphQL fields** (data fetchers) : the most called fields, the slowest ones (average and p95), calls, response
+  time and errors per field
+
+#### Traefik routing
+
+:page_facing_up: _grafana.yml_ :
+
+```yaml
+http:
+  services:
+    grafana:
+      loadBalancer:
+        servers:
+          - url: http://grafana:3000
+
+  routers:
+    grafana:
+      rule: 'Host(`grafana.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: grafana
+      middlewares:
+        - vpn-whitelist@file
+```
+
+Things to notice :
+
+- the router only carries the IP whitelist : the single sign-on is done by the application itself, adding an
+  authentication middleware would mean logging in twice
+- the data source reaches Prometheus by container name on `prometheus-net`, with `access: proxy` : the queries are
+  made by the Grafana server, the browser never talks to Prometheus
+- the data source has a fixed `uid` (`prometheus`), referenced by the dashboards : keep it if you import other
+  dashboards, or adapt their JSON
+- `editable: false` locks the data source in the interface, the file is the only place to change it
+- with `allowUiUpdates: true` a provisioned dashboard can be modified and saved from the interface, but the change only
+  lives in the Grafana database : to keep it, export the JSON (_Share -> Export_) and replace the file in the
+  _dashboards_ folder
+- the provisioning and dashboards folders are mounted **read-only**, the `grafana-data` volume holds the database
+  (users, preferences, sessions)
+
+### Run
+
+Prometheus must be started first, it creates the `prometheus-net` network (see [Prometheus](#prometheus)) :
+
+```bash
+sudo docker-compose -f /opt/apps/grafana/docker-compose.yml up -d
+```
+
+You should end-up with a running `grafana` container, and Traefik picks up the dynamic configuration file without
+restarting.
+
+Open https://grafana.example.com : you are redirected straight to PocketID, then back to Grafana, where the
+**Spring GraphQL** dashboard is waiting in the **Homelab** folder. Check your role in your profile : it must be
+**Grafana Admin**.
 
 ## Defrag-life
 
@@ -5377,6 +5986,11 @@ cd /opt/apps/ccteam
 ```
 
 Create the _Dockerfile_ and _docker-compose.yml_ files based on the files in the _ccteam_ folder in this project.
+
+> [!NOTE]
+> The application container joins the `prometheus-ccteam-net` network, created by the Prometheus stack : start
+[Prometheus](#prometheus) first, or remove that network from the _docker-compose.yml_ file if you do not monitor the
+API.
 
 In the same directory, create a _.env_ file to hold the environment variables :
 
