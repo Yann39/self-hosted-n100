@@ -1,0 +1,61 @@
+services:
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    environment:
+      # Grafana always creates a local admin account on the first start, it cannot be removed.
+      # It is unusable since the login form and basic authentication are disabled (see below), but it must
+      # still have a strong password : it is only applied on the first start (then stored in the Grafana database)
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD in .env}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_SERVER_ROOT_URL: https://grafana.example.com
+
+      # Native OIDC authentication against PocketID (callback URL : https://grafana.example.com/login/generic_oauth)
+      # The container resolves pocketid.example.com to Traefik thanks to the alias on traefik-private-net (see PocketID)
+      GF_AUTH_GENERIC_OAUTH_ENABLED: "true"
+      GF_AUTH_GENERIC_OAUTH_NAME: PocketID
+      GF_AUTH_GENERIC_OAUTH_CLIENT_ID: ${OIDC_CLIENT_ID:?set OIDC_CLIENT_ID in .env}
+      GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET: ${OIDC_CLIENT_SECRET:?set OIDC_CLIENT_SECRET in .env}
+      GF_AUTH_GENERIC_OAUTH_SCOPES: openid email profile groups
+      GF_AUTH_GENERIC_OAUTH_AUTH_URL: https://pocketid.example.com/authorize
+      GF_AUTH_GENERIC_OAUTH_TOKEN_URL: https://pocketid.example.com/api/oidc/token
+      GF_AUTH_GENERIC_OAUTH_API_URL: https://pocketid.example.com/api/oidc/userinfo
+      GF_AUTH_GENERIC_OAUTH_USE_PKCE: "true"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_SIGN_UP: "true"
+      # Members of the PocketID group "super_admins" are Grafana server admins (the local admin is not usable),
+      # everybody else is a viewer
+      GF_AUTH_GENERIC_OAUTH_ROLE_ATTRIBUTE_PATH: "contains(groups[*], 'super_admins') && 'GrafanaAdmin' || 'Viewer'"
+      GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN: "true"
+
+      # PocketID only : no local login form, no basic authentication on the API, direct redirection to PocketID.
+      # If the OIDC login is broken, comment these three lines temporarily to log in with the local admin
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+      GF_AUTH_BASIC_ENABLED: "false"
+      GF_AUTH_OAUTH_AUTO_LOGIN: "true"
+    volumes:
+      - ./provisioning:/etc/grafana/provisioning:ro
+      - ./dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    networks:
+      # To query Prometheus directly, without going through Traefik
+      - prometheus-net
+      # To be reachable by Traefik, and to reach PocketID
+      - traefik-private-net
+
+networks:
+
+  prometheus-net:
+    name: prometheus-net
+    external: true
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+
+volumes:
+
+  grafana-data:

@@ -25,6 +25,8 @@ services:
     networks:
       - ccteam-net
       - traefik-public-net
+      # Scraped by Prometheus on the management port (8081), which is not routed by Traefik
+      - prometheus-ccteam-net
 
   ccteam-db:
     image: mariadb:latest
@@ -59,4 +61,8 @@ networks:
 
   phpmyadmin-net:
     name: phpmyadmin-net
+    external: true
+
+  prometheus-ccteam-net:
+    name: prometheus-ccteam-net
     external: true

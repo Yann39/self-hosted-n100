@@ -1,0 +1,17 @@
+http:
+  services:
+    grafana:
+      loadBalancer:
+        servers:
+          - url: http://grafana:3000
+
+  routers:
+    grafana:
+      rule: 'Host(`grafana.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: grafana
+      middlewares:
+        - vpn-whitelist@file

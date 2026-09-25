@@ -1,0 +1,19 @@
+http:
+  services:
+    prometheus:
+      loadBalancer:
+        servers:
+          - url: http://prometheus:9090
+
+  routers:
+    prometheus:
+      rule: 'Host(`prometheus.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: prometheus
+      # Prometheus has no native OIDC support, the authentication is done by Traefik (see PocketID)
+      middlewares:
+        - vpn-whitelist@file
+        - prometheus-auth@file

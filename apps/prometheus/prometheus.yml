@@ -1,0 +1,17 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+
+  - job_name: prometheus
+    static_configs:
+      - targets: [ localhost:9090 ]
+
+  # CCTeam GraphQL (Spring Boot)
+  # The actuator listens on a dedicated management port (management.server.port=8081), not routed by Traefik,
+  # so the metrics are never exposed to the internet. The servlet context-path does not apply on this port.
+  - job_name: ccteam-graphql
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: [ ccteam-app:8081 ]
