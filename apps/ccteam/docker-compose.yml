@@ -8,7 +8,10 @@ services:
     container_name: ccteam-app
     restart: on-failure
     env_file: ./.env
+    volumes:
+      - /opt/apps/ccteam/path_to_firebase_key.json:/opt/firebase-key.json:ro
     environment:
+      - TZ=Europe/Zurich
       - SPRING_DATASOURCE_URL=jdbc:mariadb://ccteam-db:3306/$MARIADB_DATABASE?useUnicode=true&serverTimezone=UTC
       - SPRING_DATASOURCE_USERNAME=$MARIADB_USER
       - SPRING_DATASOURCE_PASSWORD=$MARIADB_PASSWORD
@@ -18,16 +21,10 @@ services:
       - SPRING_MAIL_PASSWORD=$MAIL_SERVER_PASSWORD
       - CT_JWT_TOKEN_SECRET=$JWT_SECRET
       - CT_JWT_TOKEN_EXPIRATION-TIME=$JWT_EXPIRATION_TIME
+      - CT_FIREBASE_SERVICEACCOUNTFILE=$FIREBASE_SERVICE_ACCOUNT_FILE
     networks:
       - ccteam-net
-      - traefik-net
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ccteam.rule=Host(`ccteam.example.com`)"
-      - "traefik.http.routers.ccteam.entrypoints=websecure"
-      - "traefik.http.routers.ccteam.tls.certresolver=default"
-      - "traefik.http.services.ccteam.loadbalancer.server.port=5001"
-      - "traefik.docker.network=traefik-net"
+      - traefik-public-net
 
   ccteam-db:
     image: mariadb:latest

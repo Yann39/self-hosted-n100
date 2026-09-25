@@ -1,0 +1,15 @@
+http:
+  services:
+    ccteam:
+      loadBalancer:
+        servers:
+          - url: http://ccteam-app:5001
+
+  routers:
+    ccteam:
+      rule: 'Host(`ccteam.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: ccteam

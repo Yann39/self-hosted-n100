@@ -5367,6 +5367,8 @@ The application will be available at https://quake.example.com.
 
 ## CCTeam
 
+<img src="images/logo-ccteam.svg" alt="CCTeam logo" height="100"/>
+
 Create a directory to hold the app :
 
 ```bash
