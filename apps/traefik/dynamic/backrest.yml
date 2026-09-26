@@ -1,0 +1,20 @@
+http:
+  services:
+    backrest:
+      loadBalancer:
+        servers:
+          - url: http://backrest:9898
+
+  routers:
+    backrest:
+      rule: 'Host(`backrest.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: backrest
+      # Backrest has no native OIDC support, the authentication is done by Traefik (see PocketID).
+      # Its own login is kept on top : it reads everything and holds the repository password
+      middlewares:
+        - vpn-whitelist@file
+        - backrest-auth@file

@@ -1,0 +1,4 @@
+# Files executed on the Linux server must keep LF line endings, whatever core.autocrlf says on Windows
+*.sh text eol=lf
+*.service text eol=lf
+*.timer text eol=lf

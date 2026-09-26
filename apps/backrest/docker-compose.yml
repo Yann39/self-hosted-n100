@@ -1,0 +1,37 @@
+services:
+
+  backrest:
+    image: ghcr.io/garethgeorge/backrest:latest
+    container_name: backrest
+    # restic records the host name in every snapshot : keep it stable, or the retention policy sees a new host
+    hostname: backrest
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Zurich"
+      BACKREST_DATA: /data
+      BACKREST_CONFIG: /config/config.json
+      XDG_CACHE_HOME: /cache
+      TMPDIR: /tmp
+    volumes:
+      # Backrest configuration (repositories, plans, users) and operation history
+      - ./config:/config
+      - ./data:/data
+      # restic cache and temporary files, excluded from the backup
+      - ./cache:/cache
+      - ./tmp:/tmp
+      # SSH key, config and known_hosts to reach the SFTP repository on the Windows PC
+      - ./ssh:/root/.ssh:ro
+      # What to back up, READ-ONLY : the configuration of every service (including the database dumps written in
+      # /opt/apps/backrest/dumps by the host timer) and the Docker volumes
+      - /opt/apps:/sources/apps:ro
+      - /var/lib/docker/volumes:/sources/volumes:ro
+      # Restores land here, never over the sources (which are read-only anyway)
+      - ./restore:/restore
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
