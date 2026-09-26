@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.1.4-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-22_Sept_2026-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.3.0-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).

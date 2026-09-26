@@ -1,0 +1,31 @@
+services:
+
+  gatus:
+    image: twinproduction/gatus:latest
+    container_name: gatus
+    restart: unless-stopped
+    # OIDC client and SMTP credentials, substituted into config/config.yaml (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+    volumes:
+      # Endpoints, alerting and OIDC configuration
+      - ./config:/config:ro
+      # SQLite database : history of the checks, so that the uptime survives a restart
+      - ./data:/data
+    networks:
+      # Private network only : the private services are checked by container name, the public ones through Traefik
+      # (their public names resolve to Traefik thanks to its network aliases), and PocketID is reached the same way
+      - traefik-private-net
+      # To query Pi-hole and Unbound directly on their fixed IP addresses (DNS checks)
+      - pihole-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+
+  pihole-net:
+    name: pihole-net
+    external: true

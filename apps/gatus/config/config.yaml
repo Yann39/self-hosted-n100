@@ -1,0 +1,240 @@
+# Gatus configuration
+# The ${...} variables come from the .env file : Gatus substitutes the environment variables in the whole file
+# before parsing it, so never write a literal "$" here.
+
+storage:
+  type: sqlite
+  path: /data/data.db
+
+ui:
+  title: Status | example.com
+  header: Status
+
+# Native OIDC authentication against PocketID, protects the dashboard and the API.
+# The issuer is the PUBLIC URL : the container resolves it to Traefik thanks to the alias on traefik-private-net,
+# and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+security:
+  oidc:
+    issuer-url: https://pocketid.example.com
+    redirect-url: https://gatus.example.com/authorization-code/callback
+    client-id: ${OIDC_CLIENT_ID}
+    client-secret: ${OIDC_CLIENT_SECRET}
+    scopes: [ "openid" ]
+
+alerting:
+  email:
+    from: ${ALERT_FROM}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT}
+    to: ${ALERT_TO}
+    # Applied to every endpoint declaring an "email" alert
+    default-alert:
+      enabled: true
+      # 3 failed checks in a row (3 minutes) before alerting, to ignore a restart or a short hiccup
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+
+endpoints:
+
+  # ------------------------------------------------------------------------------------------------------------------
+  # Infrastructure
+  # ------------------------------------------------------------------------------------------------------------------
+
+  # Needs "ping: {}" in the Traefik static configuration, served on the internal "traefik" entrypoint (8080)
+  - name: Traefik
+    group: Infrastructure
+    url: http://traefik:8080/ping
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: PocketID
+    group: Infrastructure
+    url: http://pocketid:1411/.well-known/openid-configuration
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  # Local API of the security engine : a TCP check is enough, the bouncer in Traefik fails open if it is down
+  - name: CrowdSec
+    group: Infrastructure
+    url: tcp://crowdsec:8080
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  # DNS servers queried on pihole-net with their fixed IP addresses. Not through the port 53 published on the host :
+  # a container reaching a port published by a container of the same Docker network (hairpin) is not reliable.
+  # A local record checks Pi-hole itself...
+  - name: Pi-hole (DNS)
+    group: Infrastructure
+    url: 10.2.0.100
+    interval: 1m
+    dns:
+      query-name: pihole.example.com
+      query-type: A
+    conditions:
+      - "[DNS_RCODE] == NOERROR"
+      - "[BODY] == 192.168.0.16"
+    alerts:
+      - type: email
+
+  # ... and Unbound is asked directly for an external name, which checks the recursive resolution
+  - name: Unbound
+    group: Infrastructure
+    url: 10.2.0.200
+    interval: 1m
+    dns:
+      query-name: debian.org
+      query-type: A
+    conditions:
+      - "[DNS_RCODE] == NOERROR"
+    alerts:
+      - type: email
+
+  # WGDashboard runs on the host network, reached through the IP of the mini PC
+  - name: WGDashboard
+    group: Infrastructure
+    url: http://192.168.0.16:10086
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+    alerts:
+      - type: email
+
+  # ------------------------------------------------------------------------------------------------------------------
+  # Private services : checked by container name on traefik-private-net (Traefik is checked separately above)
+  # ------------------------------------------------------------------------------------------------------------------
+
+  - name: Pi-hole
+    group: Private
+    url: http://pihole:80/admin/
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: Portainer
+    group: Private
+    url: http://portainer:9000/api/system/status
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: CrowdSec Web UI
+    group: Private
+    url: http://crowdsec-web-ui:3000
+    interval: 1m
+    conditions:
+      - "[STATUS] < 400"
+    alerts:
+      - type: email
+
+  - name: PhpMyAdmin
+    group: Private
+    url: http://phpmyadmin:80
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: Homer
+    group: Private
+    url: http://homer:8080
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: Homebox
+    group: Private
+    url: http://homebox:7745/api/v1/status
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: Prometheus
+    group: Private
+    url: http://prometheus:9090/-/healthy
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  - name: Grafana
+    group: Private
+    url: http://grafana:3000/api/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  # Dashdot is NOT checked : it is started on demand by Sablier, a check every minute would keep it running forever
+
+  # ------------------------------------------------------------------------------------------------------------------
+  # Public services : checked through Traefik with their public name (network alias of Traefik), which also covers
+  # the routing, the TLS certificate and CrowdSec. Gatus is never on traefik-public-net.
+  # ------------------------------------------------------------------------------------------------------------------
+
+  - name: Lychee
+    group: Public
+    url: https://lychee.example.com
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      # Let's Encrypt renews 30 days before expiry : less than 10 days left means the renewal is broken
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
+
+  - name: Defrag-life
+    group: Public
+    url: https://quake.example.com
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
+
+  # Only the collecting endpoints are public, the dashboard is behind PocketID
+  - name: GoatCounter
+    group: Public
+    url: https://goatcounter.example.com/count.js
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
+
+  # Readiness probe served on the main port (the rest of the actuator is on the management port), it includes the
+  # database : 503 if the application or its database is not ready. Only exposes {"status":"UP"}, no details
+  - name: CCTeam API
+    group: Public
+    url: https://ccteam.example.com/ccteam-gql/readyz
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == UP"
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email

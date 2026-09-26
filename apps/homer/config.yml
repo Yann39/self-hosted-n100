@@ -130,6 +130,11 @@ services:
         subtitle: "Analytics and visualization"
         tag: "Monitoring"
         url: "https://grafana.example.com"
+      - name: "Gatus"
+        logo: "assets/logos/logo-gatus.svg"
+        subtitle: "Real-time uptime monitoring"
+        tag: "monitoring"
+        url: "https://gatus.example.com"
   - name: "Applications"
     icon: "fas fa-globe"
     items:
