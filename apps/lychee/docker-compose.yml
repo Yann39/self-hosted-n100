@@ -34,6 +34,7 @@ services:
     image: mariadb:latest
     restart: unless-stopped
     environment:
+      - MARIADB_AUTO_UPGRADE=1
       - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
       - MYSQL_DATABASE=lychee
       - MYSQL_USER=$MYSQL_USERNAME

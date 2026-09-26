@@ -2,7 +2,7 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.5.0-2AAB92)
+![Static Badge](https://img.shields.io/badge/Version-1.5.1-2AAB92)
 ![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
@@ -4567,6 +4567,7 @@ services:
     image: mariadb:latest
     restart: unless-stopped
     environment:
+      - MARIADB_AUTO_UPGRADE=1
       - MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD
       - MYSQL_DATABASE=lychee
       - MYSQL_USER=$MYSQL_USERNAME
