@@ -2,7 +2,7 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.3.0-2AAB92)
+![Static Badge](https://img.shields.io/badge/Version-1.3.1-2AAB92)
 ![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
@@ -75,8 +75,9 @@ up-to-date instructions.<br>
     10. [Goatcounter](#goatcounter)
     11. [Prometheus](#prometheus)
     12. [Grafana](#grafana)
-    13. [Defrag-life](#defrag-life)
-    14. [CCTeam](#ccteam)
+    13. [Gatus](#gatus)
+    14. [Defrag-life](#defrag-life)
+    15. [CCTeam](#ccteam)
 
    </details>
 5. <details>
@@ -141,6 +142,7 @@ These are the tools we are going to run :
 |         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
 |      <img src="images/logo-prometheus.svg" alt="Prometheus logo" height="32"/>      | Prometheus      | https://github.com/prometheus/prometheus        | Metrics collection and time series database          |
 |         <img src="images/logo-grafana.svg" alt="Grafana logo" height="32"/>         | Grafana         | https://github.com/grafana/grafana              | Dashboards and visualization for metrics             |
+|           <img src="images/logo-gatus.svg" alt="Gatus logo" height="32"/>           | Gatus           | https://github.com/TwiN/gatus                   | Uptime monitoring and alerting, status page          |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
 |      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
@@ -1205,6 +1207,9 @@ few rules go with it :
 api:
   dashboard: true
 
+# Health check endpoint (/ping) for Gatus, served on the internal "traefik" entrypoint (8080), not published on the host
+ping: {}
+
 entryPoints:
   web:
     address: ':80'
@@ -1261,6 +1266,8 @@ accessLog:
 This config file :
 
 - enables the Traefik **dashboard** (UI that provides a detailed overview of the current configuration)
+- enables the **ping** endpoint (`/ping`), used by [Gatus](#gatus) to check that Traefik is alive. It is served on the
+  internal `traefik` entrypoint (port `8080`), created automatically and not published on the host
 - defines 2 **entrypoints**, named `web` (for port `80`) and `websecure` (for port `443`) so that we can receive
   requests on these ports
 - defines a `docker` provider so that we can use **container labels** for retrieving routing configuration. We have
@@ -1299,8 +1306,20 @@ services:
       - ./credentials.txt:/credentials.txt:ro           # For Traefik dashboard credentials
       - ./logs:/var/log/traefik                         # Access log, shared (read-only) with CrowdSec
     networks:
-      - traefik-private-net # private : services reachable from the local network and the VPN only
-      - traefik-public-net  # public : services exposed to the internet
+      # private : services reachable from the local network and the VPN only
+      traefik-private-net:
+        aliases:
+          # Lets the containers of the private network resolve the public name of the OIDC provider to Traefik itself,
+          # so that applications authenticating natively against PocketID can use its public issuer URL (see PocketID)
+          - pocketid.example.com
+          # Same for the public services, so that Gatus checks them through Traefik with their real name
+          # (routing, TLS certificate, CrowdSec), without joining the public network nor depending on Pi-hole
+          - lychee.example.com
+          - quake.example.com
+          - goatcounter.example.com
+          - ccteam.example.com
+      # public : services exposed to the internet
+      traefik-public-net:
     env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"
@@ -1346,6 +1365,9 @@ This **Compose** file mainly :
 - defines two **networks** : `traefik-private-net` for the services that must stay private (reachable from the local
   network and the VPN only) and `traefik-public-net` for the services exposed to the internet,
   see [Network segmentation](#network-segmentation)
+- gives Traefik **network aliases** on the private network : the containers of that network resolve these public names
+  to Traefik itself. `pocketid.example.com` is used by the applications authenticating natively against PocketID
+  (see [PocketID](#pocketid)), the public services by [Gatus](#gatus) to check them through Traefik
 - loads its secrets from the _.env_ file (see [Environment variables](#environment-variables-)) : the DNS provider
   access token used to issue Let's Encrypt certificates through **DNS challenge**, and the CrowdSec bouncer key
 - defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our
@@ -5602,6 +5624,411 @@ restarting.
 Open https://grafana.example.com : you are redirected straight to PocketID, then back to Grafana, where the
 **Spring GraphQL** dashboard is waiting in the **Homelab** folder. Check your role in your profile : it must be
 **Grafana Admin**.
+
+## Gatus
+
+<img src="images/logo-gatus.svg" alt="Gatus logo" height="128"/>
+
+**Gatus** checks at a regular interval that the services answer, and sends an **alert** when one of them stops
+answering, and again when it comes back. Each check is an HTTP request, a DNS query or a TCP connection, validated by
+**conditions** (status code, body content, response time, days left on the TLS certificate, ...), and the history is
+displayed on a small status page.
+Where [Prometheus](#prometheus) and [Grafana](#grafana) tell **how well** an application behaves, Gatus only answers
+**is it up ?**, and tells you as soon as it is not.
+
+A single Go binary, configured with one YAML file, with its history in an SQLite database. It sits on the **private**
+network and authenticates its users against [PocketID](#pocketid) with its own OIDC support.
+
+The checks do not all take the same path, to respect the [Network segmentation](#network-segmentation) :
+
+- the **private** services are checked **directly**, by container name on `traefik-private-net`, on their health
+  endpoint when they have one
+- the **public** services are checked **through Traefik**, with their real public name : Gatus never joins
+  `traefik-public-net`. Traefik carries these names as **network aliases** on the private network (like
+  `pocketid.example.com`), so Gatus reaches it directly, without depending on Pi-hole nor on the NAT loopback of the
+  router. It also covers the routing, the TLS certificate and CrowdSec
+- the **DNS** servers are queried on `pihole-net`, with their fixed IP addresses
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style PRIVATE_CONTAINER fill: #663535
+    style PUBLIC_CONTAINER fill: #663535
+    style DNS_CONTAINERS fill: #663535
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_APP_PORT{{8080/tcp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT8080{{8080/tcp\nping}}
+    DOCKER_PRIVATE_PORT{{health endpoint}}
+    DOCKER_PUBLIC_PORT{{app port}}
+    DOCKER_PIHOLE_PORT{{10 . 2 . 0 . 100:53}}
+    DOCKER_UNBOUND_PORT{{10 . 2 . 0 . 200:53}}
+    SMTP[SMTP server]
+    ADMIN((ADMIN))
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph APP_CONTAINER[GATUS CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT8080
+            end
+
+            subgraph PRIVATE_CONTAINER[PRIVATE SERVICES]
+                DOCKER_PRIVATE_PORT
+            end
+
+            subgraph PUBLIC_CONTAINER[PUBLIC SERVICES]
+                DOCKER_PUBLIC_PORT
+            end
+
+            subgraph DNS_CONTAINERS[PI-HOLE / UNBOUND]
+                DOCKER_PIHOLE_PORT
+                DOCKER_UNBOUND_PORT
+            end
+
+            DOCKER_APP_PORT -->|traefik - private - net| DOCKER_TRAEFIK_PORT8080
+            DOCKER_APP_PORT -->|by container name, traefik - private - net| DOCKER_PRIVATE_PORT
+            DOCKER_APP_PORT -->|public name = Traefik alias| DOCKER_TRAEFIK_PORT443
+            DOCKER_TRAEFIK_PORT443 -->|traefik - public - net| DOCKER_PUBLIC_PORT
+            DOCKER_APP_PORT -->|DNS queries, pihole - net| DOCKER_PIHOLE_PORT
+            DOCKER_APP_PORT -->|DNS queries, pihole - net| DOCKER_UNBOUND_PORT
+        end
+    end
+
+    DOCKER_APP_PORT -.->|alert e-mail| SMTP
+    SMTP -.-> ADMIN
+```
+
+### Setting up
+
+Create the folders :
+
+```bash
+sudo mkdir -p /opt/apps/gatus/config /opt/apps/gatus/data
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _gatus_ directory into the _/opt/apps/gatus_
+  directory, and the _config.yaml_ file into _/opt/apps/gatus/config_. Adapt the domain names and the IP address of the
+  mini PC in _config.yaml_, and fill the SMTP account used to send the alerts in the _.env_ file
+- copy the _gatus.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- enable the **ping** endpoint in the Traefik static configuration (`ping: {}`), and add the public names to the
+  **network aliases** of Traefik (see [Configuration files details](#configuration-files-details)), then recreate the
+  Traefik container
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
+  `https://gatus.example.com/authorization-code/callback`, and **PKCE disabled**, as the application does not send a
+  `code_challenge` (like Portainer). Restrict it to your administrators group (_Allowed user groups_) : Gatus has no
+  roles, every authenticated user sees everything. Then put its client ID and secret in `OIDC_CLIENT_ID` and
+  `OIDC_CLIENT_SECRET` of the _.env_ file. No middleware on the router : the application talks to PocketID itself
+- add a **local DNS record** `gatus.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not
+  published on the internet
+
+> [!NOTE]
+> **Dashdot is not checked** : it is started on demand by [Sablier](#scale-to-zero-with-sablier), a request every minute
+would wake it up and keep it running forever. The same goes for any service put behind Sablier.
+
+> [!NOTE]
+> The **DNS** checks query Pi-hole and Unbound on `pihole-net`, not the port `53` published on the host : Gatus and
+Pi-hole share `traefik-private-net`, and a container reaching a port published by a container of the same Docker network
+(_hairpin_) is not reliable, the query times out or the answer comes from an unexpected address. Your devices on the
+local network are not affected, they come through the real network interface.
+>
+> Checking Unbound directly, and not only through Pi-hole, tells which one of the two is down.
+
+> [!TIP]
+> An application without a dedicated health endpoint can still be checked on any page, but avoid a page that logs every
+call : a check every minute is 1440 lines a day.
+> This is why the **CCTeam API** is checked on its **readiness probe** rather than on its GraphQL endpoint, where every
+request without a token wrote four lines of authentication logs. Spring Boot serves the liveness and readiness probes
+on the main port (`/livez`, `/readyz`) with these properties, while the rest of the actuator stays on the management
+port (see [Prometheus](#prometheus)) :
+>
+> ```properties
+> management.endpoint.health.probes.enabled=              true
+> management.endpoint.health.probes.add-additional-paths= true
+> management.endpoint.health.group.readiness.include=     readinessState,db
+> ```
+>
+> `/readyz` answers `503` if the application or its database is not ready, and only exposes `{"status":"UP"}`, without
+any detail. No Spring Security filter chain matches this path, so it is reachable without a token.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  gatus:
+    image: twinproduction/gatus:latest
+    container_name: gatus
+    restart: unless-stopped
+    # OIDC client and SMTP credentials, substituted into config/config.yaml (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+    volumes:
+      # Endpoints, alerting and OIDC configuration
+      - ./config:/config:ro
+      # SQLite database : history of the checks, so that the uptime survives a restart
+      - ./data:/data
+    networks:
+      # Private network : the private services are checked by container name, the public ones through Traefik
+      # (their public names resolve to Traefik thanks to its network aliases), and PocketID is reached the same way
+      - traefik-private-net
+      # To query Pi-hole and Unbound directly on their fixed IP addresses (DNS checks)
+      - pihole-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+
+  pihole-net:
+    name: pihole-net
+    external: true
+```
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+# PocketID OIDC client (callback URL : https://gatus.example.com/authorization-code/callback)
+OIDC_CLIENT_ID=<oidc_client_id>
+OIDC_CLIENT_SECRET=<oidc_client_secret>
+
+# SMTP account used to send the alerts
+SMTP_HOST=<smtp_host>
+SMTP_PORT=465
+SMTP_USERNAME=<smtp_username>
+SMTP_PASSWORD=<smtp_password>
+ALERT_FROM=<sender_address>
+ALERT_TO=<recipient_address>
+```
+
+#### Configuration file
+
+:page_facing_up: _config/config.yaml_ (shortened, one endpoint of each kind, see the full file in this project's
+_gatus_ directory) :
+
+```yaml
+# Gatus configuration
+# The ${...} variables come from the .env file : Gatus substitutes the environment variables in the whole file
+# before parsing it, so never write a literal "$" here.
+
+storage:
+  type: sqlite
+  path: /data/data.db
+
+ui:
+  title: Status | example.com
+  header: Status
+
+# Native OIDC authentication against PocketID, protects the dashboard and the API.
+# The issuer is the PUBLIC URL : the container resolves it to Traefik thanks to the alias on traefik-private-net,
+# and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+security:
+  oidc:
+    issuer-url: https://pocketid.example.com
+    redirect-url: https://gatus.example.com/authorization-code/callback
+    client-id: ${OIDC_CLIENT_ID}
+    client-secret: ${OIDC_CLIENT_SECRET}
+    scopes: [ "openid" ]
+
+alerting:
+  email:
+    from: ${ALERT_FROM}
+    username: ${SMTP_USERNAME}
+    password: ${SMTP_PASSWORD}
+    host: ${SMTP_HOST}
+    port: ${SMTP_PORT}
+    to: ${ALERT_TO}
+    # Applied to every endpoint declaring an "email" alert
+    default-alert:
+      enabled: true
+      # 3 failed checks in a row (3 minutes) before alerting, to ignore a restart or a short hiccup
+      failure-threshold: 3
+      success-threshold: 2
+      send-on-resolved: true
+
+endpoints:
+
+  # Needs "ping: {}" in the Traefik static configuration, served on the internal "traefik" entrypoint (8080)
+  - name: Traefik
+    group: Infrastructure
+    url: http://traefik:8080/ping
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  # Local API of the security engine : a TCP check is enough, the bouncer in Traefik fails open if it is down
+  - name: CrowdSec
+    group: Infrastructure
+    url: tcp://crowdsec:8080
+    interval: 1m
+    conditions:
+      - "[CONNECTED] == true"
+    alerts:
+      - type: email
+
+  # DNS servers queried on pihole-net with their fixed IP addresses. Not through the port 53 published on the host :
+  # a container reaching a port published by a container of the same Docker network (hairpin) is not reliable.
+  # A local record checks Pi-hole itself...
+  - name: Pi-hole (DNS)
+    group: Infrastructure
+    url: 10.2.0.100
+    interval: 1m
+    dns:
+      query-name: pihole.example.com
+      query-type: A
+    conditions:
+      - "[DNS_RCODE] == NOERROR"
+      - "[BODY] == 192.168.0.16"
+    alerts:
+      - type: email
+
+  # ... and Unbound is asked directly for an external name, which checks the recursive resolution
+  - name: Unbound
+    group: Infrastructure
+    url: 10.2.0.200
+    interval: 1m
+    dns:
+      query-name: debian.org
+      query-type: A
+    conditions:
+      - "[DNS_RCODE] == NOERROR"
+    alerts:
+      - type: email
+
+  # Private services : checked by container name on traefik-private-net
+  - name: Portainer
+    group: Private
+    url: http://portainer:9000/api/system/status
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
+  # Dashdot is NOT checked : it is started on demand by Sablier, a check every minute would keep it running forever
+
+  # Public services : checked through Traefik with their public name (network alias of Traefik), which also covers
+  # the routing, the TLS certificate and CrowdSec. Gatus is never on traefik-public-net.
+  - name: Lychee
+    group: Public
+    url: https://lychee.example.com
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      # Let's Encrypt renews 30 days before expiry : less than 10 days left means the renewal is broken
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
+
+  # Readiness probe served on the main port (the rest of the actuator is on the management port), it includes the
+  # database : 503 if the application or its database is not ready. Only exposes {"status":"UP"}, no details
+  - name: CCTeam API
+    group: Public
+    url: https://ccteam.example.com/ccteam-gql/readyz
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == UP"
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
+```
+
+The full file checks :
+
+| Group          | Services                                                                                   | How                                                   |
+|----------------|--------------------------------------------------------------------------------------------|-------------------------------------------------------|
+| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                           | ping, discovery document, TCP, DNS queries, host IP   |
+| Private        | Pi-hole, Portainer, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana       | container name, health endpoint when there is one     |
+| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                               | public name through Traefik, TLS certificate expiry   |
+
+#### Traefik routing
+
+:page_facing_up: _gatus.yml_ :
+
+```yaml
+http:
+  services:
+    gatus:
+      loadBalancer:
+        servers:
+          - url: http://gatus:8080
+
+  routers:
+    gatus:
+      rule: 'Host(`gatus.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: gatus
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
+      middlewares:
+        - vpn-whitelist@file
+```
+
+Things to notice :
+
+- Gatus joins `traefik-private-net` and `pihole-net` only, never `traefik-public-net` : the public services are reached
+  through Traefik, like any visitor would
+- a dedicated network shared with Pi-hole only would bring nothing : `pihole-net` only holds Pi-hole and Unbound, the two
+  containers Gatus has to query, and Gatus already shares `traefik-private-net` with Pi-hole
+- **WGDashboard** runs on the host network (`network_mode: host`), it is reached through the IP address of the mini PC,
+  without any Docker port mapping, so the hairpin problem of the DNS checks does not apply
+- the **CrowdSec** local API is checked with a simple TCP connection : if it is down, the bouncer in Traefik lets the
+  requests through, the protection silently disappears, hence the check
+- the **GoatCounter** check fetches `/count.js`, which does not record any visit. Gatus does not run the JavaScript of
+  the pages it checks, so it does not pollute the statistics of the websites either
+- the public checks also verify the **TLS certificate** : less than 10 days left means that the Let's Encrypt renewal,
+  which normally happens 30 days before expiry, is broken
+- Gatus substitutes the environment variables in the **whole** configuration file (`${...}`), a literal `$` would be
+  interpreted as a variable. The `.env` values themselves are not affected
+- Gatus watches its configuration file and reloads it by itself when it changes, no restart needed
+
+> [!WARNING]
+> Gatus checks from **inside** the network : it does not see an outage of the internet connection, of the router, of the
+dynamic DNS or of the port forwarding, and in that case the alert e-mail could not leave anyway.
+> Catching these needs an **external** probe, from another network (a second Gatus instance hosted elsewhere, or a free
+external uptime service) checking a public URL such as `https://quake.example.com`.
+
+### Run
+
+Traefik must have been recreated with the ping endpoint and the aliases first (see above), then run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/gatus/docker-compose.yml up -d
+```
+
+You should end-up with a running `gatus` container, and Traefik picks up the dynamic configuration file without
+restarting.
+
+The status page is available at https://gatus.example.com, after the PocketID login. Every check should turn green
+within a minute. Hover a red bar to see the failed condition, for instance `[BODY] () == 192.168.0.16` : an empty
+answer, the query name does not match any local DNS record.
+
+<img src="images/screen-gatus.png" alt="Gatus screenshot"/>
 
 ## Defrag-life
 

@@ -14,7 +14,7 @@ services:
       # SQLite database : history of the checks, so that the uptime survives a restart
       - ./data:/data
     networks:
-      # Private network only : the private services are checked by container name, the public ones through Traefik
+      # Private network : the private services are checked by container name, the public ones through Traefik
       # (their public names resolve to Traefik thanks to its network aliases), and PocketID is reached the same way
       - traefik-private-net
       # To query Pi-hole and Unbound directly on their fixed IP addresses (DNS checks)
