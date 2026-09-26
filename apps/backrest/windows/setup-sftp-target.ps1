@@ -7,7 +7,7 @@
 #   1. installs and starts the OpenSSH server
 #   2. creates a local "backup" user, NOT administrator, whose password is never used (key authentication only)
 #   3. creates the repository folder, readable and writable by "backup" only (plus read access for you, so that
-#      your pCloud sync can read it)
+#      your cloud sync can read it)
 #   4. restricts "backup" to SFTP, with its authorized key in ProgramData (see the note below)
 #   5. only allows the N100 through the firewall
 

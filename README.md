@@ -2,7 +2,7 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.5.1-2AAB92)
+![Static Badge](https://img.shields.io/badge/Version-1.5.2-2AAB92)
 ![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
@@ -91,9 +91,8 @@ up-to-date instructions.<br>
 6. <details>
    <summary><a href="#backup">Backup</a></summary>
 
-    1. [Files](#files)
-    2. [Volumes](#volumes)
-    3. [Databases](#databases)
+    1. [Backrest](#backrest)
+    2. [Manual backups](#manual-backups)
 
    </details>
 7. <details>
@@ -143,6 +142,7 @@ These are the tools we are going to run :
 |      <img src="images/logo-prometheus.svg" alt="Prometheus logo" height="32"/>      | Prometheus      | https://github.com/prometheus/prometheus        | Metrics collection and time series database          |
 |         <img src="images/logo-grafana.svg" alt="Grafana logo" height="32"/>         | Grafana         | https://github.com/grafana/grafana              | Dashboards and visualization for metrics             |
 |           <img src="images/logo-gatus.svg" alt="Gatus logo" height="32"/>           | Gatus           | https://github.com/TwiN/gatus                   | Uptime monitoring and alerting, status page          |
+|        <img src="images/logo-backrest.svg" alt="Backrest logo" height="32"/>         | Backrest        | https://github.com/garethgeorge/backrest        | Web UI for restic backups (snapshots, encryption)    |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
 |      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
@@ -4224,6 +4224,11 @@ services:
         subtitle: "Container management platform"
         tag: "tool"
         url: "https://arcane.example.com"
+      - name: "Backrest"
+        logo: "assets/logos/logo-backrest.svg"
+        subtitle: "Backup solution built on top of restic"
+        tag: "tool"
+        url: "https://backrest.example.com"
       - name: "Pi-Hole"
         logo: "assets/logos/logo-pihole.svg"
         subtitle: "Network-wide ad blocking"
@@ -6057,11 +6062,11 @@ endpoints:
 
 The full file checks :
 
-| Group          | Services                                                                                   | How                                                   |
-|----------------|--------------------------------------------------------------------------------------------|-------------------------------------------------------|
-| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                           | ping, discovery document, TCP, DNS queries, host IP   |
-| Private        | Pi-hole, Arcane, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana          | container name, health endpoint when there is one     |
-| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                               | public name through Traefik, TLS certificate expiry   |
+| Group          | Services                                                                                    | How                                                   |
+|----------------|---------------------------------------------------------------------------------------------|-------------------------------------------------------|
+| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                            | ping, discovery document, TCP, DNS queries, host IP   |
+| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana | container name, health endpoint when there is one     |
+| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                                | public name through Traefik, TLS certificate expiry   |
 
 #### Traefik routing
 
@@ -6910,28 +6915,578 @@ We have so far set up a structure with a folder per stack/container (in _/opt/ap
 That way each stack definition (Docker Compose file) and bind mount data is fully contained in that single folder.
 
 The only exception is **named volumes**, which store data in the _/var/lib/docker/volumes_ directory.
-This includes the databases of some applications, which could also be backed up separately using the tool associated
-with the database management system.
+This includes the databases of some applications.
 
 This is the only data that really concerns us, thanks to Docker, the system has hardly been modified at all, so there's
 no need to back it up completely (like doing entire system image backup).
 
 So there are three things we have to worry about in terms of backup :
 
-- the content of the _/opt/apps_ directory, holding services configuration and containers bound data
+- the content of the _/opt/apps_ directory, holding services configuration and containers bound data (including the
+  secrets : _.env_ files, _acme.json_, the PocketID encryption key, ...)
 - the content of the _/var/lib/docker/volumes_, holding the Docker container named volumes data
-- the databases (i.e. MySQL for Defrag-Life website, MongoDB for Ackee application, ...)
+- the **databases** (MariaDB for CCTeam, Lychee and Defrag-life) : copying the files of a running database gives an
+  inconsistent copy, they must be **dumped** first
 
-Later we can even place volume backups and database exports in the _/opt/apps_ directory so that we can back up
-everything in one place easily.
+The backups are done by [Backrest](#backrest) every evening, to a **Windows PC** on the local network, which then
+synchronizes them to a cloud. That gives the classic **3-2-1** rule : the data on the mini PC, a copy on the Windows
+PC, and an **off-site** copy in the cloud.
 
-## Files
+```mermaid
+flowchart LR
+    style N100 fill: #665555
+    style PC fill: #205566
+    style CLOUD fill: #4d683b
+    TIMER[systemd timer\n19:45] -->|mariadb-dump| DUMPS[(database dumps)]
 
-### Rsync
+    subgraph N100[MINI PC]
+        APPS[(/opt/apps)]
+        VOLUMES[(Docker volumes)]
+        DUMPS
+        BACKREST[Backrest\nrestic]
+        TIMER
+    end
+
+    subgraph PC[WINDOWS PC]
+        REPO[(restic repository\nD:\Backups\N100)]
+        CLOUD_CLIENT[Cloud client]
+    end
+
+    subgraph CLOUD[CLOUD]
+        CLOUD_COPY[(off-site copy)]
+    end
+
+    APPS -->|read-only| BACKREST
+    VOLUMES -->|read-only| BACKREST
+    DUMPS -->|read-only| BACKREST
+    BACKREST -->|20:00, SFTP, encrypted snapshots| REPO
+    REPO --> CLOUD_CLIENT
+    CLOUD_CLIENT -->|sync| CLOUD_COPY
+```
+
+The [Manual backups](#manual-backups) section below keeps the one-off commands and tools (rsync, FreeFileSync, volume
+archives, database dumps), useful before a migration or to copy a single volume.
+
+## Backrest
+
+<img src="images/logo-backrest.svg" alt="Backrest logo" height="128"/>
+
+**Backrest** is a web interface on top of **restic**, a proven backup tool. Unlike a synchronization (rsync, a mirror),
+restic keeps **snapshots** : every backup is a complete, dated point in time, and restoring the state of last Tuesday is
+always possible, even if a file got corrupted or deleted since (a mirror would have propagated the damage).
+
+- **deduplicated** : only the blocks that changed since the last snapshot are sent and stored, a daily backup of the
+  whole server takes a few seconds and a few megabytes
+- **encrypted** on the mini PC, before leaving it : the repository is unreadable without its password, which is also
+  what makes it safe to push it to a cloud storage
+- **retention policy** : keep the last 7 daily, 4 weekly and 6 monthly snapshots, for instance, the older ones are
+  removed automatically
+- **restore from the interface** : browse any snapshot like a file explorer, download a file or a folder, or restore it
+  to a folder
+- **scheduling**, **hooks** before and after each operation, **notifications** on error
+
+It is an administration tool : it sits on the **private** network, behind the IP whitelist. Backrest has **no native
+OIDC support**, it is put behind [PocketID](#pocketid) with the Traefik plugin, **and** its own login is kept on top :
+it reads everything (secrets included) and holds the repository password, and without its own login any container of
+`traefik-private-net` could use it directly, without going through Traefik. Its session lasts long, the double login is
+rare.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    style WINDOWS_PC fill: #205566
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{9898/tcp}}
+    TRAEFIK_ROUTER_APP(backrest.example.com)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
+    SOURCES[(/opt/apps\nDocker volumes)]
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        SOURCES
+
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                    TRAEFIK_MIDDLEWARE_OIDC
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+            end
+
+            subgraph APP_CONTAINER[BACKREST CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_OIDC -->|then Backrest login| DOCKER_APP_PORT
+        end
+
+        SOURCES -->|read-only mounts| DOCKER_APP_PORT
+    end
+
+    subgraph WINDOWS_PC[WINDOWS PC 192 . 168 . 0 . 12]
+        SSHD{{OpenSSH 22/tcp\nSFTP only}}
+        REPO[(D:\Backups\N100)]
+        SSHD --> REPO
+    end
+
+    DOCKER_APP_PORT -->|SFTP, key authentication| SSHD
+```
+
+### Windows target
+
+The repository lives on a Windows PC of the local network, reached through **SFTP** with the OpenSSH server built into
+Windows. SFTP is preferred over a Windows share (SMB) mounted on the mini PC :
+
+|                    | SFTP (OpenSSH)                                                                     | Windows share (SMB)                                                                                                                                            |
+|--------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| On the mini PC     | nothing to mount, restic opens the connection for the backup and closes it         | a permanent CIFS mount (`fstab`, credentials file) passed to the container                                                                                     |
+| **PC switched off** | the backup fails cleanly with an explicit error, and is retried at the next run    | the mount goes **stale** and blocks. Worse, if the mount is missing, restic writes the repository into the empty mount point, **on the mini PC disk**, silently |
+| Authentication     | dedicated SSH key, no password stored                                              | Windows password in a file on the mini PC                                                                                                                      |
+| Other quirks       | few                                                                                | file locks, NTFS permissions, SMB versions, antivirus                                                                                                          |
+
+A switched off PC will happen regularly : with SFTP it is only a missed backup, never a hung or misplaced one.
+
+The PowerShell script _backrest/windows/setup-sftp-target.ps1_ of this project prepares the PC in one go. Run it once
+in an **elevated** PowerShell (_Run as administrator_), with the public key generated on the mini PC (see
+[Setting up](#setting-up-backrest) below) :
+
+```powershell
+.\setup-sftp-target.ps1 -PublicKey "ssh-ed25519 AAAA... backrest@n100" -N100Ip 192.168.0.16
+```
+
+It :
+
+- installs and starts the **OpenSSH server**
+- creates a local **`backup`** user, **not administrator**, hidden from the logon screen, with a random password nobody
+  needs (key authentication only)
+- creates the repository folder _D:\Backups\N100_, writable by `backup` only, readable by your own account (so that the
+  cloud client can read it)
+- restricts `backup` to **SFTP** (`ForceCommand internal-sftp`, no shell, no forwarding), with its authorized key in
+  _C:\ProgramData\ssh\backup_authorized_keys_
+- restricts the firewall rule of OpenSSH to the **IP address of the mini PC**
+
+> [!NOTE]
+> A few Windows specific traps the script avoids :
+>
+> - the key of an **administrator** account is not read from _~\\.ssh\\authorized_keys_ but from
+    _administrators_authorized_keys_, with very strict permissions : a dedicated non administrator user avoids it, and
+    limits the damage if the key ever leaks
+> - the profile folder of a user (_C:\Users\backup_) only exists after its **first logon**, and a folder created by hand
+    beforehand is not used by Windows : the key is declared in _ProgramData_ with a `Match User` block instead
+> - the firewall rule created by the OpenSSH installation accepts **everybody**
+>
+> Give the PC a **fixed IP address** (DHCP reservation on the router), and avoid spaces in the repository path : restic
+accepts them, but they complicate the quoting in the SFTP path and on the command line.
+
+> [!TIP]
+> The repository is on a **mechanical drive** : it may need a few seconds to spin up, the first write simply waits. The
+SSH configuration keeps the connection alive meanwhile (`ServerAliveInterval`).
+
+### Database dumps
+
+A running MariaDB database copied file by file gives an **inconsistent** copy, which may not even start once restored.
+The databases are therefore **dumped** by the host just before the backup, and the raw database volumes are excluded
+from the backup plan.
+
+The _backrest/scripts/dump-databases.sh_ script runs on the **host** (it needs `docker exec`, which Backrest must not
+have : the Docker socket would give it root on the host), started by a **systemd timer** at 19:45, 15 minutes before the
+backup. For each database container, it runs `mariadb-dump` inside the container, with the credentials of its own
+environment, and writes a compressed dump in _/opt/apps/backrest/dumps_, which is part of the backup.
+
+> [!WARNING]
+> The database images use the `mariadb:latest` tag : a `pull` may start a **new major version** on existing data. The
+system tables must then be upgraded, which `MARIADB_AUTO_UPGRADE=1` does automatically at startup.
+> Without it, the application keeps working, but the dump fails, as it did for Lychee :
+>
+> ```
+> mariadb-dump: Couldn't execute 'SHOW FUNCTION STATUS WHERE Db = 'lychee'': Column count of mysql.proc is wrong.
+> Expected 22, found 21. Created with MariaDB 110402, now running 120303. Please use mariadb-upgrade to fix this error
+> ```
+>
+> Fix it by upgrading the system tables once (after a dump without `--routines`, just in case), then add
+`MARIADB_AUTO_UPGRADE=1` to the Compose file :
+>
+> ```bash
+> sudo docker exec lychee-db sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mariadb-upgrade -uroot'
+> ```
+>
+> Pinning the major version (`mariadb:12`) is another option : the upgrade then happens when you decide it.
+
+The **SQLite** databases (PocketID, Gatus, Grafana, Arcane, GoatCounter, Homebox, CrowdSec, ...) are copied as they
+are : they write very little at that time of the day and the risk is low, but not zero. A `sqlite3 .backup` can be added
+to the script for the most critical ones.
+
+### Setting up Backrest
+
+Create the folders and the **SSH key** Backrest will use to reach the PC :
+
+```bash
+sudo mkdir -p /opt/apps/backrest/ssh
+sudo ssh-keygen -t ed25519 -N "" -C backrest@n100 -f /opt/apps/backrest/ssh/id_ed25519
+sudo cat /opt/apps/backrest/ssh/id_ed25519.pub
+```
+
+Prepare the Windows PC with the displayed public key (see [Windows target](#windows-target)), then record its host key,
+so that restic can verify it is talking to the right machine :
+
+```bash
+sudo sh -c 'ssh-keyscan -H 192.168.0.12 > /opt/apps/backrest/ssh/known_hosts'
+```
+
+Then :
+
+- copy the _docker-compose.yml_ file and the _ssh/config_, _scripts_ and _systemd_ folders from this project's
+  _backrest_ directory into the _/opt/apps/backrest_ directory, and protect the SSH folder :
+
+  ```bash
+  sudo chmod 700 /opt/apps/backrest/ssh && sudo chmod 600 /opt/apps/backrest/ssh/*
+  sudo chmod +x /opt/apps/backrest/scripts/dump-databases.sh
+  ```
+
+- install the systemd units, enable the timer, and run a first dump to check it :
+
+  ```bash
+  sudo cp /opt/apps/backrest/systemd/backrest-db-dump.* /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now backrest-db-dump.timer
+  sudo /opt/apps/backrest/scripts/dump-databases.sh
+  ```
+
+- copy the _backrest.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client and its `backrest-auth` middleware as described in [PocketID](#pocketid), with the callback URL
+  `https://backrest.example.com/oidc/callback` and **PKCE** enabled, restricted to your administrators group
+- add a **local DNS record** `backrest.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
+
+> [!TIP]
+> If the dump fails, run the script directly rather than through systemd, to see its output : a `&&` after a failed
+`systemctl start` never runs the `journalctl` that would show it.
+> A script edited on Windows may also come with **CRLF** line endings, which bash does not understand
+(`$'\r': command not found`). The _.gitattributes_ file of this project forces LF on the `.sh`, `.service` and `.timer`
+files, and `sed -i 's/\r$//' <file>` fixes a file already copied.
+
+### Backup plan
+
+Start the service (see [Run](#run-backrest)), open https://backrest.example.com, and create the Backrest account on the
+first visit. Then check that the container reaches the PC :
+
+```bash
+sudo docker exec -it backrest sftp windows-pc
+```
+
+`ls /D:/Backups/N100` must work (the drive letter is written with a leading `/` in SFTP paths).
+
+Add the **repository** :
+
+- URI : `sftp:windows-pc:/D:/Backups/N100` (`windows-pc` is the host alias of the SSH configuration)
+- password : generate it and store it in your **password manager**. Without it the backups are unreadable, by anybody,
+  forever
+- prune every week, check every month
+
+Then the **plan** :
+
+- paths : `/sources/apps` and `/sources/volumes`
+- schedule : `0 20 * * *` (every day at 20:00, when the PC is usually on)
+- retention : 7 daily, 4 weekly, 6 monthly
+- excludes :
+
+  | Exclude                                                                                              | Why                                                                                 |
+  |------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
+  | `/sources/apps/backrest/cache`, `/sources/apps/backrest/tmp`, `/sources/apps/backrest/restore`       | cache and temporary files of Backrest itself, restored files                        |
+  | `/sources/volumes/ccteam-db-vol`, `/sources/volumes/lychee-db-vol`, `/sources/volumes/defrag-life-db-vol` | raw MariaDB files, inconsistent when copied hot : the **dumps** are what gets restored |
+  | `/sources/volumes/*prometheus-data*`                                                                 | Prometheus time series, inconsistent when copied hot, and only metrics              |
+  | `/sources/volumes/metadata.db`, `/sources/volumes/backingFsBlockDev`                                 | internal files of Docker, not volumes                                               |
+
+- a **hook** on `CONDITION_ANY_ERROR`, of type **Shoutrrr**, to be notified of a failed backup (the PC was switched off,
+  for instance), for instance by e-mail with the same SMTP account as [Gatus](#gatus) :
+  `smtp://<user>:<password>@<host>:465/?from=<sender>&to=<recipient>`
+
+Run the plan once manually (_Backup now_), and **test a restore** right away (see [Restore](#restore-from-backrest)) : a
+backup that was never restored is not a backup.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  backrest:
+    image: ghcr.io/garethgeorge/backrest:latest
+    container_name: backrest
+    # restic records the host name in every snapshot : keep it stable, or the retention policy sees a new host
+    hostname: backrest
+    restart: unless-stopped
+    environment:
+      TZ: "Europe/Zurich"
+      BACKREST_DATA: /data
+      BACKREST_CONFIG: /config/config.json
+      XDG_CACHE_HOME: /cache
+      TMPDIR: /tmp
+    volumes:
+      # Backrest configuration (repositories, plans, users) and operation history
+      - ./config:/config
+      - ./data:/data
+      # restic cache and temporary files, excluded from the backup
+      - ./cache:/cache
+      - ./tmp:/tmp
+      # SSH key, config and known_hosts to reach the SFTP repository on the Windows PC
+      - ./ssh:/root/.ssh:ro
+      # What to back up, READ-ONLY : the configuration of every service (including the database dumps written in
+      # /opt/apps/backrest/dumps by the host timer) and the Docker volumes
+      - /opt/apps:/sources/apps:ro
+      - /var/lib/docker/volumes:/sources/volumes:ro
+      # Restores land here, never over the sources (which are read-only anyway)
+      - ./restore:/restore
+    networks:
+      - traefik-private-net
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+```
+
+#### SSH configuration
+
+:page_facing_up: _ssh/config_ :
+
+```
+# SSH configuration used by restic (SFTP repository), mounted as /root/.ssh in the Backrest container.
+# Repository URI in Backrest : sftp:windows-pc:/D:/Backups/N100
+Host windows-pc
+    HostName 192.168.0.12
+    User backup
+    Port 22
+    IdentityFile /root/.ssh/id_ed25519
+    IdentitiesOnly yes
+    # Generated with : ssh-keyscan -H 192.168.0.12 > known_hosts
+    StrictHostKeyChecking yes
+    UserKnownHostsFile /root/.ssh/known_hosts
+    # The repository is on a mechanical drive that may need a few seconds to spin up : keep the connection alive
+    # instead of dropping it
+    ServerAliveInterval 30
+    ServerAliveCountMax 6
+```
+
+#### Database dumps
+
+:page_facing_up: _scripts/dump-databases.sh_ :
+
+```bash
+#!/bin/bash
+#
+# Dumps the MariaDB databases into /opt/apps/backrest/dumps, before the Backrest backup.
+# Copying the files of a running database gives an inconsistent copy : the dumps are what gets restored, the raw
+# database volumes are excluded from the backup plan.
+#
+# Run on the HOST (it needs docker exec), by the backrest-db-dump systemd timer.
+# The credentials are read from the environment of each database container, nothing is stored here.
+
+set -uo pipefail
+
+DUMP_DIR=/opt/apps/backrest/dumps
+CONTAINERS=(ccteam-db lychee-db defrag-life-db)
+
+mkdir -p "$DUMP_DIR"
+chmod 700 "$DUMP_DIR"
+
+status=0
+for container in "${CONTAINERS[@]}"; do
+    if ! docker ps --format '{{.Names}}' | grep -qx "$container"; then
+        echo "$container is not running, skipped" >&2
+        status=1
+        continue
+    fi
+
+    # Written to a temporary file first : a failed dump never replaces the previous good one.
+    # The password goes through MYSQL_PWD rather than the command line, the MYSQL_* names are the legacy aliases
+    # used by some of the stacks.
+    if docker exec "$container" sh -c '
+        MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" exec mariadb-dump -uroot \
+            --single-transaction --routines --events \
+            --databases "${MARIADB_DATABASE:-$MYSQL_DATABASE}"' \
+        | gzip > "$DUMP_DIR/$container.sql.gz.tmp"; then
+        mv "$DUMP_DIR/$container.sql.gz.tmp" "$DUMP_DIR/$container.sql.gz"
+        echo "$container dumped ($(du -h "$DUMP_DIR/$container.sql.gz" | cut -f1))"
+    else
+        rm -f "$DUMP_DIR/$container.sql.gz.tmp"
+        echo "$container dump FAILED" >&2
+        status=1
+    fi
+done
+
+exit $status
+```
+
+:page_facing_up: _systemd/backrest-db-dump.service_ :
+
+```ini
+[Unit]
+Description=Dump the MariaDB databases before the Backrest backup
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/apps/backrest/scripts/dump-databases.sh
+```
+
+:page_facing_up: _systemd/backrest-db-dump.timer_ :
+
+```ini
+# Runs 15 minutes before the backup plan of Backrest (20:00), keep both schedules in sync
+[Unit]
+Description=Dump the MariaDB databases before the Backrest backup
+
+[Timer]
+OnCalendar=*-*-* 19:45:00
+
+[Install]
+WantedBy=timers.target
+```
+
+#### Traefik routing
+
+:page_facing_up: _backrest.yml_ :
+
+```yaml
+http:
+  services:
+    backrest:
+      loadBalancer:
+        servers:
+          - url: http://backrest:9898
+
+  routers:
+    backrest:
+      rule: 'Host(`backrest.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: backrest
+      # Backrest has no native OIDC support, the authentication is done by Traefik (see PocketID).
+      # Its own login is kept on top : it reads everything and holds the repository password
+      middlewares:
+        - vpn-whitelist@file
+        - backrest-auth@file
+```
+
+And the middleware, in _pocketid.yml_ :
+
+```yaml
+    backrest-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+```
+
+Things to notice :
+
+- the sources are mounted **read-only** : Backrest can read everything but modify nothing, a restore goes to
+  _/restore_ (_/opt/apps/backrest/restore_ on the host), from where you copy the files back yourself
+- Backrest does **not** hold the Docker socket, this is why the database dumps are done by the host
+- `hostname` is fixed : restic records it in every snapshot, and the retention policy applies per host. The default
+  host name of a container is its random ID, which would change at every recreation
+- the private key, the generated files and the dumps are ignored by Git (_backrest/.gitignore_), never commit them
+- the Backrest configuration (_config/config.json_) holds the repository password : it is part of the backup, inside
+  the encrypted repository, but keep the password in your password manager as well, it is the only way to read the
+  backups if the mini PC is lost
+- [Gatus](#gatus) checks that Backrest answers, and the error hook reports a failed backup
+
+### Run Backrest
+
+Prepare the Windows PC first, then run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/backrest/docker-compose.yml up -d
+```
+
+You should end-up with a running `backrest` container, and Traefik picks up the dynamic configuration file without
+restarting. Configure the repository and the plan as described in [Backup plan](#backup-plan).
+
+### Restore from Backrest
+
+**From the interface** : open the plan or the repository, pick a snapshot and browse it. For a file or a folder you
+can :
+
+- **download** it straight from the browser (a folder comes as an archive)
+- **restore** it to _/restore_ (_/opt/apps/backrest/restore_ on the host), then compare it or copy it back
+
+**From the Windows PC**, without the mini PC (the day it is dead is precisely when you need it) : the repository is a
+plain folder on the PC, the single `restic.exe` binary is enough, with the repository password :
+
+```powershell
+restic -r D:\Backups\N100 snapshots
+restic -r D:\Backups\N100 dump latest /sources/apps/traefik/traefik.yml > traefik.yml
+restic -r D:\Backups\N100 restore latest --target D:\restore --include /sources/apps/pocketid
+```
+
+Replace `latest` with the ID of an older snapshot, from the first command. To **compare** two versions :
+
+- `restic -r D:\Backups\N100 diff <snapshot_1> <snapshot_2>` lists the files added, removed or modified between two
+  snapshots
+- the content of a file : `dump` the old version and compare it with the current one in any diff tool (WinMerge,
+  `code --diff old.yml current.yml`, ...)
+- on Linux, `restic mount` exposes every snapshot as a regular folder, where a simple `diff` works (not available on
+  Windows)
+
+To restore a **database**, load its dump into the (running) database container :
+
+```bash
+gunzip -c ccteam-db.sql.gz | sudo docker exec -i ccteam-db sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb -uroot'
+```
+
+The dump contains the `CREATE DATABASE` / `USE` statements (`--databases`), the target database is recreated as it was.
+
+> [!NOTE]
+> The cloud copy is a **mirror** of the repository on the PC : if the repository gets corrupted or deleted there, the
+cloud copy follows at the next synchronization, only the file history of the cloud (_Rewind_) keeps an older version.
+> Avoid running the synchronization **while** a backup or a prune writes to the repository, shifting the schedules is
+enough.
+
+## Manual backups
+
+The following commands and tools are not scheduled, they are useful for a one-off copy : before a migration, to move a
+volume to another machine, or to export a database by hand.
+
+### Files
+
+#### Rsync
 
 <img src="images/logo-rsync.png" alt="Rsync logo"/>
 
-The simplest way to back up the content of our N100 server is by using `rsync`.
+The simplest way to copy the content of our N100 server is by using `rsync`.
 
 `rsync` (remote sync) is a utility for **transferring** and **synchronizing** files between a computer and a storage
 drive and across networked computers by comparing the modification times and sizes of files.
@@ -7013,7 +7568,7 @@ all your server data.
 > However, it requires more storage and time, for the time being I prefer `rsync` for flexibility, file-based backups,
 and faster cloning of only necessary files
 
-### FreeFileSync
+#### FreeFileSync
 
 <img src="images/logo-freefilesync.svg" alt="FreeFileSync logo" height="64"/>
 
@@ -7031,8 +7586,8 @@ Source and target folders can be **remote** folders (support for **Google Drive*
 
 FreeFileSync is Open Source software, available for Windows, macOS, and Linux.
 
-I will install the Windows version on my home Windows machine, which will be used as client to connect to the Banana Pi
-board through SFTP (SSH File Transfer Protocol, allows secure file transfer trough SSH encrypted connections).
+I will install the Windows version on my home Windows machine, which will be used as client to connect to the mini PC
+through SFTP (SSH File Transfer Protocol, allows secure file transfer trough SSH encrypted connections).
 
 To do a mirror synchronization :
 
@@ -7042,7 +7597,7 @@ To do a mirror synchronization :
 
    <img src="images/freefilesync-choose-folders.png" alt="FreeFileSync choose folders"/>
 
-   Click the cloud icon to connect to the Banana Pi board via SFTP and select the _/opt/apps_ folder
+   Click the cloud icon to connect to the mini PC via SFTP and select the _/opt/apps_ folder
 
 4. Compare them :
 
@@ -7058,9 +7613,9 @@ To do a mirror synchronization :
 
 Refer to the documentation and tutorials on the software's website for more information.
 
-## Volumes
+### Volumes
 
-### Backup
+#### Backup
 
 We can back up Docker volumes using `docker run` and `tar` command.
 This method involves creating a temporary container that mounts the named volume we want to back up, then using tar to
@@ -7090,7 +7645,7 @@ when using FreeFileSync (see [Files](#files)), or simply move the backup file to
 > [!IMPORTANT]
 > Some services may need to be stopped during backup or restore to ensure data consistency
 
-### Restore
+#### Restore
 
 To restore the volume :
 
@@ -7121,11 +7676,11 @@ Finally, you can compare the 2 volumes content to check that everything has been
 sudo diff -qr /var/lib/docker/volumes/arcane-data /var/lib/docker/volumes/0862be139e8b9e8137c02005739071d2338fd04f6090b8a89d6b5012fc5fb33a
 ```
 
-## Databases
+### Databases
 
 When applicable, we can also back up the database directly.
 
-### MySQL
+#### MySQL
 
 For **MySQL**, we can use **mysqldump**, a command-line utility that is used to generate or restore logical backups of
 MySQL databases.
@@ -7140,7 +7695,7 @@ If you don't have the **mysqldump** utility installed on your environment, you c
 container :
 
 ```shell
-docker exec <container_id> /usr/bin/mysqldump --complete-insert --skip-comments --skip-tz-utc --skip-opt --hex-blob --no-set-names --set-charset --column-statistics=0 --set-gtid-purged=OFF -P 6033 -h prdmysql.unil.ch -u <user> --password=<password_here> <dbname> > db_backup.sql
+docker exec <container_id> /usr/bin/mysqldump --complete-insert --skip-comments --skip-tz-utc --skip-opt --hex-blob --no-set-names --set-charset --column-statistics=0 --set-gtid-purged=OFF -P 3306 -h localhost -u <user> --password=<password_here> <dbname> > db_backup.sql
 ```
 
 > [!IMPORTANT]
@@ -7188,7 +7743,7 @@ Mainly :
 - Blog post about WireGuard performance tuning :
     - https://www.procustodibus.com/blog/2022/12/wireguard-performance-tuning/
 - Lots of **Google** searches
-- Recently some AI for WireGuard and CrowdSec tweaks, mainly Claude (Opus/Fable)
+- Recently some AI for WireGuard and CrowdSec tweaks, and for backup setup, mainly Claude (Opus/Fable)
 
 Of course every upstream project (especially the ones with good documentation :grin:) also deserve credit :beer:
 
