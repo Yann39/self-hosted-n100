@@ -2,7 +2,7 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.4.0-2AAB92)
+![Static Badge](https://img.shields.io/badge/Version-1.4.1-2AAB92)
 ![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
@@ -3676,11 +3676,14 @@ Then :
 Then start the service (see below) and finish the configuration in this order, the **local admin** account is needed
 until the OIDC login works :
 
-1. log in with the default account, `arcane` / `arcane-admin`, and change the password as requested
-2. in _Settings -> Authentication_, map the PocketID group `super_admins` to the **Admin** role, **Global** scope
-3. log out, log in through PocketID, and check that you are an admin
-4. disable the **local login** in _Settings -> Authentication_, set `OIDC_AUTO_REDIRECT_TO_PROVIDER` to `"true"` in the
-   _docker-compose.yml_ file and recreate the container : the login page then redirects straight to PocketID
+1. for the first start, set `OIDC_AUTO_REDIRECT_TO_PROVIDER` to `"false"` in the _docker-compose.yml_ file (the file of
+   this project holds the final value, `"true"`), otherwise the login page redirects to PocketID before any role is
+   mapped
+2. log in with the default account, `arcane` / `arcane-admin`, and change the password as requested
+3. in _Settings -> Authentication_, map the PocketID group `super_admins` to the **Admin** role, **Global** scope
+4. log out, log in through PocketID, and check that you are an admin
+5. disable the **local login** in _Settings -> Authentication_, set `OIDC_AUTO_REDIRECT_TO_PROVIDER` back to `"true"`
+   and recreate the container : the login page then redirects straight to PocketID
 
 > [!IMPORTANT]
 > Configure the role mapping **before** relying on the OIDC login : Arcane creates the OIDC users automatically on their
@@ -3728,9 +3731,9 @@ services:
       OIDC_SCOPES: openid email profile groups
       OIDC_GROUPS_CLAIM: groups
       OIDC_PROVIDER_NAME: PocketID
-      # Keep "false" until the role mapping is configured and the OIDC login validated (the local admin is needed
-      # for that), then set it to "true" and disable the local login in Settings -> Authentication
-      OIDC_AUTO_REDIRECT_TO_PROVIDER: "false"
+      # Set it to "false" for the first start, until the role mapping is configured and the OIDC login validated
+      # (the local admin is needed for that), then back to "true" once the local login is disabled in Settings -> Authentication
+      OIDC_AUTO_REDIRECT_TO_PROVIDER: "true"
       # Roles can also be mapped declaratively (role referenced by its ID, see Settings -> Roles) :
       # OIDC_ROLE_MAPPINGS: '[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]'
     volumes:

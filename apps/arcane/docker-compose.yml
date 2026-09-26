@@ -22,8 +22,8 @@ services:
       OIDC_SCOPES: openid email profile groups
       OIDC_GROUPS_CLAIM: groups
       OIDC_PROVIDER_NAME: PocketID
-      # Keep "false" until the role mapping is configured and the OIDC login validated (the local admin is needed
-      # for that), then set it to "true" and disable the local login in Settings -> Authentication
+      # Set it to "false" for the first start, until the role mapping is configured and the OIDC login validated
+      # (the local admin is needed for that), then back to "true" once the local login is disabled in Settings -> Authentication
       OIDC_AUTO_REDIRECT_TO_PROVIDER: "true"
       # Roles can also be mapped declaratively (role referenced by its ID, see Settings -> Roles) :
       # OIDC_ROLE_MAPPINGS: '[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]'
