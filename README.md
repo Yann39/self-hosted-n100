@@ -2,7 +2,7 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.3.1-2AAB92)
+![Static Badge](https://img.shields.io/badge/Version-1.4.0-2AAB92)
 ![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
@@ -66,7 +66,7 @@ up-to-date instructions.<br>
     1. [PocketID](#pocketid)
     2. [CrowdSec](#crowdsec)
     3. [CrowdSec Web UI](#crowdsec-web-ui)
-    4. [Portainer](#portainer)
+    4. [Arcane](#arcane)
     5. [PhpMyAdmin](#phpmyadmin)
     6. [Homer](#homer)
     7. [Dashdot](#dashdot)
@@ -126,7 +126,7 @@ These are the tools we are going to run :
 |:-----------------------------------------------------------------------------------:|-----------------|-------------------------------------------------|------------------------------------------------------|
 |          <img src="images/logo-docker.svg" alt="Docker logo" height="24"/>          | Docker          | https://github.com/docker                       | Help to build, share, and run container applications |
 |  <img src="images/logo-docker-compose.png" alt="Docker Compose logo" height="38"/>  | Docker Compose  | https://github.com/docker/compose               | Run multi-container applications with Docker         |
-|       <img src="images/logo-portainer.svg" alt="Portainer logo" height="32"/>       | Portainer       | https://github.com/portainer/portainer          | Management platform for containerized applications   |
+|          <img src="images/logo-arcane.svg" alt="Arcane logo" height="32"/>          | Arcane          | https://github.com/getarcaneapp/arcane          | Management platform for containerized applications   |
 |         <img src="images/logo-traefik.svg" alt="Traefik logo" height="35"/>         | Traefik         | https://github.com/traefik/traefik              | Modern HTTP reverse proxy and load balancer          |
 |         <img src="images/logo-sablier.svg" alt="Sablier logo" height="32"/>         | Sablier         | https://github.com/sablierapp/sablier           | Workload scaling on demand                           |
 |        <img src="images/logo-pocketid.svg" alt="pocketId logo" height="32"/>        | PocketID        | https://github.com/pocket-id/pocket-id          | Simple OIDC provider for passkey authentication      |
@@ -491,7 +491,7 @@ We will place every application configuration into the _/opt/apps_ directory, as
  |- opt
      |- apps
          |- traefik
-         |- portainer
+         |- arcane
          |- phpmyadmin
          |- dashdot
          |- ...
@@ -855,7 +855,7 @@ machine, you may want to temporarily create subdomains and add CNAME records for
 the IP whitelisting middleware in the corresponding service configuration), else you will be blocked by IP
 whitelisting :
 >
-> - `portainer.example.com` : To manage Docker containers (start/stop, check logs, etc.)
+> - `arcane.example.com` : To manage Docker containers (start/stop, check logs, etc.)
 > - `pihole.example.com` : To configure the local DNS records
 
 ## Port forwarding
@@ -1154,8 +1154,10 @@ That way :
 > A request from your own network to a name that resolves to your **public IP** goes through the NAT loopback of the
 router and reaches Traefik with the **public IP** as source : rejected as well.
 > So the private services must resolve to the LAN address of the mini PC for the devices that use them (Pi-Hole's local
-DNS records, see [Pi-hole](#pi-hole)), and a container that has to call another one (Portainer or the Traefik plugin
-fetching a token from PocketID) must use the **internal** name (i.e.`http://pocketid:1411`), never the public URL.
+DNS records, see [Pi-hole](#pi-hole)), and a container that has to call another one (the Traefik plugin fetching a
+token from PocketID for instance) must use the **internal** name (i.e.`http://pocketid:1411`), or a public name that
+Traefik carries as a **network alias** on the private network (see [PocketID](#pocketid)), never a public URL
+resolving to the public IP.
 
 > [!WARNING]
 > Never whitelist a **Docker network range**.
@@ -1173,7 +1175,7 @@ Every service behind the reverse proxy must share a Docker network with Traefik 
 on the same network can also talk **to each other** directly, without going through Traefik and its middlewares. With a
 single shared network, a vulnerability in one of the applications exposed to the internet (an old PHP website, a photo
 gallery, an API) gives an attacker a foothold from which every other container is one HTTP request away :
-Pi-Hole's admin interface, Portainer (and through it the Docker socket, i.e. root on the host), the Traefik
+Pi-Hole's admin interface, Arcane (and through it the Docker socket, i.e. root on the host), the Traefik
 dashboard, ...
 The IP whitelist does not help there, it never sees this traffic.
 
@@ -1181,7 +1183,7 @@ So Traefik sits on two networks, and nothing else is allowed to be on both :
 
 | Network               | Who                                                                                                           | Reachable from                               |
 |-----------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Portainer, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ... | local network and VPN only (`vpn-whitelist`) |
+| `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Arcane, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ...    | local network and VPN only (`vpn-whitelist`) |
 | `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, ...                               | anyone                                       |
 
 A compromised public container can then only see Traefik and the other public applications, never the private ones. A
@@ -1191,7 +1193,7 @@ few rules go with it :
   application joins both
 - the databases stay on the private network of their own stack (`lychee-net`, `defrag-life-net`, ...), never on a
   Traefik network
-- containers holding the **Docker socket** (Portainer, Sablier) are private by construction
+- containers holding the **Docker socket** (Arcane, Sablier) are private by construction
 - PocketID stays private : a public application that would authenticate through it does so with the browser, through the
   public URL and Traefik, it does not need a shared network
 - a public application monitored by Prometheus shares a **dedicated** network with Prometheus only
@@ -1778,6 +1780,7 @@ list) and add a **DNS record entry** for every subdomain that must only be reach
 VPN :
 
 ```
+arcane.example.com                  192.168.0.16
 ccteam.example.com                  192.168.0.16
 crowdsec.example.com                192.168.0.16
 dashboard.example.com               192.168.0.16
@@ -1789,7 +1792,6 @@ omnitools.example.com               192.168.0.16
 phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 pocketid.example.com                192.168.0.16
-portainer.example.com               192.168.0.16
 quake.example.com                   192.168.0.16
 traefik.example.com                 192.168.0.16
 wgdashboard.example.com             192.168.0.16
@@ -2747,7 +2749,7 @@ whitelist** middleware.
 
 We will use **PocketID** to add a single sign-on in front of the services that don't have a proper authentication of
 their own (Pi-Hole, the Traefik dashboard), and as identity provider for the services that support OpenID Connect
-natively (Portainer).
+natively (Arcane, Grafana, ...).
 
 PocketID is a small self-hosted **OpenID Connect** (OIDC) provider with a twist : users don't have passwords, they
 authenticate with **passkeys** only (a hardware key, or the passkey manager of the phone, the browser or a password
@@ -2755,7 +2757,7 @@ manager). Nothing to remember, nothing to phish, and one login for every service
 
 There are two ways to plug a service on it :
 
-- services that speak OIDC natively (Portainer, ...) get their own **OIDC client** in PocketID and show a "login with
+- services that speak OIDC natively (Arcane, Grafana, ...) get their own **OIDC client** in PocketID and show a "login with
   PocketID" button
 - services that don't (Pi-Hole, the Traefik dashboard) are put behind
   the [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth) **Traefik plugin** :
@@ -2862,15 +2864,13 @@ Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
   it is the key the plugin uses to encrypt its own session cookie. The plugin expects exactly **32 characters**, and
   each middleware must have its own.
   Traefik picks up the change without restart
-- for a service with native OIDC support, use the callback URL it documents and its own settings page. **Portainer**
-  (_Settings -> Authentication -> OAuth -> Custom_) needs the client ID and secret,
-  `openid profile email` as scopes, **PKCE disabled** on the PocketID side as Portainer does not support it, and three
-  endpoints : the **authorization URL** is the public one (`https://pocketid.example.com/authorize`, the browser follows
-  it), but the **access token URL** and the **resource URL** must be the **internal** ones
-  (`http://pocketid:1411/api/oidc/token` and `http://pocketid:1411/api/oidc/userinfo`). These two calls are made by the
-  Portainer container itself : through the public URL these two calls are made by the Portainer container itself, and
-  reaching PocketID directly on the Docker network is the shortest path. Since the alias and the `pocketid-whitelist`
-  middleware described below, the public URLs would work just as well here
+- for a service with native OIDC support, use the callback URL it documents, and disable **PKCE** on the PocketID side
+  if the application does not send a `code_challenge` (a confidential client is protected by its secret anyway).
+  Some applications ask for each endpoint separately instead of an issuer URL : the **authorization URL** is always the
+  public one (`https://pocketid.example.com/authorize`, the browser follows it), while the **token** and **user info**
+  URLs are called by the container itself. They can be the internal ones (`http://pocketid:1411/api/oidc/token` and
+  `http://pocketid:1411/api/oidc/userinfo`), or the public ones thanks to the alias and the `pocketid-whitelist`
+  middleware described below (this is what [Grafana](#grafana) does)
 - most OIDC libraries, however, **verify that the issuer announced by the provider matches the URL they queried**
   (Homebox and its `go-oidc` for instance), so they cannot use the internal URL at all :
   querying `http://pocketid:1411` returns `https://pocketid.example.com` as issuer and they refuse. Those applications
@@ -3412,8 +3412,8 @@ Then :
   _/opt/apps/traefik/dynamic_ directory
 - create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
   `https://crowdsec.example.com/api/auth/oidc/callback`,
-  and **PKCE disabled**, as the application does not send a `code_challenge` (like Portainer, and for the same reason :
-  it is a confidential client, the client secret is what protects the code exchange). Then put its client ID in
+  and **PKCE disabled**, as the application does not send a `code_challenge` (it is a confidential client, the client
+  secret is what protects the code exchange). Then put its client ID in
   `CONFIG_AUTH_OIDC_CLIENT_ID` and its secret in `CONFIG_AUTH_OIDC_CLIENT_SECRET`.
   No middleware on the router : the application talks to PocketID itself
 - add a **local DNS record** `crowdsec.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
@@ -3582,14 +3582,18 @@ on it when you pull the images.
 
 <img src="images/screen-crowdsec-web-ui.png" alt="Crowdsec Web UI screenshot"/>
 
-## Portainer
+## Arcane
 
-<img src="images/logo-portainer.svg" alt="Docker logo" height="148"/>
+<img src="images/logo-arcane.svg" alt="Arcane logo" height="128"/>
 
-We will use **Portainer** to easily manage our Docker containers.
+We will use **Arcane** to easily manage our Docker containers.
 
-Portainer is an open source web interface that allows to create, modify, restart, monitor... Docker containers, images,
-volumes, networks and more.
+Arcane is an open source web interface to start, stop, restart, update and inspect the containers, read their logs,
+open a shell in them, and manage the images, volumes, networks and **Compose projects**, with image update checks and
+vulnerability scanning.
+
+It needs the **Docker socket**, which means full control over the Docker daemon, i.e. root on the host : it sits on the
+**private** network only, reachable from the local network and the VPN, see [Network segmentation](#network-segmentation).
 
 Here is an overview of the network flow :
 
@@ -3598,46 +3602,51 @@ flowchart LR
     style INCOMING_REQUEST fill: #205566
     style TRAEFIK_CONTAINER fill: #663535
     style APP_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
-    DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_APP_PORT{{9000/tcp}}
-    TRAEFIK_ROUTER_APP(portainer.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    DOCKER_APP_PORT{{3552/tcp}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    DOCKER_SOCKET[(Docker socket)]
+    TRAEFIK_ROUTER_APP(arcane.example.com)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI PC]
-        subgraph CONTAINER_ENGINE[DOCKER]
-            subgraph APP_CONTAINER[PORTAINER CONTAINER]
-                DOCKER_APP_PORT
-            end
+        DOCKER_SOCKET
 
+        subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
 
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
             end
 
+            subgraph APP_CONTAINER[ARCANE CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
+
+        DOCKER_APP_PORT -->|containers, images, volumes, ...| DOCKER_SOCKET
     end
 ```
 
@@ -3646,11 +3655,47 @@ flowchart LR
 Create a folder to hold the configuration :
 
 ```bash
-sudo mkdir /opt/apps/portainer
+sudo mkdir /opt/apps/arcane
 ```
 
-Then simply copy the _docker-compose.yml_ file from this project's _portainer_ directory into the _/opt/apps/portainer_
-directory.
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _arcane_ directory into the _/opt/apps/arcane_
+  directory, and generate the **encryption key** in the _.env_ file (`openssl rand -hex 32`). Keep it with your
+  backups : it encrypts the secrets Arcane stores (registry credentials, ...)
+- copy the _arcane.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
+  `https://arcane.example.com/auth/oidc/callback`, and **PKCE disabled** (it is a confidential client, the client secret
+  protects the code exchange). Restrict it to your administrators group (_Allowed user groups_), then put its client ID
+  and secret in `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` of the _.env_ file. No middleware on the router : the
+  application talks to PocketID itself
+- add a **local DNS record** `arcane.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not
+  published on the internet
+
+Then start the service (see below) and finish the configuration in this order, the **local admin** account is needed
+until the OIDC login works :
+
+1. log in with the default account, `arcane` / `arcane-admin`, and change the password as requested
+2. in _Settings -> Authentication_, map the PocketID group `super_admins` to the **Admin** role, **Global** scope
+3. log out, log in through PocketID, and check that you are an admin
+4. disable the **local login** in _Settings -> Authentication_, set `OIDC_AUTO_REDIRECT_TO_PROVIDER` to `"true"` in the
+   _docker-compose.yml_ file and recreate the container : the login page then redirects straight to PocketID
+
+> [!IMPORTANT]
+> Configure the role mapping **before** relying on the OIDC login : Arcane creates the OIDC users automatically on their
+first login, but without a matching mapping they get **no role**, and therefore no permission at all.
+> The groups are read again at **every login**, PocketID is the source of truth.
+>
+> The mapping can also be declared in the _docker-compose.yml_ file with `OIDC_ROLE_MAPPINGS`, a JSON array such as
+`[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]`, but it references the role by its **ID** (see
+_Settings -> Roles_), not by its name.
+
+> [!NOTE]
+> The default account is `arcane` / `arcane-admin`, not `admin` / `admin` as some pages of the documentation say. It is
+only created when the database holds no user : if the login fails on a fresh install, an earlier attempt already
+initialized the `arcane-data` volume. As long as nothing is configured, delete it and start again :
+> `sudo docker-compose -f /opt/apps/arcane/docker-compose.yml down -v`.
 
 ### Details
 
@@ -3661,84 +3706,133 @@ directory.
 ```yaml
 services:
 
-  portainer:
-    image: portainer/portainer-ce:latest
-    container_name: portainer
-    volumes:
-      - portainer-vol:/data
-      - /var/run/docker.sock:/var/run/docker.sock
+  arcane:
+    image: ghcr.io/getarcaneapp/manager:latest
+    container_name: arcane
     restart: unless-stopped
+    # Encryption key and OIDC client credentials (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      APP_URL: https://arcane.example.com
+      # X-Forwarded-* headers are only trusted from the private Traefik network. Never the 172.16.0.0/12 suggested by
+      # the documentation : that range also covers traefik-public-net. Check it with : docker network inspect traefik-private-net
+      TRUSTED_PROXIES: 172.21.0.0/16
+      ANALYTICS_DISABLED: "true"
+
+      # Native OIDC authentication against PocketID (callback URL : https://arcane.example.com/auth/oidc/callback)
+      # The issuer is the PUBLIC URL, no trailing slash : the container resolves it to Traefik thanks to the alias on
+      # traefik-private-net, and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+      OIDC_ENABLED: "true"
+      OIDC_ISSUER_URL: https://pocketid.example.com
+      OIDC_SCOPES: openid email profile groups
+      OIDC_GROUPS_CLAIM: groups
+      OIDC_PROVIDER_NAME: PocketID
+      # Keep "false" until the role mapping is configured and the OIDC login validated (the local admin is needed
+      # for that), then set it to "true" and disable the local login in Settings -> Authentication
+      OIDC_AUTO_REDIRECT_TO_PROVIDER: "false"
+      # Roles can also be mapped declaratively (role referenced by its ID, see Settings -> Roles) :
+      # OIDC_ROLE_MAPPINGS: '[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]'
+    volumes:
+      # Full access to the Docker daemon, i.e. root on the host : private network only
+      - /var/run/docker.sock:/var/run/docker.sock
+      # SQLite database, projects, settings, session signing key
+      - arcane-data:/app/data
+    # Host cgroup namespace, so that Arcane reliably detects its own container
+    cgroup: host
+    healthcheck:
+      test: [ "CMD", "./arcane", "health", "--timeout", "2s" ]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
     networks:
-      - portainer-net
       - traefik-private-net
 
 volumes:
-  portainer-vol:
-    name: portainer-vol
+
+  arcane-data:
+    name: arcane-data
 
 networks:
-
-  portainer-net:
-    name: portainer-net
 
   traefik-private-net:
     name: traefik-private-net
     external: true
 ```
 
-:page_facing_up: _portainer.yml_ :
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+# Key encrypting the secrets stored by Arcane (registry credentials, ...), 32 bytes : openssl rand -hex 32
+# Keep it with your backups, without it the encrypted data is lost
+ENCRYPTION_KEY=<encryption_key>
+
+# PocketID OIDC client (callback URL : https://arcane.example.com/auth/oidc/callback)
+OIDC_CLIENT_ID=<oidc_client_id>
+OIDC_CLIENT_SECRET=<oidc_client_secret>
+```
+
+#### Traefik routing
+
+:page_facing_up: _arcane.yml_ :
 
 ```yaml
 http:
   services:
-    portainer:
+    arcane:
       loadBalancer:
         servers:
-          - url: http://portainer:9000
+          - url: http://arcane:3552
 
   routers:
-    portainer:
-      rule: 'Host(`portainer.example.com`)'
+    arcane:
+      rule: 'Host(`arcane.example.com`)'
       entryPoints:
         - websecure
       tls:
         certResolver: default
-      service: portainer
+      service: arcane
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
       middlewares:
         - vpn-whitelist@file
 ```
 
 Things to notice :
 
-- Portainer's data is bound to a **Docker volume** named `portainer-vol`
-- It uses Traefik dynamic config file to :
-    - create a **service** which will point to our container application running on port `9000`
-    - create an HTTP **router** that will match `portainer.example.com` URL on our `websecure` **entrypoint** to point
-      to our service
-    - assign the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
-      reachable only from local network or through VPN)
-    - add a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's
-      encrypt certificates
-- It runs in its own **network** (`portainer-net`) but must also share the same network as Traefik
-  (`traefik-private-net`) so it can be auto discovered
+- it only joins `traefik-private-net`, nothing is published on the host
+- the data (SQLite database, settings, the key Arcane generates to sign its sessions) lives in the `arcane-data`
+  **Docker volume**, see [Volumes](#volumes) to back it up
+- `TRUSTED_PROXIES` is restricted to the **private** Traefik network, so that Arcane sees the real client IP in the
+  `X-Forwarded-For` header set by Traefik. The documentation suggests `172.16.0.0/12`, which also covers
+  `traefik-public-net`
+- the stacks started with `docker-compose` from _/opt/apps_ show up in Arcane as they are, through the labels Compose
+  puts on the containers : nothing to import
+- the router only carries the IP whitelist : the single sign-on is done by the application itself, adding an
+  authentication middleware would mean logging in twice
+- the Traefik documentation of Arcane also describes a **gRPC** router and a `readtimeout=0s` on the entrypoint : they
+  are only needed for the **edge agents**, used to manage remote Docker hosts. The WebSockets (logs, container shell) go
+  through the regular router without any special configuration
+- the `arcane health` command of the health check calls `/api/health`, which [Gatus](#gatus) uses too
 
 ### Run
 
-Finally, simply run the Compose file :
+Simply run the Compose file :
 
 ```bash
-sudo docker-compose -f /opt/apps/portainer/docker-compose.yml up -d
+sudo docker-compose -f /opt/apps/arcane/docker-compose.yml up -d
 ```
 
-You should end-up with a running `portainer` container.
+You should end-up with a running `arcane` container, and Traefik picks up the dynamic configuration file without
+restarting.
 
-It should also have generated the needed Let's Encrypt certificates in the _acme.json_ file in the Traefik folder.
+The application is available at https://arcane.example.com, finish the configuration in the order described
+in _Setting up_ above.
 
-The application is available at https://portainer.example.com.
-
-On first start, you will be asked to create the **initial administrator user**.
-
-<img src="images/screen-portainer.png" alt="Portainer dashboard screenshot"/>
+<img src="images/screen-arcane.png" alt="Arcane screenshot"/>
 
 ## PhpMyAdmin
 
@@ -4122,11 +4216,11 @@ services:
         subtitle: "HTTP reverse proxy"
         tag: "network"
         url: "https://traefik.example.com"
-      - name: "Portainer"
-        logo: "assets/logos/logo-portainer.svg"
+      - name: "Arcane"
+        logo: "assets/logos/logo-arcane.svg"
         subtitle: "Container management platform"
         tag: "tool"
-        url: "https://portainer.example.com"
+        url: "https://arcane.example.com"
       - name: "Pi-Hole"
         logo: "assets/logos/logo-pihole.svg"
         subtitle: "Network-wide ad blocking"
@@ -5727,7 +5821,7 @@ Then :
   Traefik container
 - create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
   `https://gatus.example.com/authorization-code/callback`, and **PKCE disabled**, as the application does not send a
-  `code_challenge` (like Portainer). Restrict it to your administrators group (_Allowed user groups_) : Gatus has no
+  `code_challenge`. Restrict it to your administrators group (_Allowed user groups_) : Gatus has no
   roles, every authenticated user sees everything. Then put its client ID and secret in `OIDC_CLIENT_ID` and
   `OIDC_CLIENT_SECRET` of the _.env_ file. No middleware on the router : the application talks to PocketID itself
 - add a **local DNS record** `gatus.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is not
@@ -5917,9 +6011,11 @@ endpoints:
       - type: email
 
   # Private services : checked by container name on traefik-private-net
-  - name: Portainer
+  # Same endpoint as the "arcane health" command of its Docker health check
+  - name: Arcane
     group: Private
-    url: http://portainer:9000/api/system/status
+    url: http://arcane:3552/api/health
+    method: HEAD
     interval: 1m
     conditions:
       - "[STATUS] == 200"
@@ -5960,7 +6056,7 @@ The full file checks :
 | Group          | Services                                                                                   | How                                                   |
 |----------------|--------------------------------------------------------------------------------------------|-------------------------------------------------------|
 | Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                           | ping, discovery document, TCP, DNS queries, host IP   |
-| Private        | Pi-hole, Portainer, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana       | container name, health endpoint when there is one     |
+| Private        | Pi-hole, Arcane, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana          | container name, health endpoint when there is one     |
 | Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                               | public name through Traefik, TLS certificate expiry   |
 
 #### Traefik routing
@@ -6966,25 +7062,25 @@ We can back up Docker volumes using `docker run` and `tar` command.
 This method involves creating a temporary container that mounts the named volume we want to back up, then using tar to
 produce an archive of the volume content.
 
-For example to back up the Portainer volume `portainer-vol` to the current directory :
+For example to back up the Arcane volume `arcane-data` to the current directory :
 
 ```bash
-sudo docker run --rm --mount source=portainer-vol,target=/mybackup -v $(pwd):/backup busybox tar cvf /backup/portainer-vol-backup.tar /mybackup
+sudo docker run --rm --mount source=arcane-data,target=/mybackup -v $(pwd):/backup busybox tar cvf /backup/arcane-data-backup.tar /mybackup
 ```
 
 - `--rm` will remove the container when it exits
-- `--mount source=portainer-vol,target=/mybackup` will mount the `portainer-vol` volume to the container mount point
+- `--mount source=arcane-data,target=/mybackup` will mount the `arcane-data` volume to the container mount point
   `/mybackup`
 - `-v $(pwd):/backup` bind mount the current directory into the container's `backup` directory to write the tar file to
 - `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick
   maintenance
-- `tar cvf /backup/portainer-vol-backup.tar /mybackup` will create an uncompressed tar file of all the files in the
+- `tar cvf /backup/arcane-data-backup.tar /mybackup` will create an uncompressed tar file of all the files in the
   `/mybackup` directory
 
-This will create a _portainer-vol-backup.tar_ archive in the current directory.
+This will create a _arcane-data-backup.tar_ archive in the current directory.
 The tar will contain a _mybackup_ directory containing all volume data.
 
-Then feel free to move it to the _/opt/apps/portainer_ directory if you want to back it up along with that directory
+Then feel free to move it to the _/opt/apps/arcane_ directory if you want to back it up along with that directory
 when using FreeFileSync (see [Files](#files)), or simply move the backup file to an external server.
 
 > [!IMPORTANT]
@@ -7003,7 +7099,7 @@ To restore the volume :
 2. Untar the backup files into the new container volume :
 
    ```bash
-   sudo docker run --rm --volumes-from newcontainer -v $(pwd):/backup busybox tar -xvf /backup/portainer-vol-backup.tar --strip 1 -C /data
+   sudo docker run --rm --volumes-from newcontainer -v $(pwd):/backup busybox tar -xvf /backup/arcane-data-backup.tar --strip 1 -C /data
    ```
 
 - `--rm` will remove the container when it exits
@@ -7012,13 +7108,13 @@ To restore the volume :
 - `-v $(pwd):/backup` bind mount the current directory into the container's `/backup` directory to write the tar file to
 - `busybox` is an image of a lightweight Linux distribution with basic Unix utilities, good for that kind of quick
   maintenance
-- `tar xvf /backup/portainer-vol-backup.tar --strip 1 -C /data` will extract the files from the tar archive in the
+- `tar xvf /backup/arcane-data-backup.tar --strip 1 -C /data` will extract the files from the tar archive in the
   `/data` directory of the container's filesystem (without the parent directory thanks to `--strip 1`)
 
 Finally, you can compare the 2 volumes content to check that everything has been copied correctly :
 
 ```bash
-sudo diff -qr /var/lib/docker/volumes/portainer-vol /var/lib/docker/volumes/0862be139e8b9e8137c02005739071d2338fd04f6090b8a89d6b5012fc5fb33a
+sudo diff -qr /var/lib/docker/volumes/arcane-data /var/lib/docker/volumes/0862be139e8b9e8137c02005739071d2338fd04f6090b8a89d6b5012fc5fb33a
 ```
 
 ## Databases

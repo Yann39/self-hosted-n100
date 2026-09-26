@@ -1,0 +1,19 @@
+http:
+  services:
+    arcane:
+      loadBalancer:
+        servers:
+          - url: http://arcane:3552
+
+  routers:
+    arcane:
+      rule: 'Host(`arcane.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: arcane
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
+      middlewares:
+        - vpn-whitelist@file
