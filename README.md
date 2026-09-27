@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.5.2-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-26_Sept_2026-blue)
+![Static Badge](https://img.shields.io/badge/Version-1.5.4-2AAB92)
+![Static Badge](https://img.shields.io/badge/Last_update-27_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
@@ -76,8 +76,9 @@ up-to-date instructions.<br>
     11. [Prometheus](#prometheus)
     12. [Grafana](#grafana)
     13. [Gatus](#gatus)
-    14. [Defrag-life](#defrag-life)
-    15. [CCTeam](#ccteam)
+    14. [Ghostfolio](#ghostfolio)
+    15. [Defrag-life](#defrag-life)
+    16. [CCTeam](#ccteam)
 
    </details>
 5. <details>
@@ -142,6 +143,7 @@ These are the tools we are going to run :
 |      <img src="images/logo-prometheus.svg" alt="Prometheus logo" height="32"/>      | Prometheus      | https://github.com/prometheus/prometheus        | Metrics collection and time series database          |
 |         <img src="images/logo-grafana.svg" alt="Grafana logo" height="32"/>         | Grafana         | https://github.com/grafana/grafana              | Dashboards and visualization for metrics             |
 |           <img src="images/logo-gatus.svg" alt="Gatus logo" height="32"/>           | Gatus           | https://github.com/TwiN/gatus                   | Uptime monitoring and alerting, status page          |
+|      <img src="images/logo-ghostfolio.svg" alt="Ghostfolio logo" height="32"/>      | Ghostfolio      | https://github.com/ghostfolio/ghostfolio        | Wealth management and portfolio tracking             |
 |        <img src="images/logo-backrest.svg" alt="Backrest logo" height="32"/>         | Backrest        | https://github.com/garethgeorge/backrest        | Web UI for restic backups (snapshots, encryption)    |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
@@ -1785,6 +1787,7 @@ ccteam.example.com                  192.168.0.16
 crowdsec.example.com                192.168.0.16
 dashboard.example.com               192.168.0.16
 dashdot.example.com                 192.168.0.16
+ghostfolio.example.com              192.168.0.16
 goatcounter.example.com             192.168.0.16
 homebox.example.com                 192.168.0.16
 lychee.example.com                  192.168.0.16
@@ -4272,6 +4275,11 @@ services:
         subtitle: "Various user-friendly utilities"
         tag: "tool"
         url: "https://omnitools.example.com"
+      - name: "Ghostfolio"
+        logo: "assets/logos/logo-ghostfolio.svg"
+        subtitle: "Wealth management and portfolio tracking"
+        tag: "app"
+        url: "https://ghostfolio.example.com"
   - name: "Internal"
     icon: "fas fa-microchip"
     items:
@@ -6062,11 +6070,11 @@ endpoints:
 
 The full file checks :
 
-| Group          | Services                                                                                    | How                                                   |
-|----------------|---------------------------------------------------------------------------------------------|-------------------------------------------------------|
-| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                            | ping, discovery document, TCP, DNS queries, host IP   |
-| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana | container name, health endpoint when there is one     |
-| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                                | public name through Traefik, TLS certificate expiry   |
+| Group          | Services                                                                                                | How                                                 |
+|----------------|---------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                                        | ping, discovery document, TCP, DNS queries, host IP |
+| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana, Ghostfolio | container name, health endpoint when there is one   |
+| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                                            | public name through Traefik, TLS certificate expiry |
 
 #### Traefik routing
 
@@ -6134,6 +6142,315 @@ within a minute. Hover a red bar to see the failed condition, for instance `[BOD
 answer, the query name does not match any local DNS record.
 
 <img src="images/screen-gatus.png" alt="Gatus screenshot"/>
+
+## Ghostfolio
+
+<img src="images/logo-ghostfolio.svg" alt="Ghostfolio logo" height="128"/>
+
+**Ghostfolio** is a wealth management application : it tracks stocks, ETFs, cryptocurrencies, savings accounts, ...
+across several accounts and brokers, with the performance over time, the allocation by asset class, region or currency,
+the dividends, and the fees.
+
+It runs as three containers : the application, a **PostgreSQL** database, and **Redis** (cache and job queue, nothing
+to persist). It sits on the **private** network and authenticates its users against [PocketID](#pocketid) with its own
+OIDC support (still flagged **experimental** by Ghostfolio at the time of writing).
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style DB_CONTAINER fill: #663535
+    style REDIS_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_APP_PORT{{3333/tcp}}
+    DOCKER_DB_PORT{{5432/tcp}}
+    DOCKER_REDIS_PORT{{6379/tcp}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    TRAEFIK_ROUTER_APP(ghostfolio.example.com)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    MARKET_DATA[Market data providers]
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+            end
+
+            subgraph APP_CONTAINER[GHOSTFOLIO CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph DB_CONTAINER[POSTGRESQL CONTAINER]
+                DOCKER_DB_PORT
+            end
+
+            subgraph REDIS_CONTAINER[REDIS CONTAINER]
+                DOCKER_REDIS_PORT
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+            DOCKER_APP_PORT -->|ghostfolio - net| DOCKER_DB_PORT
+            DOCKER_APP_PORT -->|ghostfolio - net| DOCKER_REDIS_PORT
+            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
+        end
+    end
+
+    DOCKER_APP_PORT -.->|quotes, exchange rates| MARKET_DATA
+```
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/ghostfolio
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _ghostfolio_ directory into the
+  _/opt/apps/ghostfolio_ directory, and generate every secret of the _.env_ file with `openssl rand -hex 32`
+  (hexadecimal on purpose : the database password goes into the `DATABASE_URL`, special characters would have to be
+  URL-encoded)
+- copy the _ghostfolio.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
+  `https://ghostfolio.example.com/api/auth/oidc/callback`, and **PKCE disabled**, as the application does not send a
+  `code_challenge`. Restrict it to your administrators group (_Allowed user groups_), then put its client ID and
+  secret in `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` of the _.env_ file
+- add a **local DNS record** `ghostfolio.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
+- add the `/sources/volumes/ghostfolio-db-vol` exclude to the backup plan : the PostgreSQL database is dumped every
+  evening, see [Database dumps](#database-dumps)
+
+> [!IMPORTANT]
+> The **first user** created gets the **ADMIN** role : sign in through PocketID right after the first start, before
+anybody else. Then disable the sign-up in _Admin Control -> Settings_ (_User Signup_).
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  ghostfolio:
+    image: docker.io/ghostfolio/ghostfolio:latest
+    container_name: ghostfolio
+    restart: unless-stopped
+    init: true
+    # Hardening of the official Compose file : no Linux capability, no privilege escalation
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Database and Redis credentials, secrets, OIDC client (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      # Public URL, used to build the OIDC callback URL (${ROOT_URL}/api/auth/oidc/callback)
+      ROOT_URL: https://ghostfolio.example.com
+
+      # Native OIDC authentication against PocketID (experimental in Ghostfolio).
+      # The issuer is the PUBLIC URL : the container resolves it to Traefik thanks to the alias on traefik-private-net,
+      # and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+      ENABLE_FEATURE_AUTH_OIDC: "true"
+      OIDC_ISSUER: https://pocketid.example.com
+      # OIDC_CLIENT_ID / OIDC_CLIENT_SECRET come from the .env file
+    depends_on:
+      ghostfolio-db:
+        condition: service_healthy
+      ghostfolio-redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -f http://localhost:3333/api/v1/health" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ghostfolio-net
+      - traefik-private-net
+
+  ghostfolio-db:
+    # Major version pinned : a new major version of PostgreSQL cannot start on the data of the previous one,
+    # the upgrade (dump and restore) is done on purpose, never by a pull
+    image: docker.io/library/postgres:15-alpine
+    container_name: ghostfolio-db
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d \"$${POSTGRES_DB}\" -U $${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - ghostfolio-db-vol:/var/lib/postgresql/data
+    networks:
+      - ghostfolio-net
+
+  # Cache and job queue only, nothing to persist
+  ghostfolio-redis:
+    image: docker.io/library/redis:alpine
+    container_name: ghostfolio-redis
+    restart: unless-stopped
+    user: "999:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli --pass \"$${REDIS_PASSWORD}\" ping | grep PONG" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ghostfolio-net
+
+volumes:
+
+  ghostfolio-db-vol:
+    name: ghostfolio-db-vol
+
+networks:
+
+  # The database and Redis stay on the private network of the stack, never on a Traefik network
+  ghostfolio-net:
+    name: ghostfolio-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+```
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+# Generate every secret with : openssl rand -hex 32
+# (hexadecimal on purpose : the database password goes into a URL, special characters would have to be URL-encoded)
+
+# Redis (cache)
+REDIS_HOST=ghostfolio-redis
+REDIS_PORT=6379
+REDIS_PASSWORD=<redis_password>
+
+# PostgreSQL
+POSTGRES_DB=ghostfolio-db
+POSTGRES_USER=ghostfolio
+POSTGRES_PASSWORD=<postgres_password>
+DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@ghostfolio-db:5432/${POSTGRES_DB}?connect_timeout=300
+
+# Secrets of the application
+ACCESS_TOKEN_SALT=<random_string>
+JWT_SECRET_KEY=<random_string>
+
+# PocketID OIDC client (callback URL : https://ghostfolio.example.com/api/auth/oidc/callback)
+OIDC_CLIENT_ID=<oidc_client_id>
+OIDC_CLIENT_SECRET=<oidc_client_secret>
+```
+
+#### Traefik routing
+
+:page_facing_up: _ghostfolio.yml_ :
+
+```yaml
+http:
+  services:
+    ghostfolio:
+      loadBalancer:
+        servers:
+          - url: http://ghostfolio:3333
+
+  routers:
+    ghostfolio:
+      rule: 'Host(`ghostfolio.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: ghostfolio
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
+      middlewares:
+        - vpn-whitelist@file
+```
+
+Things to notice :
+
+- the database and Redis only join `ghostfolio-net`, the private network of the stack : only the application reaches
+  them, and the application alone joins `traefik-private-net`
+- the **hardening** of the official Compose file is kept : no Linux capability (only the few PostgreSQL needs to manage
+  its files), no privilege escalation, Redis running as a non-root user
+- the **major version** of PostgreSQL is pinned (`15-alpine`) : unlike MariaDB, which upgrades its system tables at
+  startup (`MARIADB_AUTO_UPGRADE`), PostgreSQL refuses to start on the data of a previous major version. The upgrade is
+  a dump and a restore, done on purpose
+- Redis only holds a cache and the queue of the data gathering jobs : no volume, it starts empty after a restart
+- the containers wait for the database and Redis to be healthy (`depends_on` with `condition: service_healthy`) before
+  starting the application, which would otherwise fail its first connection
+- the application needs an outgoing internet access to fetch the quotes and exchange rates
+- [Gatus](#gatus) checks the `/api/v1/health` endpoint, which answers `{"status":"OK"}` without authentication
+
+> [!NOTE]
+> The OIDC support is still **experimental** in Ghostfolio. The native method remains available : _Get Started_
+creates an account identified by a **security token**, which is then its only credential (keep it in your password
+manager). If the OIDC login ever breaks, putting the Traefik OIDC plugin in front of the router (like for Prometheus)
+keeps the application behind PocketID.
+
+### Run
+
+Simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/ghostfolio/docker-compose.yml up -d
+```
+
+You should end-up with three running containers, `ghostfolio`, `ghostfolio-db` and `ghostfolio-redis`, and Traefik
+picks up the dynamic configuration file without restarting.
+
+The application is available at https://ghostfolio.example.com : _Sign in -> Sign in with OpenID Connect_, then
+disable the sign-up as described above.
 
 ## Defrag-life
 
@@ -6925,8 +7242,8 @@ So there are three things we have to worry about in terms of backup :
 - the content of the _/opt/apps_ directory, holding services configuration and containers bound data (including the
   secrets : _.env_ files, _acme.json_, the PocketID encryption key, ...)
 - the content of the _/var/lib/docker/volumes_, holding the Docker container named volumes data
-- the **databases** (MariaDB for CCTeam, Lychee and Defrag-life) : copying the files of a running database gives an
-  inconsistent copy, they must be **dumped** first
+- the **databases** (MariaDB for CCTeam, Lychee and Defrag-life, PostgreSQL for Ghostfolio) : copying the files of a
+  running database gives an inconsistent copy, they must be **dumped** first
 
 The backups are done by [Backrest](#backrest) every evening, to a **Windows PC** on the local network, which then
 synchronizes them to a cloud. That gives the classic **3-2-1** rule : the data on the mini PC, a copy on the Windows
@@ -6937,7 +7254,7 @@ flowchart LR
     style N100 fill: #665555
     style PC fill: #205566
     style CLOUD fill: #4d683b
-    TIMER[systemd timer\n19:45] -->|mariadb-dump| DUMPS[(database dumps)]
+    TIMER[systemd timer\n19:45] -->|mariadb-dump, pg_dump| DUMPS[(database dumps)]
 
     subgraph N100[MINI PC]
         APPS[(/opt/apps)]
@@ -7103,14 +7420,17 @@ SSH configuration keeps the connection alive meanwhile (`ServerAliveInterval`).
 
 ### Database dumps
 
-A running MariaDB database copied file by file gives an **inconsistent** copy, which may not even start once restored.
+A running database (MariaDB, PostgreSQL) copied file by file gives an **inconsistent** copy, which may not even start
+once restored.
 The databases are therefore **dumped** by the host just before the backup, and the raw database volumes are excluded
 from the backup plan.
 
 The _backrest/scripts/dump-databases.sh_ script runs on the **host** (it needs `docker exec`, which Backrest must not
 have : the Docker socket would give it root on the host), started by a **systemd timer** at 19:45, 15 minutes before the
-backup. For each database container, it runs `mariadb-dump` inside the container, with the credentials of its own
-environment, and writes a compressed dump in _/opt/apps/backrest/dumps_, which is part of the backup.
+backup. For each database container, it runs `mariadb-dump` or `pg_dump` inside the container, with the credentials of
+its own environment, and writes a compressed dump in _/opt/apps/backrest/dumps_, which is part of the backup. A new
+database is one line in the `MARIADB_CONTAINERS` or `POSTGRES_CONTAINERS` list of the script, plus its volume in the
+excludes of the backup plan.
 
 > [!WARNING]
 > The database images use the `mariadb:latest` tag : a `pull` may start a **new major version** on existing data. The
@@ -7213,7 +7533,7 @@ Then the **plan** :
   | Exclude                                                                                              | Why                                                                                 |
   |------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
   | `/sources/apps/backrest/cache`, `/sources/apps/backrest/tmp`, `/sources/apps/backrest/restore`       | cache and temporary files of Backrest itself, restored files                        |
-  | `/sources/volumes/ccteam-db-vol`, `/sources/volumes/lychee-db-vol`, `/sources/volumes/defrag-life-db-vol` | raw MariaDB files, inconsistent when copied hot : the **dumps** are what gets restored |
+  | `/sources/volumes/ccteam-db-vol`, `/sources/volumes/lychee-db-vol`, `/sources/volumes/defrag-life-db-vol`, `/sources/volumes/ghostfolio-db-vol` | raw database files, inconsistent when copied hot : the **dumps** are what gets restored |
   | `/sources/volumes/*prometheus-data*`                                                                 | Prometheus time series, inconsistent when copied hot, and only metrics              |
   | `/sources/volumes/metadata.db`, `/sources/volumes/backingFsBlockDev`                                 | internal files of Docker, not volumes                                               |
 
@@ -7299,7 +7619,7 @@ Host windows-pc
 ```bash
 #!/bin/bash
 #
-# Dumps the MariaDB databases into /opt/apps/backrest/dumps, before the Backrest backup.
+# Dumps the databases into /opt/apps/backrest/dumps, before the Backrest backup.
 # Copying the files of a running database gives an inconsistent copy : the dumps are what gets restored, the raw
 # database volumes are excluded from the backup plan.
 #
@@ -7309,27 +7629,36 @@ Host windows-pc
 set -uo pipefail
 
 DUMP_DIR=/opt/apps/backrest/dumps
-CONTAINERS=(ccteam-db lychee-db defrag-life-db)
+MARIADB_CONTAINERS=(ccteam-db lychee-db defrag-life-db)
+POSTGRES_CONTAINERS=(ghostfolio-db)
+
+# The password goes through MYSQL_PWD rather than the command line, the MYSQL_* names are the legacy aliases used by
+# some of the stacks
+MARIADB_DUMP='MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" exec mariadb-dump -uroot \
+    --single-transaction --routines --events \
+    --databases "${MARIADB_DATABASE:-$MYSQL_DATABASE}"'
+
+# Local socket inside the container, trusted by the official image : no password needed.
+# --clean --if-exists : the dump drops the existing objects before recreating them, it can be restored over a database
+POSTGRES_DUMP='exec pg_dump -U "$POSTGRES_USER" --clean --if-exists "$POSTGRES_DB"'
 
 mkdir -p "$DUMP_DIR"
 chmod 700 "$DUMP_DIR"
 
 status=0
-for container in "${CONTAINERS[@]}"; do
+
+# dump <container> <command run inside the container, writing the dump on its standard output>
+dump() {
+    local container=$1 command=$2
+
     if ! docker ps --format '{{.Names}}' | grep -qx "$container"; then
         echo "$container is not running, skipped" >&2
         status=1
-        continue
+        return
     fi
 
-    # Written to a temporary file first : a failed dump never replaces the previous good one.
-    # The password goes through MYSQL_PWD rather than the command line, the MYSQL_* names are the legacy aliases
-    # used by some of the stacks.
-    if docker exec "$container" sh -c '
-        MYSQL_PWD="${MARIADB_ROOT_PASSWORD:-$MYSQL_ROOT_PASSWORD}" exec mariadb-dump -uroot \
-            --single-transaction --routines --events \
-            --databases "${MARIADB_DATABASE:-$MYSQL_DATABASE}"' \
-        | gzip > "$DUMP_DIR/$container.sql.gz.tmp"; then
+    # Written to a temporary file first : a failed dump never replaces the previous good one
+    if docker exec "$container" sh -c "$command" | gzip > "$DUMP_DIR/$container.sql.gz.tmp"; then
         mv "$DUMP_DIR/$container.sql.gz.tmp" "$DUMP_DIR/$container.sql.gz"
         echo "$container dumped ($(du -h "$DUMP_DIR/$container.sql.gz" | cut -f1))"
     else
@@ -7337,6 +7666,14 @@ for container in "${CONTAINERS[@]}"; do
         echo "$container dump FAILED" >&2
         status=1
     fi
+}
+
+for container in "${MARIADB_CONTAINERS[@]}"; do
+    dump "$container" "$MARIADB_DUMP"
+done
+
+for container in "${POSTGRES_CONTAINERS[@]}"; do
+    dump "$container" "$POSTGRES_DUMP"
 done
 
 exit $status
@@ -7346,7 +7683,7 @@ exit $status
 
 ```ini
 [Unit]
-Description=Dump the MariaDB databases before the Backrest backup
+Description=Dump the databases before the Backrest backup
 After=docker.service
 Requires=docker.service
 
@@ -7360,7 +7697,7 @@ ExecStart=/opt/apps/backrest/scripts/dump-databases.sh
 ```ini
 # Runs 15 minutes before the backup plan of Backrest (20:00), keep both schedules in sync
 [Unit]
-Description=Dump the MariaDB databases before the Backrest backup
+Description=Dump the databases before the Backrest backup
 
 [Timer]
 OnCalendar=*-*-* 19:45:00
@@ -7461,13 +7798,22 @@ Replace `latest` with the ID of an older snapshot, from the first command. To **
 - on Linux, `restic mount` exposes every snapshot as a regular folder, where a simple `diff` works (not available on
   Windows)
 
-To restore a **database**, load its dump into the (running) database container :
+To restore a **database**, load its dump into the (running) database container. For MariaDB :
 
 ```bash
 gunzip -c ccteam-db.sql.gz | sudo docker exec -i ccteam-db sh -c 'MYSQL_PWD="$MARIADB_ROOT_PASSWORD" mariadb -uroot'
 ```
 
 The dump contains the `CREATE DATABASE` / `USE` statements (`--databases`), the target database is recreated as it was.
+
+For PostgreSQL :
+
+```bash
+gunzip -c ghostfolio-db.sql.gz | sudo docker exec -i ghostfolio-db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+The dump drops the existing objects before recreating them (`--clean --if-exists`), it can be loaded over the current
+database.
 
 > [!NOTE]
 > The cloud copy is a **mirror** of the repository on the PC : if the repository gets corrupted or deleted there, the
