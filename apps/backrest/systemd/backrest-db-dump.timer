@@ -1,7 +1,7 @@
 # Copy to /etc/systemd/system/, then : sudo systemctl daemon-reload && sudo systemctl enable --now backrest-db-dump.timer
 # Runs 15 minutes before the backup plan of Backrest (20:00), keep both schedules in sync
 [Unit]
-Description=Dump the MariaDB databases before the Backrest backup
+Description=Dump the databases before the Backrest backup
 
 [Timer]
 OnCalendar=*-*-* 19:45:00

@@ -198,6 +198,16 @@ endpoints:
     alerts:
       - type: email
 
+  - name: Ghostfolio
+    group: Private
+    url: http://ghostfolio:3333/api/v1/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY].status == OK"
+    alerts:
+      - type: email
+
   # Dashdot is NOT checked : it is started on demand by Sablier, a check every minute would keep it running forever
 
   # ------------------------------------------------------------------------------------------------------------------

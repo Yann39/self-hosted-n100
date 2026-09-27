@@ -1,0 +1,19 @@
+http:
+  services:
+    ghostfolio:
+      loadBalancer:
+        servers:
+          - url: http://ghostfolio:3333
+
+  routers:
+    ghostfolio:
+      rule: 'Host(`ghostfolio.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: ghostfolio
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
+      middlewares:
+        - vpn-whitelist@file

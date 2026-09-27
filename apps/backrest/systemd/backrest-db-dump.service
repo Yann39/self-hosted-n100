@@ -1,6 +1,6 @@
 # Copy to /etc/systemd/system/, see backrest-db-dump.timer
 [Unit]
-Description=Dump the MariaDB databases before the Backrest backup
+Description=Dump the databases before the Backrest backup
 After=docker.service
 Requires=docker.service
 

@@ -173,6 +173,11 @@ services:
         subtitle: "Various user-friendly utilities"
         tag: "app"
         url: "https://omnitools.example.com"
+      - name: "Ghostfolio"
+        logo: "assets/logos/logo-ghostfolio.svg"
+        subtitle: "Wealth management and portfolio tracking"
+        tag: "app"
+        url: "https://ghostfolio.example.com"
   - name: "Internal"
     icon: "fas fa-microchip"
     items:
