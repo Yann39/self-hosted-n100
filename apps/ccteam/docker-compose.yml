@@ -7,7 +7,7 @@ services:
       context: ./
     container_name: ccteam-app
     restart: on-failure
-    env_file: ./.env
+    env_file: .env
     volumes:
       - /opt/apps/ccteam/path_to_firebase_key.json:/opt/firebase-key.json:ro
     environment:
@@ -32,7 +32,7 @@ services:
     image: mariadb:latest
     container_name: ccteam-db
     restart: unless-stopped
-    env_file: ./.env
+    env_file: .env
     environment:
       - MARIADB_AUTO_UPGRADE="1"
       - MARIADB_ROOT_PASSWORD=$MARIADB_ROOT_PASSWORD

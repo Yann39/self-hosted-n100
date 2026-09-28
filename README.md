@@ -6634,7 +6634,7 @@ services:
     image: mariadb:latest
     container_name: defrag-life-db
     restart: unless-stopped
-    env_file: ./.env
+    env_file: .env
     environment:
       - MARIADB_AUTO_UPGRADE="1"
       - MARIADB_ROOT_PASSWORD=$MARIADB_ROOT_PASSWORD
