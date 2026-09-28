@@ -1,0 +1,17 @@
+http:
+  services:
+    speedtest-tracker:
+      loadBalancer:
+        servers:
+          - url: http://speedtest-tracker:80
+
+  routers:
+    speedtest-tracker:
+      rule: 'Host(`speedtest-tracker.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: speedtest-tracker
+      middlewares:
+        - vpn-whitelist@file

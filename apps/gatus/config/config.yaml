@@ -198,6 +198,15 @@ endpoints:
     alerts:
       - type: email
 
+  - name: Speedtest Tracker
+    group: Private
+    url: http://speedtest-tracker:80/api/healthcheck
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
   - name: Ghostfolio
     group: Private
     url: http://ghostfolio:3333/api/v1/health
