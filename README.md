@@ -2,25 +2,32 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.5.4-2AAB92)
+![Static Badge](https://img.shields.io/badge/Version-1.5.5-2AAB92)
 ![Static Badge](https://img.shields.io/badge/Last_update-27_Sept_2026-blue)
 ![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
-This project describes my personal **self-hosted** infrastructure setup, running on a **mini PC** (**N100** based).
+<table>
+   <tr>
+      <td>
+         <picture>
+            <source media="(prefers-color-scheme: dark)" srcset="images/logo-open-source-initiative.svg" height="128"/>
+            <source media="(prefers-color-scheme: light)" srcset="images/logo-open-source-initiative-black.svg" height="128"/>
+            <img alt="Open-source initiative logo" src="images/logo-open-source-initiative-black.svg" height="128"/>
+         </picture>
+      </td>
+      <td>
+This project describes my personal <b>self-hosted</b> infrastructure setup, running on a <b>mini PC</b> (<b>N100</b> based).
 
 This was meant to be just a reminder for me, but I wrote it as a guide, in case it might help someone.
 
 It uses only **free** and **open source** software.
-
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="images/logo-open-source-initiative.svg" height="128"/>
-  <source media="(prefers-color-scheme: light)" srcset="images/logo-open-source-initiative-black.svg" height="128"/>
-  <img alt="Open-source initiative logo" src="images/logo-open-source-initiative-black.svg" height="128"/>
-</picture>
+      </td>
+   </tr>
+</table>
 
 > [!NOTE]
-> This project is based on my previous **home lab** setup running on a **Banana Pi** board, this one contains more
-up-to-date instructions.<br>
+> This project is based on my previous **home lab** setup running on a **Banana Pi** board (ARM).<br>
+> This one contains more up-to-date instructions and is closer to my current setup.<br>
 > The original project can be found at [https://github.com/Yann39/self-hosted](https://github.com/Yann39/self-hosted).
 
 > [!IMPORTANT]
@@ -138,13 +145,12 @@ These are the tools we are going to run :
 |         <img src="images/logo-unbound.svg" alt="Unbound logo" height="32"/>         | Unbound         | https://github.com/NLnetLabs/unbound            | Validating, recursive, and caching DNS resolver      |
 |           <img src="images/logo-homer.png" alt="Homer logo" height="30"/>           | Homer           | https://github.com/bastienwirtz/homer           | Static application dashboard                         |
 |         <img src="images/logo-homebox.svg" alt="Homebox logo" height="32"/>         | Homebox         | https://github.com/sysadminsmedia/homebox       | Inventory and organisation system for the home       |
-|       <img src="images/logo-omnitools.svg" alt="Omnitools logo" height="32"/>       | Omnitools       | https://github.com/iib0011/omni-tools           | Various online tools for everyday tasks              |
 |         <img src="images/logo-dashdot.png" alt="Dashdot logo" height="32"/>         | Dashdot         | https://github.com/MauriceNino/dashdot          | Minimal server dashboard and monitoring              |
 |      <img src="images/logo-prometheus.svg" alt="Prometheus logo" height="32"/>      | Prometheus      | https://github.com/prometheus/prometheus        | Metrics collection and time series database          |
 |         <img src="images/logo-grafana.svg" alt="Grafana logo" height="32"/>         | Grafana         | https://github.com/grafana/grafana              | Dashboards and visualization for metrics             |
 |           <img src="images/logo-gatus.svg" alt="Gatus logo" height="32"/>           | Gatus           | https://github.com/TwiN/gatus                   | Uptime monitoring and alerting, status page          |
 |      <img src="images/logo-ghostfolio.svg" alt="Ghostfolio logo" height="32"/>      | Ghostfolio      | https://github.com/ghostfolio/ghostfolio        | Wealth management and portfolio tracking             |
-|        <img src="images/logo-backrest.svg" alt="Backrest logo" height="32"/>         | Backrest        | https://github.com/garethgeorge/backrest        | Web UI for restic backups (snapshots, encryption)    |
+|        <img src="images/logo-backrest.svg" alt="Backrest logo" height="32"/>        | Backrest        | https://github.com/garethgeorge/backrest        | Web UI for restic backups (snapshots, encryption)    |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
 |      <img src="images/logo-phpmyadmin.svg" alt="PhpMyAdmin logo" height="32"/>      | PhpMyAdmin      | https://github.com/phpmyadmin/phpmyadmin        | Web user interface to manage MySQL databases         |
@@ -1791,7 +1797,6 @@ ghostfolio.example.com              192.168.0.16
 goatcounter.example.com             192.168.0.16
 homebox.example.com                 192.168.0.16
 lychee.example.com                  192.168.0.16
-omnitools.example.com               192.168.0.16
 phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 pocketid.example.com                192.168.0.16
@@ -4270,11 +4275,6 @@ services:
         subtitle: "Home inventory management"
         tag: "app"
         url: "https://homebox.example.com"
-      - name: "Omnitools"
-        logo: "https://getumbrel.github.io/umbrel-apps-gallery/omnitools/icon.svg"
-        subtitle: "Various user-friendly utilities"
-        tag: "tool"
-        url: "https://omnitools.example.com"
       - name: "Ghostfolio"
         logo: "assets/logos/logo-ghostfolio.svg"
         subtitle: "Wealth management and portfolio tracking"
