@@ -33,11 +33,7 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # Redirect all HTTP requests to HTTPS
-      - "traefik.http.middlewares.httpsonly.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.httpsonly.redirectscheme.permanent=true"
-      - "traefik.http.routers.httpsonly.rule=HostRegexp(`{any:.*}`)"
-      - "traefik.http.routers.httpsonly.middlewares=httpsonly"
+      # The HTTP to HTTPS redirection is done on the "web" entrypoint, see traefik.yml
 
       # Configure dashboard with HTTPS
       - "traefik.http.routers.dashboard.rule=Host(`traefik.example.com`)"

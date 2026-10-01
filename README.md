@@ -973,10 +973,10 @@ flowchart LR
                     TRAEFIK_ROUTER_MYAPP2
                 end
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-                    REDIRECT(HTTPS redirect)
                     IP_WHITELISTING(IP whitelist)
                     AUTH(PocketID auth)
                 end
+                REDIRECT(HTTPS redirect\non the web entrypoint)
                 DOCKER_TRAEFIK_PORT80
                 DOCKER_TRAEFIK_PORT443
                 DOCKER_TRAEFIK_PORT8080
@@ -987,23 +987,21 @@ flowchart LR
 
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+    DOCKER_TRAEFIK_PORT80 --> REDIRECT
+    REDIRECT -.->|301 to https| INCOMING_REQUEST
     DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-    TRAEFIK_ROUTER_TRAEFIK --> REDIRECT
-    TRAEFIK_ROUTER_MYAPP1 --> REDIRECT
-    TRAEFIK_ROUTER_MYAPP2 --> REDIRECT
-    REDIRECT -.-> DOCKER_TRAEFIK_PORT443
+    TRAEFIK_ROUTER_TRAEFIK --> IP_WHITELISTING
+    TRAEFIK_ROUTER_MYAPP2 --> IP_WHITELISTING
+    TRAEFIK_ROUTER_MYAPP1 --> DOCKER_MYAPP1_PORT
     IP_WHITELISTING --> AUTH
     IP_WHITELISTING ---> DOCKER_MYAPP2_PORT
-    REDIRECT --> IP_WHITELISTING
-    REDIRECT ---> DOCKER_MYAPP1_PORT
     AUTH --> DOCKER_TRAEFIK_PORT8080
 ```
 
-It handles HTTP to HTTPS redirection, IP whitelisting and authentication (through PocketID, or basic authentication)
-through custom **middlewares**.
+It redirects HTTP to HTTPS on its `web` entrypoint, and handles IP whitelisting and authentication (through PocketID, or
+basic authentication) through custom **middlewares**.
 In this example `myapp1` is accessible from the internet, `myapp2` is accessible only through VPN,
-and Traefik (dashboard and APIs) is accessible only through VPN after OIDC authentication.
+and Traefik (dashboard and APIs) is accessible only through VPN after **OIDC** authentication.
 
 I've deliberately left out **Sablier** for the moment, to keep things simple, but basically this would simply add a
 middleware that checks the state of the application, in order to temporarily display a waiting page while not ready,
@@ -1218,11 +1216,18 @@ api:
   dashboard: true
 
 # Health check endpoint (/ping) for Gatus, served on the internal "traefik" entrypoint (8080), not published on the host
-ping: {}
+ping: { }
 
 entryPoints:
   web:
     address: ':80'
+    # Every HTTP request is redirected to HTTPS, before any router : nothing is ever served on port 80
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
 
   websecure:
     address: ':443'
@@ -1280,6 +1285,9 @@ This config file :
   internal `traefik` entrypoint (port `8080`), created automatically and not published on the host
 - defines 2 **entrypoints**, named `web` (for port `80`) and `websecure` (for port `443`) so that we can receive
   requests on these ports
+- **redirects** every request of the `web` entrypoint to HTTPS (`301`, or `308` for the methods other than GET and
+  HEAD), before any router is even considered : no router, no middleware and no service ever handles plain HTTP
+
 - defines a `docker` provider so that we can use **container labels** for retrieving routing configuration. We have
   configured it to **not** expose containers by default, so that containers that do not have a `traefik.enable=true`
   label are ignored from the resulting routing configuration
@@ -1334,11 +1342,7 @@ services:
     labels:
       - "traefik.enable=true"
 
-      # Redirect all HTTP requests to HTTPS
-      - "traefik.http.middlewares.httpsonly.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.httpsonly.redirectscheme.permanent=true"
-      - "traefik.http.routers.httpsonly.rule=HostRegexp(`{any:.*}`)"
-      - "traefik.http.routers.httpsonly.middlewares=httpsonly"
+      # The HTTP to HTTPS redirection is done on the "web" entrypoint, see traefik.yml
 
       # Configure dashboard with HTTPS
       - "traefik.http.routers.dashboard.rule=Host(`traefik.example.com`)"
@@ -1382,7 +1386,6 @@ This **Compose** file mainly :
   access token used to issue Let's Encrypt certificates through **DNS challenge**, and the CrowdSec bouncer key
 - defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our
   service
-- defines `httpsonly` **router** and **middleware** responsible for automatically redirecting HTTP requests to HTTPS
 - configures `dashboard` and `api` routers to use secure HTTPS endpoint with our certificate resolver to generate
   related Let's Encrypt certificates
 - secures dashboard and API endpoints with the `vpn-whitelist` middleware (requests from the local network and the VPN
