@@ -13,5 +13,8 @@ http:
       tls:
         certResolver: default
       service: phpmyadmin
+      # PhpMyAdmin keeps its own authentication (the MySQL credentials), so this is a second, independent gate :
+      # worth the two logins for a tool that gives direct access to the databases
       middlewares:
         - vpn-whitelist@file
+        - phpmyadmin-auth@file

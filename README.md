@@ -2967,10 +2967,20 @@ http:
       tls:
         certResolver: default
       service: pocketid
+      # Wider whitelist than the other private services : the containers must reach the provider too (see below)
       middlewares:
-        - vpn-whitelist@file
+        - pocketid-whitelist@file
 
   middlewares:
+    # Same as vpn-whitelist, plus the private Docker network : an application authenticating natively against
+    # PocketID fetches the discovery document and exchanges the token itself, from its container.
+    # The public Docker network is NOT included : an application exposed to the internet must never reach the provider this way.
+    pocketid-whitelist:
+      ipAllowList:
+        sourceRange:
+          - "192.168.0.0/24" # your LAN
+          - "10.0.0.0/24" # Wireguard subnet
+          - "172.21.0.0/16" # traefik-private-net, check it with : docker network inspect traefik-private-net
     traefik-auth:
       plugin:
         traefik-oidc-auth:
@@ -2982,6 +2992,46 @@ http:
             UsePkce: true
           Scopes: [ "openid", "profile", "email" ]
     pihole-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    goatcounter-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    prometheus-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    backrest-auth:
+      plugin:
+        traefik-oidc-auth:
+          Secret: "<secret>"
+          Provider:
+            Url: "http://pocketid:1411/"
+            ClientId: "<oidc_client_id>"
+            ClientSecret: "<oidc_client_secret>"
+            UsePkce: true
+          Scopes: [ "openid", "profile", "email" ]
+    phpmyadmin-auth:
       plugin:
         traefik-oidc-auth:
           Secret: "<secret>"
@@ -3015,14 +3065,23 @@ Things to notice :
     - creates a **service** which will point to our container application running on port `1411`
     - creates an HTTP **router** that will match `pocketid.example.com` URL on our `websecure` **entrypoint** to point
       to our service
-    - assigns the `vpn-whitelist` **middleware** so that the traffic will be restricted to allowed IPs only (application
-      reachable only from local network or through VPN)
+    - assigns the `pocketid-whitelist` **middleware** rather than the `vpn-whitelist` used by every other private
+      service. It allows the same ranges (local network and VPN) **plus the private Docker network**, because an
+      application that authenticates natively does not only send your browser to the provider : it also fetches the
+      discovery document and exchanges the authorization code **from its own container**, and would therefore reach
+      Traefik with a Docker source address that `vpn-whitelist` rejects. The **public** Docker network is
+      deliberately left out, so that an application exposed to the internet can never reach the identity provider
+      this way
     - adds a **TLS** configuration that will use our `default` **certificates resolver**, so it can generate Let's
       encrypt certificates
-    - defines one **middleware per protected service** (`traefik-auth` for the Traefik dashboard, `pihole-auth` for
-      Pi-Hole), each with its own OIDC client and session, all pointing to PocketID through the **internal** URL
-      `http://pocketid:1411/` : the token exchange stays inside the Docker network instead of looping through the
-      reverse proxy
+    - defines one **middleware per protected service**, named after it (`pihole-auth`, `phpmyadmin-auth`, ...).
+      Each one needs its **own OIDC client** in PocketID, since the callback URL carries the host of the service it
+      protects, and its **own 32 characters `Secret`**, which encrypts its session cookie : two middlewares sharing a
+      secret would share their sessions. Add one block per service you put behind the single sign-on
+    - all of them reach PocketID through the **internal** URL `http://pocketid:1411/` : being a Traefik plugin, the
+      token exchange is done from the Traefik container and stays inside the Docker network, instead of looping through
+      the reverse proxy. This is also why the plugin accepts plain HTTP here, where an application doing its own OIDC
+      may not
 - the plugin itself is declared once in the static configuration, Traefik downloads it from its plugin catalog at start
 
 #### Environment variables
@@ -3036,7 +3095,7 @@ ENCRYPTION_KEY_FILE=/opt/pocket-id/encryption_key
 TRUST_PROXY=true
 MAXMIND_LICENSE_KEY=
 PUID=1000
-PGID=1001
+PGID=1000
 ```
 
 - `APP_URL` is the public URL, it is also the OIDC **issuer** written in every token, so it must match the router's host
@@ -3916,8 +3975,17 @@ Create a folder to hold the configuration :
 sudo mkdir /opt/apps/phpmyadmin
 ```
 
-Then simply copy the _docker-compose.yml_ file from this project's _phpmyadmin_ directory into the
-_/opt/apps/phpmyadmin_ directory.
+Then :
+
+- copy the _docker-compose.yml_ file from this project's _phpmyadmin_ directory into the _/opt/apps/phpmyadmin_
+  directory
+- copy the _phpmyadmin.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL `https://phpmyadmin.example.com/oidc/callback`
+  (the plugin's default `CallbackUri`) and **PKCE** enabled, then fill the `phpmyadmin-auth` middleware in
+  _pocketid.yml_ with its client ID, its secret and its own 32 characters `Secret`
+- add a **local DNS record** `phpmyadmin.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
 
 ### Details
 
@@ -3968,8 +4036,11 @@ http:
       tls:
         certResolver: default
       service: phpmyadmin
+      # PhpMyAdmin keeps its own authentication (the MySQL credentials), so this is a second, independent gate :
+      # worth the two logins for a tool that gives direct access to the databases
       middlewares:
         - vpn-whitelist@file
+        - phpmyadmin-auth@file
 ```
 
 Things to notice :
