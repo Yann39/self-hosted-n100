@@ -2,9 +2,9 @@
 
 # Personal self-hosting guide
 
-![Static Badge](https://img.shields.io/badge/Version-1.5.5-2AAB92)
-![Static Badge](https://img.shields.io/badge/Last_update-27_Sept_2026-blue)
-![Static Badge](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
+![Version](https://img.shields.io/badge/Version-1.5.6-2AAB92)
+![Last update](https://img.shields.io/badge/Last_update-01_Oct_2026-blue)
+![License](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 <table>
    <tr>
@@ -21,7 +21,7 @@ This project describes my personal <b>self-hosted</b> infrastructure setup, runn
 This was meant to be just a reminder for me, but I wrote it as a guide, in case it might help someone.
 
 It uses only **free** and **open source** software.
-      </td>
+</td>
    </tr>
 </table>
 
@@ -189,9 +189,9 @@ It should also work on many other **x86** based computers.
 
 ## Target architecture
 
-Here is a chart representing the global network "architecture" we are going to set up, simplified with only the most
+Here is a diagram representing the global network "architecture" we are going to set up, simplified with only the most
 relevant services.
-See [Network flow](#network-flow) for more detailed schemas.
+See [Network flow](#network-flow) to get a view of the request flow.
 
 This architecture allows exposing applications to the internet while restricting access to some of them only through
 **VPN** or from the local network.
@@ -200,187 +200,182 @@ your local network, some only via VPN, and others to anyone from the internet.
 
 ```mermaid
 flowchart TB
-   style HOSTING_PROVIDER fill: #4d683b
-   style DDNS_PROVIDER fill: #69587b
-   style INTERNET_SERVICE_PROVIDER fill: #205566
-   style SERVER_DEVICE fill: #665151
-   style CONTAINER_ENGINE fill: #664343
-   style TRAEFIK_CONTAINER fill: #663535
-   style PIHOLE_CONTAINER fill: #663535
-   style UNBOUND_CONTAINER fill: #663535
-   style MYAPP_CONTAINER fill: #663535
-   style CROWDSEC_CONTAINER fill: #663535
-   style SABLIER_CONTAINER fill: #663535
-   style WIREGUARD_HOST fill: #663535
-   style TRAEFIK_ROUTER fill: #806030
-   style TRAEFIK_MIDDLEWARE fill: #806030
-   style VPN_CLIENT fill: #105040
-   style PIHOLE_DNS_RECORDS fill: #806030
-   style CROWDSEC_COMMUNITY fill: #4d683b
-   DOMAIN(example.com)
-   SUBDOMAIN_WIREGUARD(wireguard.example.com)
-   SUBDOMAIN_MYAPP(myapp.example.com)
-   DDNS(myddns.ddns.net)
-   ROUTER[public IP]
-   ROUTER_PORT80{{80/tcp}}
-   ROUTER_PORT443{{443/tcp}}
-   ROUTER_PORT51820{{51820/udp}}
-   DOCKER_WIREGUARD_PORT51820{{51820/udp}}
-   DOCKER_MYAPP_PORT5000{{5000/tcp}}
-   DOCKER_PIHOLE_PORT80{{80/tcp}}
-   DOCKER_PIHOLE_PORT53{{53/udp}}
-   DOCKER_TRAEFIK_PORT443{{443/tcp}}
-   DOCKER_TRAEFIK_PORT80{{80/tcp}}
-   DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
-   DOCKER_UNBOUND_PORT53{{53/udp}}
-   TRAEFIK_ROUTER_MYAPP(myapp\n.example.com)
-   TRAEFIK_ROUTER_PIHOLE(pihole\n.example.com)
-   TRAEFIK_ROUTER_TRAEFIK(traefik\n.example.com)
-   ROOT_DNS_SERVERS[Root DNS servers]
-   DNS_ISP[DNS 1 & 2]
-   DOCKER_PIHOLE_DNS[DNS 1 & 2]
-   PIHOLE_DNS_PIHOLE[pihole\n.example.com]
-   PIHOLE_DNS_TRAEFIK[traefik\n.example.com]
-   PIHOLE_DNS_MYAPP[myapp\n.example.com]
-   CROWDSEC_BOUNCER(CrowdSec bouncer)
-   CROWDSEC_ENGINE[Security engine\n+ local API]
-   ACCESS_LOG[(access log)]
-   CROWDSEC_COMMUNITY[CrowdSec\ncommunity blocklist]
+    style HOSTING_PROVIDER fill: #4d683b
+    style DDNS_PROVIDER fill: #69587b
+    style INTERNET_SERVICE_PROVIDER fill: #205566
+    style SERVER_DEVICE fill: #665151
+    style CONTAINER_ENGINE fill: #664343
+    style TRAEFIK_CONTAINER fill: #663535
+    style PIHOLE_CONTAINER fill: #663535
+    style UNBOUND_CONTAINER fill: #663535
+    style MYAPP_CONTAINER fill: #663535
+    style CROWDSEC_CONTAINER fill: #663535
+    style SABLIER_CONTAINER fill: #663535
+    style WIREGUARD_HOST fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style VPN_CLIENT fill: #105040
+    style PIHOLE_DNS_RECORDS fill: #806030
+    style CROWDSEC_COMMUNITY fill: #4d683b
+    DOMAIN(example.com)
+    SUBDOMAIN_WIREGUARD(wireguard.example.com)
+    SUBDOMAIN_MYAPP(myapp.example.com)
+    DDNS(myddns.ddns.net)
+    ROUTER[public IP]
+    ROUTER_PORT80{{80/tcp}}
+    ROUTER_PORT443{{443/tcp}}
+    ROUTER_PORT51820{{51820/udp}}
+    DOCKER_WIREGUARD_PORT51820{{51820/udp}}
+    DOCKER_MYAPP_PORT5000{{5000/tcp}}
+    DOCKER_PIHOLE_PORT80{{80/tcp}}
+    DOCKER_PIHOLE_PORT53{{53/udp}}
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
+    DOCKER_UNBOUND_PORT53{{53/udp}}
+    TRAEFIK_ROUTER_MYAPP(myapp\n.example.com)
+    TRAEFIK_ROUTER_PIHOLE(pihole\n.example.com)
+    TRAEFIK_ROUTER_TRAEFIK(traefik\n.example.com)
+    ROOT_DNS_SERVERS[Root DNS servers]
+    DNS_ISP[DNS 1 & 2]
+    DOCKER_PIHOLE_DNS[DNS 1 & 2]
+    PIHOLE_DNS_PIHOLE[pihole\n.example.com]
+    PIHOLE_DNS_TRAEFIK[traefik\n.example.com]
+    PIHOLE_DNS_MYAPP[myapp\n.example.com]
+    CROWDSEC_BOUNCER(CrowdSec bouncer)
+    CROWDSEC_ENGINE[Security engine\n+ local API]
+    ACCESS_LOG[(access log)]
+    CROWDSEC_COMMUNITY[CrowdSec\ncommunity blocklist]
 
-   subgraph VPN_CLIENT[VPN CLIENT]
-      WIREGUARD_CLIENT_ENDPOINT[Endpoint]
-      WIREGUARD_CLIENT_DNS[DNS]
-   end
+    subgraph VPN_CLIENT[VPN CLIENT]
+        WIREGUARD_CLIENT_ENDPOINT[Endpoint]
+        WIREGUARD_CLIENT_DNS[DNS]
+    end
 
-   subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
-      DOMAIN -->|subdomain| SUBDOMAIN_MYAPP
-      DOMAIN -->|subdomain| SUBDOMAIN_WIREGUARD
-   end
+    subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
+        DOMAIN -->|subdomain| SUBDOMAIN_MYAPP
+        DOMAIN -->|subdomain| SUBDOMAIN_WIREGUARD
+    end
 
-   subgraph DDNS_PROVIDER[DYNAMIC DNS PROVIDER]
-      SUBDOMAIN_MYAPP --->|CNAME| DDNS
-      SUBDOMAIN_WIREGUARD --->|CNAME| DDNS
-   end
+    subgraph DDNS_PROVIDER[DYNAMIC DNS PROVIDER]
+        SUBDOMAIN_MYAPP --->|CNAME| DDNS
+        SUBDOMAIN_WIREGUARD --->|CNAME| DDNS
+    end
 
-   subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
-      DDNS --->|DynDNS| ROUTER
-      ROUTER --> ROUTER_PORT443
-      ROUTER --> ROUTER_PORT80
-      ROUTER --> ROUTER_PORT51820
-      DNS_ISP
-   end
+    subgraph INTERNET_SERVICE_PROVIDER[INTERNET SERVICE PROVIDER]
+        DDNS --->|DynDNS| ROUTER
+        ROUTER --> ROUTER_PORT443
+        ROUTER --> ROUTER_PORT80
+        ROUTER --> ROUTER_PORT51820
+        DNS_ISP
+    end
 
-   subgraph SERVER_DEVICE[MINI PC]
-   
-      subgraph CONTAINER_ENGINE[DOCKER]
-      
-         subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-         
-            subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
-            TRAEFIK_ROUTER_TRAEFIK
-            TRAEFIK_ROUTER_MYAPP
-            TRAEFIK_ROUTER_PIHOLE
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_TRAEFIK
+                    TRAEFIK_ROUTER_MYAPP
+                    TRAEFIK_ROUTER_PIHOLE
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
+                    IP_WHITELISTING(IP whitelist)
+                    SABLIER(Sablier dynamic)
+                    AUTH(PocketID auth)
+                end
+
+                CROWDSEC_BOUNCER
+                ACCESS_LOG
+                REDIRECT(HTTPS redirect\non the web entrypoint)
+                DOCKER_TRAEFIK_PORT80
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT8080
             end
-            
-            subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-               REDIRECT(HTTPS redirect)
-               IP_WHITELISTING(IP whitelist)
-               SABLIER(Sablier dynamic)
-               AUTH(PocketID auth)
-            end
-            
-            CROWDSEC_BOUNCER
-            ACCESS_LOG
-            DOCKER_TRAEFIK_PORT80
-            DOCKER_TRAEFIK_PORT443
-            DOCKER_TRAEFIK_PORT8080
-         end
-         
-         subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
-            DOCKER_SABLIER_PORT10000
-            WAITING_PAGE(Waiting page)
-         end
-         
-         subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
-         
-            subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
-               PIHOLE_DNS_TRAEFIK ~~~ 
-               PIHOLE_DNS_PIHOLE ~~~
-               PIHOLE_DNS_MYAPP
-            end
-         
-            DOCKER_PIHOLE_PORT53
-            DOCKER_PIHOLE_PORT80
-            DOCKER_PIHOLE_DNS
-         end
-         
-         subgraph WIREGUARD_HOST[WIREGUARD CONTAINER]
-           DOCKER_WIREGUARD_PORT51820
-         end
-         
-         subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
-           DOCKER_MYAPP_PORT5000
-         end
-         
-         subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
-           DOCKER_UNBOUND_PORT53
-         end
-         
-         subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
-           CROWDSEC_ENGINE
-         end
-      
-      end
-   
-   end
 
-   CLIENT((User )) -.-> VPN_CLIENT
-   BROWSER((Browser)) --> HOSTING_PROVIDER
-   CLIENT -.-> BROWSER
-   VPN_CLIENT --> BROWSER
-   WIREGUARD_CLIENT_ENDPOINT -.->|Server static IP\n192 . 168. 0 . 16|SERVER_DEVICE
-   WIREGUARD_CLIENT_DNS -->|Server tunnel address\n10 . 0 . 0 . 1| SERVER_DEVICE
-   ROUTER_PORT51820 -->|port forward|DOCKER_WIREGUARD_PORT51820
-   ROUTER_PORT443 ------>|port forward|DOCKER_TRAEFIK_PORT443
-   ROUTER_PORT80 -->|port forward|DOCKER_TRAEFIK_PORT80
-   DNS_ISP ------>|Server static IP|DOCKER_PIHOLE_PORT53
-   PIHOLE_DNS_MYAPP --->|Server internal IP|DOCKER_TRAEFIK_PORT443
-   PIHOLE_DNS_PIHOLE --->|Server internal IP|DOCKER_TRAEFIK_PORT443
-   PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
-   DOCKER_TRAEFIK_PORT443 --> CROWDSEC_BOUNCER
-   CROWDSEC_BOUNCER ----->|IP not banned|TRAEFIK_ROUTER
-   DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-   CROWDSEC_BOUNCER -.->|every request logged|ACCESS_LOG
-   ACCESS_LOG -.........->|reads, detects attacks|CROWDSEC_ENGINE
-   CROWDSEC_ENGINE -.->|decisions|CROWDSEC_BOUNCER
-   CROWDSEC_ENGINE <-...->|signals / community blocklist|CROWDSEC_COMMUNITY
-   TRAEFIK_ROUTER_MYAPP --> REDIRECT
-   TRAEFIK_ROUTER_PIHOLE --> REDIRECT
-   TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API|REDIRECT
-   IP_WHITELISTING --> AUTH
-   IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
-   REDIRECT ----> SABLIER
-   SABLIER <-..->|return status|DOCKER_SABLIER_PORT10000
-   SABLIER --->|not ready|WAITING_PAGE
-   SABLIER --->|ready|DOCKER_MYAPP_PORT5000
-   REDIRECT --> IP_WHITELISTING
-   DOCKER_SABLIER_PORT10000 <-.->|check status|DOCKER_MYAPP_PORT5000
-   AUTH --> DOCKER_TRAEFIK_PORT8080
-   DOCKER_PIHOLE_DNS ---> DOCKER_UNBOUND_PORT53
-   UNBOUND_CONTAINER <----> ROOT_DNS_SERVERS
+            subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
+                DOCKER_SABLIER_PORT10000
+                WAITING_PAGE(Waiting page)
+            end
+
+            subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
+                subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
+                    PIHOLE_DNS_TRAEFIK
+                    PIHOLE_DNS_PIHOLE
+                    PIHOLE_DNS_MYAPP
+                end
+
+                DOCKER_PIHOLE_PORT53
+                DOCKER_PIHOLE_PORT80
+                DOCKER_PIHOLE_DNS
+            end
+
+            subgraph WIREGUARD_HOST[WIREGUARD CONTAINER]
+                DOCKER_WIREGUARD_PORT51820
+            end
+
+            subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
+                DOCKER_MYAPP_PORT5000
+            end
+
+            subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
+                DOCKER_UNBOUND_PORT53
+            end
+
+            subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
+                CROWDSEC_ENGINE
+            end
+        end
+    end
+
+    CLIENT((User)) -.-> VPN_CLIENT
+    BROWSER((Browser)) -------> HOSTING_PROVIDER
+    CLIENT -...........-> BROWSER
+    VPN_CLIENT ----------> BROWSER
+    WIREGUARD_CLIENT_ENDPOINT -.->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
+    WIREGUARD_CLIENT_DNS -->|" Server tunnel address\n10.0.0.1 "| SERVER_DEVICE
+    ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
+    ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
+    ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
+    DNS_ISP ------>|Server static IP| DOCKER_PIHOLE_PORT53
+    PIHOLE_DNS_MYAPP --->|Server internal IP| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_PIHOLE --->|Server internal IP| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
+    DOCKER_TRAEFIK_PORT443 --> CROWDSEC_BOUNCER
+    CROWDSEC_BOUNCER ----->|IP not banned| TRAEFIK_ROUTER
+    DOCKER_TRAEFIK_PORT80 --> REDIRECT
+    REDIRECT -....->|301 to https| BROWSER
+    CROWDSEC_BOUNCER -.->|every request logged| ACCESS_LOG
+    ACCESS_LOG -.........->|reads, detects attacks| CROWDSEC_ENGINE
+    CROWDSEC_ENGINE -.->|decisions| CROWDSEC_BOUNCER
+    CROWDSEC_ENGINE <-...->|signals / community blocklist| CROWDSEC_COMMUNITY
+    TRAEFIK_ROUTER_MYAPP ----> SABLIER
+    TRAEFIK_ROUTER_PIHOLE --> IP_WHITELISTING
+    TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| IP_WHITELISTING
+    IP_WHITELISTING --> AUTH
+    IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
+    SABLIER <-..->|return status| DOCKER_SABLIER_PORT10000
+    SABLIER --->|not ready| WAITING_PAGE
+    SABLIER --->|ready| DOCKER_MYAPP_PORT5000
+    DOCKER_SABLIER_PORT10000 <-.->|check status| DOCKER_MYAPP_PORT5000
+    AUTH --> DOCKER_TRAEFIK_PORT8080
+    DOCKER_PIHOLE_DNS ---> DOCKER_UNBOUND_PORT53
+    UNBOUND_CONTAINER <----> ROOT_DNS_SERVERS
 ```
 
 Basically all services will be accessible via dedicated subdomains which will point to our local network, either through
 **dynamic DNS** or through **local DNS records**, then a **reverse proxy** will be responsible for routing the requests
 to the right application running in **Docker** containers.
 
-We make the **ISP upstream DNS** (from **router** configuration) point to the server **IP address**, so that we reroute
-the entire Internet traffic through **Pi-hole** and thus take advantage of its benefits.
+We make the **ISP upstream DNS** (from **router** configuration or on each device) point to the server **IP address**,
+so that we reroute the entire traffic through **Pi-hole** and thus take advantage of its benefits,
+see [Network configuration](#network-configuration).
 
 In this example **Traefik** (_traefik.example.com_) and **Pi-Hole** (_pihole.example.com_) are only accessible through
 VPN and from the local network thanks to local DNS records and IP whitelisting, while **Myapp** (_myapp.example.com_) is
-also accessible from the internet publicly. In addition, Traefik dashboard is behind **OIDC authentication** through
-**PocketID**, see [PocketID](#pocketid).
+also accessible from the internet publicly, behind **Sablier** which start/stop the container on demand,
+see [Scale to zero with Sablier](#scale-to-zero-with-sablier).
+In addition, Traefik dashboard is behind **OIDC authentication** through **PocketID**, see [PocketID](#pocketid).
 
 On top of that, **CrowdSec** watches the Traefik access log and its bouncer, plugged on the HTTPS entrypoint, rejects
 the IP addresses flagged as malicious (by our own scenarios or by the community blocklist) before they reach any
@@ -392,7 +387,7 @@ You will find more details on how all this has been implemented later in this gu
 
 <img src="images/logo-debian.svg" alt="Debian logo"/>
 
-By default, the Mni PC came with **Windows 11**, I simply installed **Debian 12** instead (then followed version up to
+By default, the Mini PC came with **Windows 11**, I simply installed **Debian 12** instead (then followed version up to
 **13.4**, which is the version I use at the time of writing this guide).
 Backup the Windows key before, just in case.
 
@@ -464,9 +459,10 @@ Enter your password then you are ready to go !
 
 You can also use your preferred **SSH client**.
 
-Unless you want to be able to do some operations from outside your local network, there is no need to open the SSH port
-to the internet.
-If you do so consider using it behind a VPN (even if SSH itself is very secure).
+> [!NOTE]
+> Unless you want to be able to do some operations from outside your local network, there is no need to open the SSH
+port to the internet.
+> If you do so consider using it behind a VPN (even if SSH itself is very secure).
 
 ## Basic tools
 
@@ -564,7 +560,7 @@ newgrp docker  # or log out/in
 sudo docker info
 ```
 
-> [!NOTE]
+> [!IMPORTANT]
 > In this guide I systematically use latest images (`:latest`tag), but usually you better want to avoid using `:latest`
 tags in production.
 > Anyway if you use `latest` tags and want to update an image in the future, simply pull it again and rerun your
@@ -585,17 +581,29 @@ locations.
 The idea is to have :
 
 - A main **domain** name
-- A **subdomain** name for each application that must be reachable from the internet
+- A **subdomain** name for each application that must be reachable
 - A **dynamic DNS** name to avoid having to use a **static** public IP address
-- A **Traefik** reverse proxy to handle HTTP request that will be port forwarded to the applications
+- A **reverse proxy** to handle HTTP request that will be port forwarded to the applications
 
-For services that will not be accessible to the internet, we will use **Pi-Hole**’s ability to manage **local DNS
-records** (each record will point to server's internal IP address) so that they are also reachable using a subdomain
-name.
+We will also use [Pi-Hole](#pi-hole)'s ability to manage **local DNS records**, each pointing to the server's internal
+IP address.
+They serve two distinct purposes, and are needed for **every** service, public or not :
 
-Here is an overview of the route for each case, when a client request _myapp.example.com_ :
+- services that are **not** exposed to the internet have no public DNS record at all, so a local record is the only way
+  to reach them by name
+- services that **are** exposed still need one, otherwise a device at home resolves the public name, leaves to the
+  router and comes back through its **NAT loopback** :
+  that costs about half of the throughput, makes Traefik see your own public IP instead of the device's address
+  (so [CrowdSec](#crowdsec) and the logs can no longer tell
+  your devices apart), and depends on a router feature that not all of them provide
 
-:small_blue_diamond: Internet access :
+In short, the public record is for your **visitors**, the local one is for **you**.
+
+Here is an overview of the route for each case, when a client requests _myapp.example.com_. Note that `myapp` is a
+**public** service here, and that a client on the local network still reaches it through the **local** DNS record
+rather than through the internet :
+
+:small_blue_diamond: Internet access (external) :
 
 ```mermaid
 flowchart LR
@@ -627,7 +635,7 @@ flowchart LR
     end
 
     subgraph SERVER_DEVICE[MINI PC]
-        subgraph TRAEFIK_CONTAINER[TRAEFIK]
+        subgraph TRAEFIK_CONTAINER[REVERSE PROXY]
             DOCKER_TRAEFIK_PORT
         end
 
@@ -663,7 +671,7 @@ flowchart LR
     WIREGUARD_PORT{{port}}
     PIHOLE_DNS{{port}}
 
-    subgraph VPN[VPN]
+    subgraph VPN[VPN CLIENT]
         VPN_CLIENT
         VPN_ENDPOINT
     end
@@ -674,7 +682,7 @@ flowchart LR
             PIHOLE_DNS_MYAPP
         end
 
-        subgraph TRAEFIK_CONTAINER[TRAEFIK]
+        subgraph TRAEFIK_CONTAINER[REVERSE PROXY]
             DOCKER_TRAEFIK_PORT
         end
 
@@ -682,7 +690,7 @@ flowchart LR
             APPLICATION_PORT
         end
 
-        subgraph WIREGUARD[WIREGUARD]
+        subgraph WIREGUARD[VPN SERVER]
             WIREGUARD_PORT
         end
     end
@@ -720,7 +728,7 @@ flowchart LR
             PIHOLE_DNS_MYAPP
         end
 
-        subgraph TRAEFIK_CONTAINER[TRAEFIK]
+        subgraph TRAEFIK_CONTAINER[REVERSE PROXY]
             DOCKER_TRAEFIK_PORT
         end
 
@@ -730,8 +738,9 @@ flowchart LR
 
     end
 
-    CLIENT ---> ISP_DNS
-    ISP_DNS ---> PIHOLE_DNS
+    CLIENT ---->|DNS server set to the mini PC| PIHOLE_DNS
+    CLIENT -..->|only if the router really relays DNS| ISP_DNS
+    ISP_DNS -..-> PIHOLE_DNS
     PIHOLE_DNS_MYAPP --->|A| TRAEFIK_CONTAINER
     DOCKER_TRAEFIK_PORT -->|HTTP router| APPLICATION_PORT
 ```
@@ -844,11 +853,11 @@ internet :
 
 Then add corresponding **CNAME records** to point to the dynamic DNS `myddns.ddns.net` :
 
-- `CNAME	wireguard	    myddns.ddns.net`
-- `CNAME	quake	        myddns.ddns.net`
-- `CNAME	lychee	        myddns.ddns.net`
-- `CNAME	ccteam	        myddns.ddns.net`
-- `CNAME	goatcounter	    myddns.ddns.net`
+- `CNAME    wireguard      myddns.ddns.net`
+- `CNAME    quake          myddns.ddns.net`
+- `CNAME    lychee         myddns.ddns.net`
+- `CNAME    ccteam         myddns.ddns.net`
+- `CNAME    goatcounter    myddns.ddns.net`
 
 A **CNAME record** is just a records which points a name to another name instead of pointing to an IP address (like
 **A** records).
@@ -860,20 +869,21 @@ defined at this level.
 >
 > However, while the VPN stuff is fully functional and to be able to do the configuration easily from your client
 machine, you may want to temporarily create subdomains and add CNAME records for the following subdomains (also remove
-the IP whitelisting middleware in the corresponding service configuration), else you will be blocked by IP
-whitelisting :
+the IP whitelisting middleware in the corresponding service configuration, else you will be blocked by IP
+whitelisting) :
 >
 > - `arcane.example.com` : To manage Docker containers (start/stop, check logs, etc.)
 > - `pihole.example.com` : To configure the local DNS records
+>
+> This is optional, you can of course manage containers and do the Pi-Hole configuration from command line.
 
 ## Port forwarding
 
 For our services to be reachable from the internet, we need to **forward incoming requests** to our mini PC so that they
-will be handled by our **Traefik** reverse proxy.
-This can be done through **port forwarding**.
+will be handled by the **reverse proxy**. This can be done through **port forwarding**.
 
 Port forwarding directs the **router** to send any incoming data from the internet to a specified device on the network.
-It is safe to forward ports on your router as long as you have a **reverse proxy** or a **firewall** running in between.
+It is safe to forward ports on your router as long as you have a reverse proxy or a **firewall** running in between.
 
 ### Allow access without VPN
 
@@ -896,7 +906,7 @@ and `443` :
 - Device : `n100`
 - Protocol : `TCP`
 
-We will configure **Traefik** later to **redirect** HTTP requests to HTTPS.
+We will configure [Traefik](#reverse-proxy) later to **redirect** HTTP requests to HTTPS.
 But if you prefer you can only open the HTTPS port (if you are going to use Let's encrypt' **HTTP challenge**,
 it's enough for the TLS certificates to be generated, see the warning box a little further below though).
 
@@ -1020,12 +1030,12 @@ Then copy the files from this project's _traefik_ directory into the _/opt/apps/
 - _docker-compose.yml_ : The Traefik service definition
 - _traefik.yml_ : The Traefik static configuration
 - _.env_ : The secrets read by the service (DNS provider token, CrowdSec bouncer key), to fill in
-- _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (if you want it restricted
-  with **basic authentication**),
+- _credentials.txt_ : A file that will hold users credentials to access the Traefik dashboard (only if you want
+  it to be restricted with **basic authentication**),
   see [Generate basic authentication credentials](#generate-basic-authentication-credentials)
 
 Files should be ready to use, simply replace the e-mail address (`admin@example.com`) in the _traefik.yaml_ file with
-your e-mail address.
+your e-mail address, and `example.com` with your hostname.
 
 You will also need to create the **JSON** file to hold the certificates, see [TLS certificates](#tls-certificates).
 
@@ -1034,8 +1044,8 @@ Anyway you will find below more details about each file
 
 ### Generate basic authentication credentials
 
-If you want the Traefik dashboard to be protected with **basic authentication** rather than via PocketID, allowed users
-have to be added to the _credentials.txt_ file.
+This is optional, use this only if you want the Traefik dashboard to be protected with **basic authentication**
+rather than via PocketID, allowed users have to be added to the _credentials.txt_ file.
 
 You can generate a user/password using **htpasswd** :
 
@@ -1055,7 +1065,7 @@ Then copy the output to the _credentials.txt_ file.
 
 > [!NOTE]
 > Actually as Traefik will be accessible only from local network and through VPN, we don't really need to set up
-authentication, but it's more for demonstration, and it's always better to have 2 layers of security than one.
+authentication, it's more for demonstration, and it's always better to have 2 layers of security than one.
 
 ### TLS certificates
 
@@ -1092,7 +1102,7 @@ tlsChallenge: { }
 ```
 
 > [!WARNING]
-> Note that Let’s Encrypt will not let you use this challenge to issue wildcard certificates.
+> Note that Let’s Encrypt will not let you use this challenge to issue **wildcard** certificates.
 
 #### DNS challenge
 
@@ -1147,7 +1157,7 @@ So we allow exactly 2 **IP ranges** :
 
 - the **local IP range** : IPs assigned to the devices on your local network (computers, mobile devices, ...)
 - the **WireGuard subnet** : the VPN peers keep their tunnel address when they reach Traefik, as WireGuard runs on the
-  host and the peers' traffic is not NATed towards the containers
+  host and the peers' traffic is not NATed towards the containers, see [WireGuard](#wireguard) for more details.
 
 That way :
 
@@ -1156,7 +1166,7 @@ That way :
 - Requests coming from the internet without VPN come with a public IP address and are **rejected**, as it does not match
   any whitelisted address.
 
-> [!NOTE]
+> [!IMPORTANT]
 > A request from your own network to a name that resolves to your **public IP** goes through the NAT loopback of the
 router and reaches Traefik with the **public IP** as source : rejected as well.
 > So the private services must resolve to the LAN address of the mini PC for the devices that use them (Pi-Hole's local
@@ -1170,7 +1180,7 @@ resolving to the public IP.
 > A container is not a trusted client, and with the [network segmentation](#network-segmentation) below, a whitelisted
 Docker range would let a compromised public container walk straight into the private services.
 
-Then it just needs to be referenced in the `middlewares` list of every router that must stay private
+Then the middleware just needs to be referenced in the `middlewares` section of every router that must stay private
 (`vpn-whitelist@file`), as you will see in the services definitions.
 Keep in mind that it only protects the requests that go **through Traefik** : what a container can reach directly on the
 Docker networks is the job of the network segmentation.
@@ -1187,10 +1197,10 @@ The IP whitelist does not help there, it never sees this traffic.
 
 So Traefik sits on two networks, and nothing else is allowed to be on both :
 
-| Network               | Who                                                                                                           | Reachable from                               |
-|-----------------------|---------------------------------------------------------------------------------------------------------------|----------------------------------------------|
-| `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Arcane, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ...    | local network and VPN only (`vpn-whitelist`) |
-| `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, ...                               | anyone                                       |
+| Network               | Who                                                                                                        | Reachable from                               |
+|-----------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------|
+| `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Arcane, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ... | local network and VPN only (`vpn-whitelist`) |
+| `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, ...                            | anyone                                       |
 
 A compromised public container can then only see Traefik and the other public applications, never the private ones. A
 few rules go with it :
@@ -1290,7 +1300,8 @@ This config file :
 
 - defines a `docker` provider so that we can use **container labels** for retrieving routing configuration. We have
   configured it to **not** expose containers by default, so that containers that do not have a `traefik.enable=true`
-  label are ignored from the resulting routing configuration
+  label are ignored from the resulting routing configuration. You can omit this if you use only dynamic configuration
+  files
 - defines a `default` **certificate resolver** for Let's Encrypt to automatically generate certificates
 - set log level to `info` (you can set it to `debug` when you need more information on what's going on)
 - writes the **access log** as JSON lines in _/var/log/traefik/access.log_ (a folder bound in the Compose file), one
@@ -1535,7 +1546,7 @@ sudo mkdir -p /opt/apps/pihole /opt/apps/unbound /opt/apps/wgdashboard/data
 
 Then from this project's _pihole_, _unbound_ and _wgdashboard_ directories, copy the _docker-compose.yml_ files into the
 matching _/opt/apps_ folders.
-For more details about these files, see [Configuration files details](#configuration-files-details-1).
+For more details about these files, see [Configuration files details](#configuration-files-details-1) below.
 
 WireGuard itself is a Debian package :
 
@@ -1651,17 +1662,6 @@ PersistentKeepalive = 25
 > - `0.0.0.0/1, 128.0.0.0/1` also disables the **kill switch** and the **DNS leak protection** of the Windows client
     (only a `0.0.0.0/0` route enables them), so Windows silently falls back to the router DNS if Pi-Hole does not answer
     within about a second.
-> - Never point a client to an address the server holds on a **secondary interface** (Wi-Fi, USB adapter), see the
-    warning below.
-
-> [!WARNING]
-> Connect the server to the LAN through **one interface only**. I had the Wi-Fi of the mini PC connected to the same
-network "just in case", plus a USB Ethernet adapter left over from a test.
-> Linux answers ARP requests for **all** its addresses on **all** its interfaces, so the router could deliver traffic
-for the main address through the Wi-Fi or the USB adapter, NetworkManager detected its own Wi-Fi as an address conflict
-and dropped the USB adapter address for hours at each DHCP renewal, and the client I had pointed to that address lost
-its tunnel at random and got a fraction of the throughput when it worked. Disable the Wi-Fi
-(`sudo nmcli radio wifi off`) and unplug what you don't use.
 
 #### WGDashboard
 
@@ -1669,8 +1669,7 @@ its tunnel at random and got a fraction of the throughput when it worked. Disabl
 
 Managing the peers in _wg0.conf_ with an editor works, but a web interface is more comfortable : **WGDashboard** shows
 the interfaces, the peers, their last handshake and their traffic, creates a peer with its keys and its QR code, and
-serves the configuration file to download. It is the replacement for WireGuard UI, which is no longer maintained and
-which could not be used with WireGuard running on the host.
+serves the configuration file to download.
 
 > [!IMPORTANT]
 > The container **must share the host's network namespace** (`network_mode: host`). WireGuard runs on the host, so the
@@ -1748,9 +1747,9 @@ LAN) : by default it only answers "local" requests, and "local" for Pi-Hole is t
 file sets this once and for all with the`FTLCONF_dns_listeningMode: 'all'` environment variable (the equivalent of
 _Settings -> DNS -> Interface settings -> "Permit all origins"_ in the web UI).
 
-The web UI is reachable at https://pihole.example.com through **Traefik** : the Compose file does not carry Traefik
-labels anymore, the router is declared in a file of Traefik's **dynamic configuration** directory instead
-(see [Traefik routing](#traefik-routing) below), restricted to the local network and the VPN peers.
+The web UI is reachable at https://pihole.example.com through **Traefik**, the router is declared in a file
+of Traefik's **dynamic configuration** directory (see [Traefik routing](#traefik-routing) below),
+restricted to the local network and the VPN peers.
 
 > [!IMPORTANT]
 > Chicken and egg : the private services have **no public DNS record**
@@ -1796,14 +1795,18 @@ ccteam.example.com                  192.168.0.16
 crowdsec.example.com                192.168.0.16
 dashboard.example.com               192.168.0.16
 dashdot.example.com                 192.168.0.16
+gatus.example.com                   192.168.0.16
 ghostfolio.example.com              192.168.0.16
 goatcounter.example.com             192.168.0.16
+grafana.example.com                 192.168.0.16
 homebox.example.com                 192.168.0.16
 lychee.example.com                  192.168.0.16
 phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 pocketid.example.com                192.168.0.16
+prometheus.example.com              192.168.0.16
 quake.example.com                   192.168.0.16
+speedtest-tracker.example.com       192.168.0.16
 traefik.example.com                 192.168.0.16
 wgdashboard.example.com             192.168.0.16
 ```
@@ -2197,15 +2200,15 @@ results :
 | PC     | cable      | :red_circle: off  | 144.12.117.3  | 192.168.0.16                    | 192.168.0.11  | :heavy_check_mark: 200 OK |
 | PC     | cable      | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 192.168.0.11  | :heavy_check_mark: 200 OK |
 | Mobile | wifi       | :red_circle: off  | 144.12.117.3  | 192.168.0.16                    | 192.168.0.12  | :heavy_check_mark: 200 OK |
-| Mobile | wifi       | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 172.22.0.1    | :heavy_check_mark: 200 OK |
+| Mobile | wifi       | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 172.21.0.1    | :heavy_check_mark: 200 OK |
 | Mobile | 4G         | :red_circle: off  | 81.165.84.189 | 144.12.117.3                    | 81.165.84.189 | :x: 403 Forbidden         |
-| Mobile | 4G         | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 172.22.0.1    | :heavy_check_mark: 200 OK |
+| Mobile | 4G         | :green_circle: on | 144.12.117.3  | 192.168.0.16                    | 172.21.0.1    | :heavy_check_mark: 200 OK |
 
 - `192.168.0.16` is the mini PC's private IP address
 - `144.12.117.3` is the router's public IP address
 - `192.168.0.11` is the desktop PC's local IP address
 - `192.168.0.12` is the mobile phone's local IP address
-- `172.22.0.1` is the Traefik Bridge network IP address
+- `172.21.0.1` is the Traefik Bridge network IP address
 - `81.165.84.189` is the public IP address on the mobile 4G network
 
 These are expected results, we can see that the service is reachable from the local network and from anywhere when using
@@ -2217,7 +2220,7 @@ see the debug logs) which shows that the `vpn-whitelist` **middleware** blocks a
 > ```
 > level=debug msg="Authentication succeeded" middlewareType=BasicAuth middlewareName=auth@docker
 > level=debug msg="Accepting IP 192.168.0.16" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
-> level=debug msg="Accepting IP 172.22.0.1" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
+> level=debug msg="Accepting IP 172.21.0.1" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
 > level=debug msg="Rejecting IP 81.165.84.189: \"81.165.84.189\" matched none of the trusted IPs" middlewareName=vpn-whitelist@docker middlewareType=IPWhiteLister
 > ```
 
@@ -2316,8 +2319,7 @@ What does help :
   all with the DNS pointing to Pi-Hole, gives the same ad blocking at 920 Mbit/s.
   Away from home, the remote connection is the limit anyway.
 - If you really want line rate through the tunnel, the fix is hardware : a **multi-queue** network card (for example an
-  Intel i226 on an M.2 A+E adapter, in place of the unused Wi-Fi card, brings 4 queues and receive rings up to 4096
-  descriptors).
+  Intel i226 on an M.2 A+E adapter, brings 4 queues and receive rings up to 4096 descriptors).
 
 ### Network card settings
 
@@ -2365,7 +2367,6 @@ flowchart TB
     style UNBOUND_CONTAINER fill: #663535, color: #fff
     style MYAPP_CONTAINER fill: #663535, color: #fff
     style TRAEFIK_ROUTER fill: #806030, color: #fff
-    style TRAEFIK_MIDDLEWARE fill: #806030, color: #fff
     DOMAIN(example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
     DDNS(myddns.ddns.net)
@@ -2379,7 +2380,7 @@ flowchart TB
     DOCKER_MYAPP_PORT{{port/tcp}}
     DOCKER_UNBOUND_PORT53{{53/udp}}
     TRAEFIK_ROUTER_MYAPP(myapp.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect\non the web entrypoint)
     ROOT_DNS_SERVERS[Root DNS servers]
 
     subgraph HOSTING_PROVIDER[DOMAIN NAME REGISTRAR]
@@ -2415,13 +2416,10 @@ flowchart TB
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443
                 DOCKER_TRAEFIK_PORT80
+                TRAEFIK_MIDDLEWARE_REDIRECT
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_MYAPP
-                end
-
-                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
                 end
             end
 
@@ -2439,10 +2437,9 @@ flowchart TB
     ROUTER_PORT443 -->|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
     DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| DOCKER_TRAEFIK_PORT443
+    TRAEFIK_ROUTER_MYAPP --> DOCKER_MYAPP_PORT
     BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
     LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER_DNS
     ROUTER_DNS <-->|Banana Pi M5 static IP| DOCKER_PIHOLE_PORT53
@@ -2459,12 +2456,11 @@ flowchart TB
     linkStyle 10 stroke-width: 4px, stroke: red
     linkStyle 11 stroke-width: 4px, stroke: red
     linkStyle 12 stroke-width: 4px, stroke: red
-    linkStyle 13 stroke-width: 4px, stroke: red
+    linkStyle 13 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 18 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
 ```
 
 </td>
@@ -2483,7 +2479,6 @@ flowchart TB
     style TRAEFIK_CONTAINER fill: #663535
     style MYAPP_CONTAINER fill: #663535
     style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
     style DNS_RESOLVER fill: #805060
     DOMAIN(example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
@@ -2496,7 +2491,7 @@ flowchart TB
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_MYAPP_PORT{{port/tcp}}
     TRAEFIK_ROUTER_MYAPP(myapp.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect\non the web entrypoint)
     ROOT_DNS_SERVERS[Root DNS servers]
     CLOUDFLARE(Cloudflare, etc.)
 
@@ -2532,13 +2527,10 @@ flowchart TB
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443
                 DOCKER_TRAEFIK_PORT80
+                TRAEFIK_MIDDLEWARE_REDIRECT
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_MYAPP
-                end
-
-                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
                 end
             end
 
@@ -2556,10 +2548,9 @@ flowchart TB
     ROUTER_PORT443 -->|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
     DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_MYAPP_PORT
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| DOCKER_TRAEFIK_PORT443
+    TRAEFIK_ROUTER_MYAPP --> DOCKER_MYAPP_PORT
     BROWSER((browser)) <--> LOCAL_DNS_RESOLVER[/local resolver\]
     LOCAL_DNS_RESOLVER <--->|router local IP address| ROUTER2_DNS
     ROUTER2_DNS <--> CLOUDFLARE
@@ -2575,11 +2566,10 @@ flowchart TB
     linkStyle 10 stroke-width: 4px, stroke: red
     linkStyle 11 stroke-width: 4px, stroke: red
     linkStyle 12 stroke-width: 4px, stroke: red
-    linkStyle 13 stroke-width: 4px, stroke: red
+    linkStyle 13 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
 ```
 
 </td>
@@ -2591,8 +2581,8 @@ gets the mini PC's **internal IP** and reaches the **reverse proxy** directly on
 public IP (no port forwarding, no NAT loopback).
 From **any other location** (right), the name is resolved publicly through the client's **DNS resolver** and the request
 reaches the mini PC on port **80** (HTTP) after being **port forwarded** by the **ISP router**.
-In both cases the reverse proxy redirects the request to port **443** (HTTPS) thanks to the **HTTPS redirect
-middleware**, which finally routes it to the target application (red line).
+In both cases the **web entrypoint** of the reverse proxy redirects the request to port **443** (HTTPS), where the
+router of the application finally routes it to the target application (red line).
 
 ### With VPN
 
@@ -2628,7 +2618,7 @@ flowchart TB
     DOCKER_MYAPP_PORT{{port/tcp}}
     DOCKER_UNBOUND_PORT53{{53/udp}}
     TRAEFIK_ROUTER_MYAPP(myapp.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect\non the web entrypoint)
     TRAEFIK_MIDDLEWARE_WHITELIST(IP whitelist)
     ROOT_DNS_SERVERS[Root DNS servers]
     PIHOLE_DNS_MYAPP(myapp.example.com)
@@ -2674,13 +2664,13 @@ flowchart TB
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443
                 DOCKER_TRAEFIK_PORT80
+                TRAEFIK_MIDDLEWARE_REDIRECT
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_MYAPP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_WHITELIST
                 end
             end
@@ -2707,10 +2697,9 @@ flowchart TB
     ROUTER_PORT51820 ----->|port forward| WIREGUARD_PORT
     PIHOLE_DNS_MYAPP -->|mini PC internal IP| DOCKER_TRAEFIK_PORT80
     DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_REDIRECT
-    TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_TRAEFIK_PORT443
-    TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_WHITELIST
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| DOCKER_TRAEFIK_PORT443
+    TRAEFIK_ROUTER_MYAPP --> TRAEFIK_MIDDLEWARE_WHITELIST
     TRAEFIK_MIDDLEWARE_WHITELIST --> DOCKER_MYAPP_PORT
     ROUTER_DNS <---->|mini PC static IP| DOCKER_PIHOLE_PORT53
     DOCKER_PIHOLE_PORT53 <-->|DNS| DOCKER_UNBOUND_PORT53
@@ -2733,9 +2722,8 @@ flowchart TB
     linkStyle 15 stroke-width: 4px, stroke: red
     linkStyle 16 stroke-width: 4px, stroke: red
     linkStyle 17 stroke-width: 4px, stroke: red
-    linkStyle 18 stroke-width: 4px, stroke: red
+    linkStyle 19 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
     linkStyle 20 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 21 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
 ```
 
 Here, first the client needs to connect to the **VPN server** through his preferred **VPN client**.
@@ -2746,8 +2734,8 @@ The **DNS resolving** always go through **Pi-Hole** and **Unbound** (yellow dott
 the application.
 
 The request for the application is handled by Pi-Hole DNS local record which route it to the mini PC IP address,
-to be handled by the **reverse proxy**, and is then redirected to port **443** (HTTPS) thanks to the **HTTPS redirect
-middleware**, which finally route it to the target application (red line).
+to be handled by the **reverse proxy**, and is then redirected to port **443** (HTTPS) by its **web entrypoint**, where
+the router of the application finally routes it to the target application (red line).
 
 If in any way the request arrives to Traefik with an unauthorized IP address, it will be rejected thanks to the **IP
 whitelist** middleware.
@@ -2768,10 +2756,11 @@ manager). Nothing to remember, nothing to phish, and one login for every service
 
 There are two ways to plug a service on it :
 
-- services that speak OIDC natively (Arcane, Grafana, ...) get their own **OIDC client** in PocketID and show a "login with
+- services that speak OIDC natively (Arcane, Grafana, ...) get their own **OIDC client** in PocketID and show a "login
+  with
   PocketID" button
 - services that don't (Pi-Hole, the Traefik dashboard) are put behind
-  the [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth) **Traefik plugin** :
+  the [traefik-oidc-auth](https://github.com/sevensolutions/traefik-oidc-auth)➚ **Traefik plugin** :
   a middleware that redirects the browser to PocketID, checks the token it comes back with and keeps a session cookie,
   so that the service behind never sees an unauthenticated request
 
@@ -2791,17 +2780,29 @@ flowchart LR
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
-    TRAEFIK_ROUTER_APP(pihole.example.com)
-    TRAEFIK_ROUTER_POCKETID(pocketid.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_ROUTER_APP(pihole)
+    TRAEFIK_ROUTER_POCKETID(pocketid)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect\non the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     TRAEFIK_MIDDLEWARE_OIDC(OIDC auth\npihole-auth)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                TRAEFIK_MIDDLEWARE_REDIRECT
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                    TRAEFIK_MIDDLEWARE_OIDC
+                end
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
+                    TRAEFIK_ROUTER_APP
+                    TRAEFIK_ROUTER_POCKETID
+                end
+            end
+
             subgraph APP_CONTAINER[PI-HOLE CONTAINER]
                 DOCKER_APP_PORT
             end
@@ -2809,34 +2810,20 @@ flowchart LR
             subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
                 DOCKER_POCKETID_PORT
             end
-
-            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-
-                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
-                    TRAEFIK_ROUTER_APP
-                    TRAEFIK_ROUTER_POCKETID
-                end
-
-                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
-                    TRAEFIK_MIDDLEWARE_REDIRECT
-                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                    TRAEFIK_MIDDLEWARE_OIDC
-                end
-
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
-                TRAEFIK_MIDDLEWARE_OIDC -->|authenticated| DOCKER_APP_PORT
-                TRAEFIK_MIDDLEWARE_OIDC -.->|not authenticated : browser redirected to the login page| TRAEFIK_ROUTER_POCKETID
-                TRAEFIK_MIDDLEWARE_OIDC -.->|token validation through the Docker network| DOCKER_POCKETID_PORT
-                TRAEFIK_ROUTER_POCKETID --> DOCKER_POCKETID_PORT
-            end
-
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https, before any router| INCOMING_REQUEST
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+    TRAEFIK_MIDDLEWARE_OIDC -->|authenticated| DOCKER_APP_PORT
+    TRAEFIK_MIDDLEWARE_OIDC -.->|not authenticated : browser redirected to the login page| TRAEFIK_ROUTER_POCKETID
+    TRAEFIK_MIDDLEWARE_OIDC -.->|token validation through the Docker network| DOCKER_POCKETID_PORT
+    TRAEFIK_ROUTER_POCKETID --> DOCKER_POCKETID_PORT
 ```
 
 ### Setting up
@@ -2896,9 +2883,9 @@ Now create one **OIDC client** per service to protect (_OIDC Clients -> Add_) :
       reach the provider this way
   ```mermaid
   flowchart LR
-      APP[application container] -->|1 . resolves pocketid.example.com| DNS[[Docker DNS : alias on Traefik]]
-      APP -->|2 . HTTPS, source 172.21.x.x| TRAEFIK[Traefik]
-      TRAEFIK -->|3 . pocketid-whitelist accepts the private network| POCKETID[PocketID]
+      APP[application container] -->|1 . resolves<br>pocketid.example.com| DNS[[Docker DNS : alias on Traefik]]
+      APP -->|2 . HTTPS,<br>source 172.21.x.x| TRAEFIK[Traefik]
+      TRAEFIK -->|3 . pocketid-whitelist<br>accepts the private network| POCKETID[PocketID]
   ```
 
 Finally, to protect a service with the middleware, add it to the `middlewares` list of its router, after the IP
@@ -3149,7 +3136,7 @@ In our setup the only door open to the internet is Traefik, so everything happen
   is checked against the current decisions before reaching any router,
   private services included (harmless : the local network and the VPN peers are trusted and never blocked)
 
-Here is an overview of the network flow :
+Here is an overview of the network flow (when trying to reach Lychee app) :
 
 ```mermaid
 flowchart LR
@@ -3163,32 +3150,26 @@ flowchart LR
     style CONTAINER_ENGINE fill: #664545
     style HUB fill: #4d683b
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
     DOCKER_CROWDSEC_PORT{{8080/tcp\nlocal API}}
-    TRAEFIK_ROUTER_APP(lychee.example.com)
-    TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer\non the websecure entrypoint)
-    TRAEFIK_MIDDLEWARE_OTHERS(router middlewares)
+    TRAEFIK_ROUTER_APP(lychee)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
+    TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer on<br>the websecure entrypoint)
     INCOMING_REQUEST((INCOMING\nREQUEST))
     HUB((CrowdSec hub\nand community))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
-
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_CROWDSEC
-                    TRAEFIK_MIDDLEWARE_OTHERS
                 end
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
-
-                TRAEFIK_MIDDLEWARE_CROWDSEC -->|IP not banned| TRAEFIK_ROUTER_APP
-                TRAEFIK_MIDDLEWARE_CROWDSEC -.->|IP banned : 403| INCOMING_REQUEST
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_OTHERS
             end
 
             subgraph APP_CONTAINER[APP CONTAINER]
@@ -3198,15 +3179,23 @@ flowchart LR
             subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
                 DOCKER_CROWDSEC_PORT
             end
-
-            ACCESS_LOG[(access.log)]
-            TRAEFIK_MIDDLEWARE_OTHERS --> DOCKER_APP_PORT
-            TRAEFIK_CONTAINER -->|writes| ACCESS_LOG
-            ACCESS_LOG -->|reads| CROWDSEC_CONTAINER
-            TRAEFIK_MIDDLEWARE_CROWDSEC <-.->|pulls the decisions every minute| DOCKER_CROWDSEC_PORT
         end
+
+        ACCESS_LOG
     end
 
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https, before any router| INCOMING_REQUEST
+    TRAEFIK_MIDDLEWARE_CROWDSEC -->|IP not banned| TRAEFIK_ROUTER_APP
+    TRAEFIK_MIDDLEWARE_CROWDSEC -.->|IP banned : 403| INCOMING_REQUEST
+    ACCESS_LOG[(access.log)]
+    TRAEFIK_ROUTER_APP --> DOCKER_APP_PORT
+    TRAEFIK_CONTAINER --->|writes| ACCESS_LOG
+    CROWDSEC_CONTAINER --->|reads| ACCESS_LOG
+    TRAEFIK_MIDDLEWARE_CROWDSEC <-.->|pulls the decisions<br>every minute| DOCKER_CROWDSEC_PORT
     CROWDSEC_CONTAINER <-->|scenarios, signals, community blocklist| HUB
 ```
 
@@ -3421,28 +3410,26 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3000/tcp}}
     DOCKER_CROWDSEC_PORT{{8080/tcp\nlocal API}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
-    TRAEFIK_ROUTER_APP(crowdsec.example.com)
+    TRAEFIK_ROUTER_APP(crowdsec-web-ui)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
             end
 
             subgraph APP_CONTAINER[CROWDSEC WEB UI CONTAINER]
@@ -3456,12 +3443,18 @@ flowchart LR
             subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
                 DOCKER_POCKETID_PORT
             end
-
-            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-            DOCKER_APP_PORT -->|machine account : alerts, decisions, metrics| DOCKER_CROWDSEC_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    DOCKER_APP_PORT --->|machine account :<br>alerts, decisions, metrics| DOCKER_CROWDSEC_PORT
+    DOCKER_APP_PORT -..->|OIDC SSO,<br>through the Traefik alias| DOCKER_POCKETID_PORT
 ```
 
 ### Setting up
@@ -3663,7 +3656,8 @@ open a shell in them, and manage the images, volumes, networks and **Compose pro
 vulnerability scanning.
 
 It needs the **Docker socket**, which means full control over the Docker daemon, i.e. root on the host : it sits on the
-**private** network only, reachable from the local network and the VPN, see [Network segmentation](#network-segmentation).
+**private** network only, reachable from the local network and the VPN,
+see [Network segmentation](#network-segmentation).
 
 Here is an overview of the network flow :
 
@@ -3678,30 +3672,28 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3552/tcp}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
     DOCKER_SOCKET[(Docker socket)]
-    TRAEFIK_ROUTER_APP(arcane.example.com)
+    TRAEFIK_ROUTER_APP(arcane)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         DOCKER_SOCKET
 
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
             end
 
             subgraph APP_CONTAINER[ARCANE CONTAINER]
@@ -3711,13 +3703,18 @@ flowchart LR
             subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
                 DOCKER_POCKETID_PORT
             end
-
-            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
-
-        DOCKER_APP_PORT -->|containers, images, volumes, ...| DOCKER_SOCKET
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    DOCKER_APP_PORT -.->|OIDC SSO,<br>through the Traefik alias| DOCKER_POCKETID_PORT
+    DOCKER_APP_PORT -->|containers, images,<br>volumes, . . .| DOCKER_SOCKET
 ```
 
 ### Setting up
@@ -3761,8 +3758,8 @@ first login, but without a matching mapping they get **no role**, and therefore 
 > The groups are read again at **every login**, PocketID is the source of truth.
 >
 > The mapping can also be declared in the _docker-compose.yml_ file with `OIDC_ROLE_MAPPINGS`, a JSON array such as
-`[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]`, but it references the role by its **ID** (see
-_Settings -> Roles_), not by its name.
+`[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]`, but it references the role by its **ID** (see _Settings ->
+Roles_), not by its name.
 
 > [!NOTE]
 > The default account is `arcane` / `arcane-admin`, not `admin` / `admin` as some pages of the documentation say. It is
@@ -3924,6 +3921,7 @@ flowchart LR
     style INCOMING_REQUEST fill: #205566
     style TRAEFIK_CONTAINER fill: #663535
     style APP_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
     style TRAEFIK_ROUTER fill: #806030
     style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
@@ -3931,12 +3929,11 @@ flowchart LR
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
-    TRAEFIK_ROUTER_APP(phpmyadmin.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    TRAEFIK_ROUTER_APP(phpmyadmin)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
@@ -3945,9 +3942,6 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -3956,15 +3950,22 @@ flowchart LR
                     TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
             end
 
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    DOCKER_APP_PORT -..->|OIDC| DOCKER_POCKETID_PORT
 ```
 
 ### Setting up
@@ -4101,12 +4102,10 @@ flowchart LR
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{8080/tcp}}
-    TRAEFIK_ROUTER_APP(dashboard.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_ROUTER_APP(dashboard)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI_PC]
         subgraph CONTAINER_ENGINE[DOCKER]
@@ -4115,9 +4114,6 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -4126,15 +4122,17 @@ flowchart LR
                     TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
             end
-
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
 ```
 
 ### Setting up
@@ -4167,6 +4165,9 @@ Then copy :
 - the _docker-compose.yml_ file from this project's _homer_ directory into the _/opt/apps/homer_ directory
 - the _config.yml_ file from this project's _homer_ directory into the _/opt/apps/homer/assets_ directory
 - the _homer.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_ directory
+
+I have decided to not protect it behind PocketID, as it is only reachable from the local network or through VPN,
+and it is a read-only dashboard, links to the services themselves are protected by PocketID.
 
 ### Details
 
@@ -4412,12 +4413,10 @@ flowchart LR
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3001/tcp}}
-    TRAEFIK_ROUTER_APP(dashdot.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_ROUTER_APP(dashdot)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
@@ -4426,9 +4425,6 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -4437,15 +4433,17 @@ flowchart LR
                     TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
             end
-
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
 ```
 
 ### Setting up
@@ -4461,6 +4459,9 @@ Then :
 - copy the _docker-compose.yml_ file from this project's _dashdot_ directory into the _/opt/apps/dashdot_ directory
 - copy the _dashdot.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
   directory
+
+I decided to not protect Dashdot behind PocketID, this is a read-only dashboard, that displays no sensitive information,
+and it is only reachable from the local network or through VPN.
 
 ### Details
 
@@ -4565,11 +4566,10 @@ flowchart LR
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
-    TRAEFIK_ROUTER_APP(lychee.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_ROUTER_APP(lychee)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI_PC]
         subgraph CONTAINER_ENGINE[DOCKER]
@@ -4578,24 +4578,25 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
             end
-
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
 ```
 
 ### Setting up
@@ -4755,27 +4756,26 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{7745/tcp}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
-    TRAEFIK_ROUTER_APP(homebox.example.com)
+    TRAEFIK_ROUTER_APP(homebox)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
 
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
             end
 
             subgraph APP_CONTAINER[HOMEBOX CONTAINER]
@@ -4785,11 +4785,17 @@ flowchart LR
             subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
                 DOCKER_POCKETID_PORT
             end
-
-            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    DOCKER_APP_PORT -.->|OIDC SSO,<br>through the Traefik alias| DOCKER_POCKETID_PORT
 ```
 
 ### Setting up
@@ -4814,7 +4820,7 @@ Then :
 
 > [!IMPORTANT]
 > `HBOX_OIDC_ISSUER_URL` must be the **public** URL, **without a trailing slash** (Homebox
-is [sensitive to it](https://github.com/sysadminsmedia/homebox/issues/1151)), and it must match character for character
+is [sensitive to it](https://github.com/sysadminsmedia/homebox/issues/1151)➚), and it must match character for character
 the `issuer` returned by the provider : its OIDC library refuses any difference. The internal URL `http://pocketid:1411`
 therefore cannot be used, it answers with the public issuer and Homebox rejects it with
 `issuer URL provided to client ... did not match`.
@@ -4962,22 +4968,24 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{8080/tcp}}
     DOCKER_WEBSITE_PORT{{80/tcp}}
-    TRAEFIK_ROUTER_APP(goatcounter.example.com\n/count, /loader, ...)
-    TRAEFIK_ROUTER_DASH(goatcounter.example.com\ndashboard)
-    TRAEFIK_ROUTER_SITE(quake.example.com)
+    TRAEFIK_ROUTER_APP(goatcounter\n/count, /loader, ...)
+    TRAEFIK_ROUTER_DASH(goatcounter\ndashboard)
+    TRAEFIK_ROUTER_SITE(quake)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer)
-    VISITOR((VISITOR))
-    VISITOR -->|1 . loads the page| DOCKER_TRAEFIK_PORT443
-    VISITOR -.->|2 . the script reports the visit| DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST((Incoming<br>request))
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_CROWDSEC
                 end
 
@@ -4988,7 +4996,6 @@ flowchart LR
                 end
 
                 TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
-                TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER
             end
 
             subgraph WEBSITE_CONTAINER[WEBSITE CONTAINER]
@@ -4998,13 +5005,20 @@ flowchart LR
             subgraph APP_CONTAINER[GOATCOUNTER CONTAINER]
                 DOCKER_APP_PORT
             end
-
-            TRAEFIK_ROUTER_SITE --> DOCKER_WEBSITE_PORT
-            TRAEFIK_ROUTER_APP -->|X - Forwarded - For : the visitor IP| DOCKER_APP_PORT
-            TRAEFIK_ROUTER_DASH --> TRAEFIK_MIDDLEWARE_OIDC
-            TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
         end
     end
+
+    INCOMING_REQUEST -->|1 . loads the page| DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST -.->|2 . the script reports the visit| DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+    TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER_DASH
+    TRAEFIK_ROUTER_SITE --> DOCKER_WEBSITE_PORT
+    TRAEFIK_ROUTER_APP -->|X - Forwarded - For : the visitor IP| DOCKER_APP_PORT
+    TRAEFIK_ROUTER_DASH --> TRAEFIK_MIDDLEWARE_OIDC
+    TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
 ```
 
 ### Setting up
@@ -5229,34 +5243,31 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{9090/tcp}}
     DOCKER_CCTEAM_PORT{{5001/tcp\nGraphQL API}}
     DOCKER_CCTEAM_MANAGEMENT_PORT{{8081/tcp\nactuator}}
     DOCKER_GRAFANA_PORT{{3000/tcp}}
-    TRAEFIK_ROUTER_APP(prometheus.example.com)
-    TRAEFIK_ROUTER_CCTEAM(ccteam.example.com)
+    TRAEFIK_ROUTER_APP(prometheus)
+    TRAEFIK_ROUTER_CCTEAM(ccteam)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
                     TRAEFIK_ROUTER_APP
                     TRAEFIK_ROUTER_CCTEAM
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                     TRAEFIK_MIDDLEWARE_OIDC
                 end
-
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
             end
 
             subgraph APP_CONTAINER[PROMETHEUS CONTAINER]
@@ -5271,13 +5282,20 @@ flowchart LR
             subgraph GRAFANA_CONTAINER[GRAFANA CONTAINER]
                 DOCKER_GRAFANA_PORT
             end
-
-            TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
-            TRAEFIK_ROUTER_CCTEAM --> DOCKER_CCTEAM_PORT
-            DOCKER_APP_PORT -->|scrape every 15 s, prometheus - ccteam - net| DOCKER_CCTEAM_MANAGEMENT_PORT
-            DOCKER_GRAFANA_PORT -->|PromQL queries, prometheus - net| DOCKER_APP_PORT
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+    TRAEFIK_MIDDLEWARE_OIDC --> DOCKER_APP_PORT
+    TRAEFIK_ROUTER_CCTEAM --> DOCKER_CCTEAM_PORT
+    DOCKER_APP_PORT -->|scrape every 15 s,<br>prometheus - ccteam - net| DOCKER_CCTEAM_MANAGEMENT_PORT
+    DOCKER_GRAFANA_PORT -->|PromQL queries,<br>prometheus - net| DOCKER_APP_PORT
 ```
 
 The monitoring stack uses its own networks, on top of the Traefik ones :
@@ -5326,13 +5344,13 @@ On the **application** side, the Spring Boot API needs the `spring-boot-starter-
 
 ```properties
 # Actuator on a dedicated port, not routed by Traefik : the metrics are never exposed to the internet
-management.server.port=                                                     8081
-management.endpoints.web.exposure.include=                                  health,prometheus
+management.server.port=8081
+management.endpoints.web.exposure.include=health,prometheus
 # Tag added to every metric, used by the Grafana dashboard to select the application
-management.metrics.tags.application=                                        ccteam-graphql
+management.metrics.tags.application=ccteam-graphql
 # Histogram buckets, needed to compute percentiles (p95, p99) in Prometheus
-management.metrics.distribution.percentiles-histogram.graphql.request=      true
-management.metrics.distribution.percentiles-histogram.graphql.datafetcher=  true
+management.metrics.distribution.percentiles-histogram.graphql.request=true
+management.metrics.distribution.percentiles-histogram.graphql.datafetcher=true
 ```
 
 And its container joins the scraping network, see the _docker-compose.yml_ file of the _ccteam_ directory :
@@ -5501,8 +5519,8 @@ sudo docker-compose -f /opt/apps/prometheus/docker-compose.yml up -d
 You should end-up with a running `prometheus` container, and Traefik picks up the dynamic configuration file without
 restarting.
 
-The web interface is available at https://prometheus.example.com, after the PocketID login. Check the
-**Status -> Targets** page : the `ccteam-graphql` job must be **UP**.
+The web interface is available at https://prometheus.example.com, after the PocketID login. Check the **Status ->
+Targets** page : the `ccteam-graphql` job must be **UP**.
 
 Then check that the metrics are **not** reachable from the internet : from a phone on mobile data (VPN turned off),
 https://ccteam.example.com/ccteam-gql/actuator/prometheus must answer `404`.
@@ -5535,28 +5553,26 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3000/tcp}}
     DOCKER_PROMETHEUS_PORT{{9090/tcp}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
-    TRAEFIK_ROUTER_APP(grafana.example.com)
+    TRAEFIK_ROUTER_APP(grafana)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
-
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
             end
 
             subgraph APP_CONTAINER[GRAFANA CONTAINER]
@@ -5570,12 +5586,18 @@ flowchart LR
             subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
                 DOCKER_POCKETID_PORT
             end
-
-            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-            DOCKER_APP_PORT -->|PromQL queries, prometheus - net| DOCKER_PROMETHEUS_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    DOCKER_APP_PORT -->|PromQL queries,<br>prometheus - net| DOCKER_PROMETHEUS_PORT
+    DOCKER_APP_PORT -.->|OIDC SSO, through<br>the Traefik alias| DOCKER_POCKETID_PORT
 ```
 
 ### Setting up
@@ -5608,7 +5630,8 @@ Then :
 > Grafana has two levels of permissions : the **organization** roles (`Viewer`, `Editor`, `Admin`), which manage the
 dashboards, the data sources and the members of an organization, and the **server admin**, which manages the whole
 instance (organizations, all the users, server settings). The `GrafanaAdmin` value gives both, and requires
-`GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN`. `Admin` alone would not be enough here, since the local admin account
+`GF_AUTH_GENERIC_OAUTH_ALLOW_ASSIGN_GRAFANA_ADMIN`. `Admin` alone would not be enough here, since the local admin
+account
 is not usable anymore.
 >
 > A few things to know about it :
@@ -5621,8 +5644,8 @@ is not usable anymore.
 
 > [!NOTE]
 > Grafana always creates a **local admin** account on its first start, it cannot be removed. It is made unusable
-instead : no login form (`GF_AUTH_DISABLE_LOGIN_FORM`) and no basic authentication on the API
-(`GF_AUTH_BASIC_ENABLED`), otherwise `admin:<password>` would still open `/api/...`. `GF_AUTH_OAUTH_AUTO_LOGIN` redirects
+instead : no login form (`GF_AUTH_DISABLE_LOGIN_FORM`) and no basic authentication on the API (`GF_AUTH_BASIC_ENABLED`),
+otherwise `admin:<password>` would still open `/api/...`. `GF_AUTH_OAUTH_AUTO_LOGIN` redirects
 straight to PocketID, without an intermediate login page.
 >
 > If the OIDC login ever breaks, comment these three lines, recreate the container, and log in with the local admin.
@@ -5806,9 +5829,9 @@ sudo docker-compose -f /opt/apps/grafana/docker-compose.yml up -d
 You should end-up with a running `grafana` container, and Traefik picks up the dynamic configuration file without
 restarting.
 
-Open https://grafana.example.com : you are redirected straight to PocketID, then back to Grafana, where the
-**Spring GraphQL** dashboard is waiting in the **Homelab** folder. Check your role in your profile : it must be
-**Grafana Admin**.
+Open https://grafana.example.com : you are redirected straight to PocketID, then back to Grafana, where the **Spring
+GraphQL** dashboard is waiting in the **Homelab** folder. Check your role in your profile : it must be **Grafana
+Admin**.
 
 ## Gatus
 
@@ -5838,20 +5861,30 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
+    style INCOMING_REQUEST fill: #205566
     style TRAEFIK_CONTAINER fill: #663535
     style APP_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
     style PRIVATE_CONTAINER fill: #663535
     style PUBLIC_CONTAINER fill: #663535
     style DNS_CONTAINERS fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_APP_PORT{{8080/tcp}}
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_TRAEFIK_PORT8080{{8080/tcp\nping}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
     DOCKER_PRIVATE_PORT{{health endpoint}}
     DOCKER_PUBLIC_PORT{{app port}}
-    DOCKER_PIHOLE_PORT{{10 . 2 . 0 . 100:53}}
-    DOCKER_UNBOUND_PORT{{10 . 2 . 0 . 200:53}}
+    DOCKER_PIHOLE_PORT{{10.2.0.100:53}}
+    DOCKER_UNBOUND_PORT{{10.2.0.200:53}}
+    TRAEFIK_ROUTER_APP(gatus.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    INCOMING_REQUEST((INCOMING\nREQUEST))
     SMTP[SMTP server]
     ADMIN((ADMIN))
 
@@ -5863,7 +5896,21 @@ flowchart LR
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
                 DOCKER_TRAEFIK_PORT8080
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
             end
 
             subgraph PRIVATE_CONTAINER[PRIVATE SERVICES]
@@ -5879,16 +5926,24 @@ flowchart LR
                 DOCKER_UNBOUND_PORT
             end
 
-            DOCKER_APP_PORT -->|traefik - private - net| DOCKER_TRAEFIK_PORT8080
-            DOCKER_APP_PORT -->|by container name, traefik - private - net| DOCKER_PRIVATE_PORT
-            DOCKER_APP_PORT -->|public name = Traefik alias| DOCKER_TRAEFIK_PORT443
-            DOCKER_TRAEFIK_PORT443 -->|traefik - public - net| DOCKER_PUBLIC_PORT
-            DOCKER_APP_PORT -->|DNS queries, pihole - net| DOCKER_PIHOLE_PORT
-            DOCKER_APP_PORT -->|DNS queries, pihole - net| DOCKER_UNBOUND_PORT
         end
     end
 
-    DOCKER_APP_PORT -.->|alert e-mail| SMTP
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST -->|status page| DOCKER_APP_PORT
+    DOCKER_APP_PORT -.->|OIDC SSO,<br>through the Traefik alias| DOCKER_POCKETID_PORT
+    DOCKER_APP_PORT -->|traefik - private - net| DOCKER_TRAEFIK_PORT8080
+    DOCKER_APP_PORT -->|by container name, traefik - private - net| DOCKER_PRIVATE_PORT
+    DOCKER_APP_PORT -->|public name = Traefik alias| DOCKER_TRAEFIK_PORT443
+    DOCKER_TRAEFIK_PORT443 -->|traefik - public - net| DOCKER_PUBLIC_PORT
+    DOCKER_APP_PORT -->|DNS queries, pihole - net| DOCKER_PIHOLE_PORT
+    DOCKER_APP_PORT -->|DNS queries, pihole - net| DOCKER_UNBOUND_PORT
+    DOCKER_APP_PORT -.->|alert e - mail| SMTP
     SMTP -.-> ADMIN
 ```
 
@@ -6007,8 +6062,8 @@ ALERT_TO=<recipient_address>
 
 #### Configuration file
 
-:page_facing_up: _config/config.yaml_ (shortened, one endpoint of each kind, see the full file in this project's
-_gatus_ directory) :
+:page_facing_up: _config/config.yaml_ (shortened, one endpoint of each kind, see the full file in this project's _gatus_
+directory) :
 
 ```yaml
 # Gatus configuration
@@ -6180,7 +6235,8 @@ Things to notice :
 
 - Gatus joins `traefik-private-net` and `pihole-net` only, never `traefik-public-net` : the public services are reached
   through Traefik, like any visitor would
-- a dedicated network shared with Pi-hole only would bring nothing : `pihole-net` only holds Pi-hole and Unbound, the two
+- a dedicated network shared with Pi-hole only would bring nothing : `pihole-net` only holds Pi-hole and Unbound, the
+  two
   containers Gatus has to query, and Gatus already shares `traefik-private-net` with Pi-hole
 - **WGDashboard** runs on the host network (`network_mode: host`), it is reached through the IP address of the mini PC,
   without any Docker port mapping, so the hairpin problem of the DNS checks does not apply
@@ -6244,30 +6300,29 @@ flowchart LR
     style SERVER_DEVICE fill: #665555
     style CONTAINER_ENGINE fill: #664545
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3333/tcp}}
     DOCKER_DB_PORT{{5432/tcp}}
     DOCKER_REDIS_PORT{{6379/tcp}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
     TRAEFIK_ROUTER_APP(ghostfolio.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     MARKET_DATA[Market data providers]
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                 end
 
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
             end
 
             subgraph APP_CONTAINER[GHOSTFOLIO CONTAINER]
@@ -6285,14 +6340,19 @@ flowchart LR
             subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
                 DOCKER_POCKETID_PORT
             end
-
-            TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
-            DOCKER_APP_PORT -->|ghostfolio - net| DOCKER_DB_PORT
-            DOCKER_APP_PORT -->|ghostfolio - net| DOCKER_REDIS_PORT
-            DOCKER_APP_PORT -.->|OIDC single sign - on, through the Traefik alias| DOCKER_POCKETID_PORT
         end
     end
 
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    DOCKER_APP_PORT -->|ghostfolio - net| DOCKER_DB_PORT
+    DOCKER_APP_PORT -->|ghostfolio - net| DOCKER_REDIS_PORT
+    DOCKER_APP_PORT -.->|OIDC SSO, through<br>the Traefik alias| DOCKER_POCKETID_PORT
     DOCKER_APP_PORT -.->|quotes, exchange rates| MARKET_DATA
 ```
 
@@ -6568,10 +6628,8 @@ flowchart LR
     DOCKER_PHP_PORT{{9000/tcp}}
     DOCKER_MARIADB_PORT{{3306/tcp}}
     TRAEFIK_ROUTER_APP(quake.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect\non the web entrypoint)
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
 
     subgraph SERVER_DEVICE[MINI_PC]
         subgraph CONTAINER_ENGINE[DOCKER]
@@ -6588,8 +6646,7 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 --> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT443
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
@@ -6598,16 +6655,18 @@ flowchart LR
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_REDIRECT
                 end
-
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
-                TRAEFIK_MIDDLEWARE_REDIRECT --> DOCKER_NGINX_PORT
-                DOCKER_NGINX_PORT --> DOCKER_PHP_PORT
-                DOCKER_PHP_PORT --> DOCKER_MARIADB_PORT
             end
-
         end
     end
+
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+    DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    TRAEFIK_ROUTER_APP --> DOCKER_NGINX_PORT
+    DOCKER_NGINX_PORT --> DOCKER_PHP_PORT
+    DOCKER_PHP_PORT --> DOCKER_MARIADB_PORT
 ```
 
 ### Setting up
@@ -6901,6 +6960,93 @@ The application will be available at https://quake.example.com.
 
 <img src="images/logo-ccteam.svg" alt="CCTeam logo" height="100"/>
 
+**CCTeam** is the GraphQL API (**Java** / **Spring Boot**) of a **Flutter** mobile application, with its **MariaDB**
+database. It is **exposed to the internet**, the mobile application calls it from anywhere : it sits on the **public**
+network, behind the CrowdSec bouncer, and the requests are authenticated by the application itself (**JWT** tokens).
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style APP_CONTAINER fill: #663535
+    style DB_CONTAINER fill: #663535
+    style PROMETHEUS_CONTAINER fill: #663535
+    style PHPMYADMIN_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_APP_PORT{{5001/tcp\nGraphQL API}}
+    DOCKER_APP_MANAGEMENT_PORT{{8081/tcp\nactuator}}
+    DOCKER_DB_PORT{{3306/tcp}}
+    DOCKER_PROMETHEUS_PORT{{9090/tcp}}
+    DOCKER_PHPMYADMIN_PORT{{80/tcp}}
+    TRAEFIK_ROUTER_APP(ccteam.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
+    TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer on<br>the websecure entrypoint)
+    FIREBASE[Firebase\npush notifications]
+    INCOMING_REQUEST((MOBILE\nAPPLICATION))
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_CROWDSEC
+                end
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+            end
+
+            subgraph APP_CONTAINER[CCTEAM APP CONTAINER]
+                DOCKER_APP_PORT
+                DOCKER_APP_MANAGEMENT_PORT
+            end
+
+            subgraph DB_CONTAINER[MARIADB CONTAINER]
+                DOCKER_DB_PORT
+            end
+
+            subgraph PROMETHEUS_CONTAINER[PROMETHEUS CONTAINER]
+                DOCKER_PROMETHEUS_PORT
+            end
+
+            subgraph PHPMYADMIN_CONTAINER[PHPMYADMIN CONTAINER]
+                DOCKER_PHPMYADMIN_PORT
+            end
+        end
+    end
+
+   INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+   INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+   DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+   TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+   DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+   TRAEFIK_MIDDLEWARE_CROWDSEC -->|IP not banned| TRAEFIK_ROUTER_APP
+   TRAEFIK_ROUTER_APP -->|traefik - public - net,<br>JWT checked by the API| DOCKER_APP_PORT
+   DOCKER_APP_PORT -->|ccteam - net| DOCKER_DB_PORT
+   DOCKER_PROMETHEUS_PORT -->|metrics, prometheus - ccteam - net| DOCKER_APP_MANAGEMENT_PORT
+   DOCKER_PHPMYADMIN_PORT -->|phpmyadmin - net| DOCKER_DB_PORT
+   DOCKER_APP_PORT -.->|push notifications| FIREBASE
+```
+
+Things to notice :
+
+- only the port `5001` is routed by Traefik : the actuator (metrics, health) listens on the management port `8081`,
+  only reachable by Prometheus through `prometheus-ccteam-net` (see [Prometheus](#prometheus)), except the readiness
+  probe `/readyz` served on the main port for [Gatus](#gatus)
+- the database is never on a Traefik network : the application reaches it on `ccteam-net`, and
+  [PhpMyAdmin](#phpmyadmin) on `phpmyadmin-net`
+- no IP whitelist on the router, the mobile application is used from anywhere : CrowdSec filters the known attackers,
+  and the API rejects any request without a valid JWT token
+
 Create a directory to hold the app :
 
 ```bash
@@ -7162,7 +7308,7 @@ flowchart LR
     DOCKER_DASHDOT_PORT{{3001/tcp}}
     WAITING_PAGE(Waiting page)
     TRAEFIK_ROUTER_APP(dashdot.example.com)
-    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect<br/>on the web entrypoint)
     TRAEFIK_MIDDLEWARE_DASHDOT(sablier-dashdot)
     INCOMING_REQUEST((INCOMING<br/>REQUEST))
     INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
@@ -7181,7 +7327,7 @@ flowchart LR
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
-                DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT80 ---> TRAEFIK_MIDDLEWARE_REDIRECT
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
@@ -7192,9 +7338,8 @@ flowchart LR
                     TRAEFIK_MIDDLEWARE_DASHDOT
                 end
 
-                TRAEFIK_MIDDLEWARE_REDIRECT --> TRAEFIK_MIDDLEWARE_DASHDOT
-                TRAEFIK_MIDDLEWARE_REDIRECT -.-> DOCKER_TRAEFIK_PORT443
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_REDIRECT
+                TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| DOCKER_TRAEFIK_PORT443
+                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_DASHDOT
                 TRAEFIK_MIDDLEWARE_DASHDOT -->|check status| DOCKER_SABLIER_PORT
                 DOCKER_SABLIER_PORT -->|return status| TRAEFIK_MIDDLEWARE_DASHDOT
                 TRAEFIK_MIDDLEWARE_DASHDOT -->|ready| DOCKER_DASHDOT_PORT
@@ -7328,7 +7473,7 @@ flowchart LR
     style N100 fill: #665555
     style PC fill: #205566
     style CLOUD fill: #4d683b
-    TIMER[systemd timer\n19:45] -->|mariadb-dump, pg_dump| DUMPS[(database dumps)]
+    TIMER[systemd timer\n19:45] -->|mariadb - dump, pg_dump| DUMPS[(database dumps)]
 
     subgraph N100[MINI PC]
         APPS[(/opt/apps)]
@@ -7347,9 +7492,9 @@ flowchart LR
         CLOUD_COPY[(off-site copy)]
     end
 
-    APPS -->|read-only| BACKREST
-    VOLUMES -->|read-only| BACKREST
-    DUMPS -->|read-only| BACKREST
+    APPS -->|read - only| BACKREST
+    VOLUMES -->|read - only| BACKREST
+    DUMPS -->|read - only| BACKREST
     BACKREST -->|20:00, SFTP, encrypted snapshots| REPO
     REPO --> CLOUD_CLIENT
     CLOUD_CLIENT -->|sync| CLOUD_COPY
@@ -7395,50 +7540,58 @@ flowchart LR
     style CONTAINER_ENGINE fill: #664545
     style WINDOWS_PC fill: #205566
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{9898/tcp}}
-    TRAEFIK_ROUTER_APP(backrest.example.com)
+    TRAEFIK_ROUTER_APP(backrest)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     TRAEFIK_MIDDLEWARE_OIDC(PocketID auth)
     SOURCES[(/opt/apps\nDocker volumes)]
     INCOMING_REQUEST((INCOMING\nREQUEST))
-    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
 
     subgraph SERVER_DEVICE[MINI PC]
         SOURCES
 
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
-                DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+                DOCKER_TRAEFIK_PORT80
+                DOCKER_TRAEFIK_PORT443
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
                     TRAEFIK_MIDDLEWARE_OIDC
                 end
 
-                TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
-                TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
             end
 
             subgraph APP_CONTAINER[BACKREST CONTAINER]
                 DOCKER_APP_PORT
             end
 
-            TRAEFIK_MIDDLEWARE_OIDC -->|then Backrest login| DOCKER_APP_PORT
         end
 
-        SOURCES -->|read-only mounts| DOCKER_APP_PORT
     end
 
-    subgraph WINDOWS_PC[WINDOWS PC 192 . 168 . 0 . 12]
+    subgraph WINDOWS_PC[WINDOWS PC 192.168.0.12]
         SSHD{{OpenSSH 22/tcp\nSFTP only}}
         REPO[(D:\Backups\N100)]
-        SSHD --> REPO
     end
 
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+    INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+    TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> TRAEFIK_MIDDLEWARE_OIDC
+    TRAEFIK_MIDDLEWARE_OIDC -->|then Backrest login| DOCKER_APP_PORT
+    SOURCES -->|read - only mounts| DOCKER_APP_PORT
+    SSHD --> REPO
     DOCKER_APP_PORT -->|SFTP, key authentication| SSHD
 ```
 
@@ -7447,12 +7600,12 @@ flowchart LR
 The repository lives on a Windows PC of the local network, reached through **SFTP** with the OpenSSH server built into
 Windows. SFTP is preferred over a Windows share (SMB) mounted on the mini PC :
 
-|                    | SFTP (OpenSSH)                                                                     | Windows share (SMB)                                                                                                                                            |
-|--------------------|------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| On the mini PC     | nothing to mount, restic opens the connection for the backup and closes it         | a permanent CIFS mount (`fstab`, credentials file) passed to the container                                                                                     |
-| **PC switched off** | the backup fails cleanly with an explicit error, and is retried at the next run    | the mount goes **stale** and blocks. Worse, if the mount is missing, restic writes the repository into the empty mount point, **on the mini PC disk**, silently |
-| Authentication     | dedicated SSH key, no password stored                                              | Windows password in a file on the mini PC                                                                                                                      |
-| Other quirks       | few                                                                                | file locks, NTFS permissions, SMB versions, antivirus                                                                                                          |
+|                     | SFTP (OpenSSH)                                                                  | Windows share (SMB)                                                                                                                                             |
+|---------------------|---------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| On the mini PC      | nothing to mount, restic opens the connection for the backup and closes it      | a permanent CIFS mount (`fstab`, credentials file) passed to the container                                                                                      |
+| **PC switched off** | the backup fails cleanly with an explicit error, and is retried at the next run | the mount goes **stale** and blocks. Worse, if the mount is missing, restic writes the repository into the empty mount point, **on the mini PC disk**, silently |
+| Authentication      | dedicated SSH key, no password stored                                           | Windows password in a file on the mini PC                                                                                                                       |
+| Other quirks        | few                                                                             | file locks, NTFS permissions, SMB versions, antivirus                                                                                                           |
 
 A switched off PC will happen regularly : with SFTP it is only a missed backup, never a hung or misplaced one.
 
@@ -7471,8 +7624,8 @@ It :
   needs (key authentication only)
 - creates the repository folder _D:\Backups\N100_, writable by `backup` only, readable by your own account (so that the
   cloud client can read it)
-- restricts `backup` to **SFTP** (`ForceCommand internal-sftp`, no shell, no forwarding), with its authorized key in
-  _C:\ProgramData\ssh\backup_authorized_keys_
+- restricts `backup` to **SFTP** (`ForceCommand internal-sftp`, no shell, no forwarding), with its authorized key in _C:
+  \ProgramData\ssh\backup_authorized_keys_
 - restricts the firewall rule of OpenSSH to the **IP address of the mini PC**
 
 > [!NOTE]
@@ -7604,12 +7757,12 @@ Then the **plan** :
 - retention : 7 daily, 4 weekly, 6 monthly
 - excludes :
 
-  | Exclude                                                                                              | Why                                                                                 |
-  |------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------|
-  | `/sources/apps/backrest/cache`, `/sources/apps/backrest/tmp`, `/sources/apps/backrest/restore`       | cache and temporary files of Backrest itself, restored files                        |
+  | Exclude                                                                                                                                         | Why                                                                                     |
+  |-------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
+  | `/sources/apps/backrest/cache`, `/sources/apps/backrest/tmp`, `/sources/apps/backrest/restore`                                                  | cache and temporary files of Backrest itself, restored files                            |
   | `/sources/volumes/ccteam-db-vol`, `/sources/volumes/lychee-db-vol`, `/sources/volumes/defrag-life-db-vol`, `/sources/volumes/ghostfolio-db-vol` | raw database files, inconsistent when copied hot : the **dumps** are what gets restored |
-  | `/sources/volumes/*prometheus-data*`                                                                 | Prometheus time series, inconsistent when copied hot, and only metrics              |
-  | `/sources/volumes/metadata.db`, `/sources/volumes/backingFsBlockDev`                                 | internal files of Docker, not volumes                                               |
+  | `/sources/volumes/*prometheus-data*`                                                                                                            | Prometheus time series, inconsistent when copied hot, and only metrics                  |
+  | `/sources/volumes/metadata.db`, `/sources/volumes/backingFsBlockDev`                                                                            | internal files of Docker, not volumes                                                   |
 
 - a **hook** on `CONDITION_ANY_ERROR`, of type **Shoutrrr**, to be notified of a failed backup (the PC was switched off,
   for instance), for instance by e-mail with the same SMTP account as [Gatus](#gatus) :
@@ -7824,8 +7977,8 @@ And the middleware, in _pocketid.yml_ :
 
 Things to notice :
 
-- the sources are mounted **read-only** : Backrest can read everything but modify nothing, a restore goes to
-  _/restore_ (_/opt/apps/backrest/restore_ on the host), from where you copy the files back yourself
+- the sources are mounted **read-only** : Backrest can read everything but modify nothing, a restore goes to _/restore_
+  (_/opt/apps/backrest/restore_ on the host), from where you copy the files back yourself
 - Backrest does **not** hold the Docker socket, this is why the database dumps are done by the host
 - `hostname` is fixed : restic records it in every snapshot, and the retention policy applies per host. The default
   host name of a container is its random ID, which would change at every recreation
@@ -8154,12 +8307,12 @@ Mainly :
     - https://github.com/awesome-foss/awesome-sysadmin
     - https://github.com/mikeroyal/Self-Hosting-Guide
 - Various threads on **Reddit**, but especially in :
-    - [r/selfhosted](https://www.reddit.com/r/selfhosted/)
-    - [r/homelab](https://www.reddit.com/r/homelab/)
-    - [r/pihole](https://www.reddit.com/r/pihole/)
-    - [r/raspberry_pi](https://www.reddit.com/r/raspberry_pi/)
+    - [r/selfhosted](https://www.reddit.com/r/selfhosted/)➚
+    - [r/homelab](https://www.reddit.com/r/homelab/)➚
+    - [r/pihole](https://www.reddit.com/r/pihole/)➚
+    - [r/raspberry_pi](https://www.reddit.com/r/raspberry_pi/)➚
 - **StackExchange** network (particularly **Stack Overflow**, **Superuser**, and **Server Fault**):
-    - [Q&A communities](https://stackexchange.com/sites)
+    - [Q&A communities](https://stackexchange.com/sites)➚
 - Blog post about WireGuard performance tuning :
     - https://www.procustodibus.com/blog/2022/12/wireguard-performance-tuning/
 - Lots of **Google** searches
