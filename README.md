@@ -233,9 +233,9 @@ flowchart TB
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
     DOCKER_UNBOUND_PORT53{{53/udp}}
-    TRAEFIK_ROUTER_MYAPP(myapp\n.example.com)
-    TRAEFIK_ROUTER_PIHOLE(pihole\n.example.com)
-    TRAEFIK_ROUTER_TRAEFIK(traefik\n.example.com)
+    TRAEFIK_ROUTER_MYAPP(myapp)
+    TRAEFIK_ROUTER_PIHOLE(pihole)
+    TRAEFIK_ROUTER_TRAEFIK(traefik)
     ROOT_DNS_SERVERS[Root DNS servers]
     DNS_ISP[DNS 1 & 2]
     DOCKER_PIHOLE_DNS[DNS 1 & 2]
@@ -271,6 +271,11 @@ flowchart TB
     end
 
     subgraph SERVER_DEVICE[MINI PC]
+
+        subgraph WIREGUARD_HOST[WIREGUARD ON THE HOST]
+            DOCKER_WIREGUARD_PORT51820
+        end
+        
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
@@ -287,7 +292,7 @@ flowchart TB
 
                 CROWDSEC_BOUNCER
                 ACCESS_LOG
-                REDIRECT(HTTPS redirect\non the web entrypoint)
+                REDIRECT(HTTPS redirect)
                 DOCKER_TRAEFIK_PORT80
                 DOCKER_TRAEFIK_PORT443
                 DOCKER_TRAEFIK_PORT8080
@@ -310,10 +315,6 @@ flowchart TB
                 DOCKER_PIHOLE_DNS
             end
 
-            subgraph WIREGUARD_HOST[WIREGUARD CONTAINER]
-                DOCKER_WIREGUARD_PORT51820
-            end
-
             subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
                 DOCKER_MYAPP_PORT5000
             end
@@ -329,38 +330,38 @@ flowchart TB
     end
 
     CLIENT((User)) -.-> VPN_CLIENT
-    BROWSER((Browser)) -------> HOSTING_PROVIDER
-    CLIENT -...........-> BROWSER
-    VPN_CLIENT ----------> BROWSER
-    WIREGUARD_CLIENT_ENDPOINT -.->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
-    WIREGUARD_CLIENT_DNS -->|" Server tunnel address\n10.0.0.1 "| SERVER_DEVICE
+    BROWSER((Browser)) --> HOSTING_PROVIDER
+    CLIENT -...-> BROWSER
+    VPN_CLIENT --> BROWSER
+    WIREGUARD_CLIENT_ENDPOINT -...->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
+    WIREGUARD_CLIENT_DNS --->|" Server tunnel address\n10.0.0.1 "| SERVER_DEVICE
     ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
-    ROUTER_PORT80 -->|port forward| DOCKER_TRAEFIK_PORT80
+    ROUTER_PORT80 ------>|port forward| DOCKER_TRAEFIK_PORT80
     DNS_ISP ------>|Server static IP| DOCKER_PIHOLE_PORT53
     PIHOLE_DNS_MYAPP --->|Server internal IP| DOCKER_TRAEFIK_PORT443
     PIHOLE_DNS_PIHOLE --->|Server internal IP| DOCKER_TRAEFIK_PORT443
     PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
-    DOCKER_TRAEFIK_PORT443 --> CROWDSEC_BOUNCER
+    DOCKER_TRAEFIK_PORT443 ---> CROWDSEC_BOUNCER
+    %%REDIRECT -.->|301 to https| BROWSER
     CROWDSEC_BOUNCER ----->|IP not banned| TRAEFIK_ROUTER
     DOCKER_TRAEFIK_PORT80 --> REDIRECT
-    REDIRECT -....->|301 to https| BROWSER
-    CROWDSEC_BOUNCER -.->|every request logged| ACCESS_LOG
-    ACCESS_LOG -.........->|reads, detects attacks| CROWDSEC_ENGINE
-    CROWDSEC_ENGINE -.->|decisions| CROWDSEC_BOUNCER
-    CROWDSEC_ENGINE <-...->|signals / community blocklist| CROWDSEC_COMMUNITY
+    CROWDSEC_BOUNCER -..->|every request logged| ACCESS_LOG
+    ACCESS_LOG -........->|reads, detects attacks| CROWDSEC_ENGINE
+    CROWDSEC_ENGINE -........->|decisions| CROWDSEC_BOUNCER
+    CROWDSEC_ENGINE <-..->|signals / community blocklist| CROWDSEC_COMMUNITY
     TRAEFIK_ROUTER_MYAPP ----> SABLIER
     TRAEFIK_ROUTER_PIHOLE --> IP_WHITELISTING
     TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| IP_WHITELISTING
     IP_WHITELISTING --> AUTH
     IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
-    SABLIER <-..->|return status| DOCKER_SABLIER_PORT10000
-    SABLIER --->|not ready| WAITING_PAGE
-    SABLIER --->|ready| DOCKER_MYAPP_PORT5000
+    SABLIER <-.->|return status| DOCKER_SABLIER_PORT10000
+    SABLIER -->|not ready| WAITING_PAGE
+    SABLIER -->|ready| DOCKER_MYAPP_PORT5000
     DOCKER_SABLIER_PORT10000 <-.->|check status| DOCKER_MYAPP_PORT5000
     AUTH --> DOCKER_TRAEFIK_PORT8080
     DOCKER_PIHOLE_DNS ---> DOCKER_UNBOUND_PORT53
-    UNBOUND_CONTAINER <----> ROOT_DNS_SERVERS
+    UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
 ```
 
 Basically all services will be accessible via dedicated subdomains which will point to our local network, either through
@@ -2791,6 +2792,8 @@ flowchart LR
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 TRAEFIK_MIDDLEWARE_REDIRECT
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_IP_WHITELIST
@@ -3162,6 +3165,9 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_REDIRECT
                     TRAEFIK_MIDDLEWARE_CROWDSEC
@@ -3422,6 +3428,9 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -3686,6 +3695,9 @@ flowchart LR
 
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -3942,6 +3954,9 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -4114,6 +4129,9 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -4425,6 +4443,9 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -4578,6 +4599,9 @@ flowchart LR
             end
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -4767,6 +4791,9 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -5258,6 +5285,9 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
                     TRAEFIK_ROUTER_APP
                     TRAEFIK_ROUTER_CCTEAM
@@ -5565,6 +5595,9 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -6305,7 +6338,7 @@ flowchart LR
     DOCKER_DB_PORT{{5432/tcp}}
     DOCKER_REDIS_PORT{{6379/tcp}}
     DOCKER_POCKETID_PORT{{1411/tcp}}
-    TRAEFIK_ROUTER_APP(ghostfolio.example.com)
+    TRAEFIK_ROUTER_APP(ghostfolio)
     TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
     TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
     MARKET_DATA[Market data providers]
@@ -6314,6 +6347,9 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+                
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
                 end
@@ -6647,6 +6683,7 @@ flowchart LR
 
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
 
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_APP
@@ -6994,6 +7031,8 @@ flowchart LR
     subgraph SERVER_DEVICE[MINI PC]
         subgraph CONTAINER_ENGINE[DOCKER]
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
                     TRAEFIK_MIDDLEWARE_REDIRECT

@@ -55,8 +55,8 @@ networks:
   ccteam-net:
     name: ccteam-net
 
-  traefik-net:
-    name: traefik-net
+  traefik-public-net:
+    name: traefik-public-net
     external: true
 
   phpmyadmin-net:
