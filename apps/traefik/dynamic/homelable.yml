@@ -1,0 +1,20 @@
+http:
+  services:
+    homelable:
+      loadBalancer:
+        servers:
+          # The frontend serves the interface and proxies /api to the backend
+          - url: http://homelable-frontend:80
+
+  routers:
+    homelable:
+      rule: 'Host(`homelable.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: homelable
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
+      middlewares:
+        - vpn-whitelist@file

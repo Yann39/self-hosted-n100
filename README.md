@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Version](https://img.shields.io/badge/Version-1.5.6-2AAB92)
-![Last update](https://img.shields.io/badge/Last_update-01_Oct_2026-blue)
+![Version](https://img.shields.io/badge/Version-1.5.7-2AAB92)
+![Last update](https://img.shields.io/badge/Last_update-02_Oct_2026-blue)
 ![License](https://img.shields.io/badge/Free_&_Open_source-GPL_V3-green)
 
 <table>
@@ -84,8 +84,9 @@ It uses only **free** and **open source** software.
     12. [Grafana](#grafana)
     13. [Gatus](#gatus)
     14. [Ghostfolio](#ghostfolio)
-    15. [Defrag-life](#defrag-life)
-    16. [CCTeam](#ccteam)
+    15. [Homelable](#homelable)
+    16. [Defrag-life](#defrag-life)
+    17. [CCTeam](#ccteam)
 
    </details>
 5. <details>
@@ -117,7 +118,7 @@ It uses only **free** and **open source** software.
 
 ## Plan
 
-The goal is still the same : learning, and have an environment :
+The goal remains the same as with my first home lab: hosting a few useful applications, in an environment :
 
 - **100% self-hosted** (privacy preserving, full control over data and software)
 - **Secure** (authentication, SSL/TLS, reverse proxy, firewall, ad blocking, DDOS protection, rate limiting, custom DNS
@@ -150,6 +151,7 @@ These are the tools we are going to run :
 |         <img src="images/logo-grafana.svg" alt="Grafana logo" height="32"/>         | Grafana         | https://github.com/grafana/grafana              | Dashboards and visualization for metrics             |
 |           <img src="images/logo-gatus.svg" alt="Gatus logo" height="32"/>           | Gatus           | https://github.com/TwiN/gatus                   | Uptime monitoring and alerting, status page          |
 |      <img src="images/logo-ghostfolio.svg" alt="Ghostfolio logo" height="32"/>      | Ghostfolio      | https://github.com/ghostfolio/ghostfolio        | Wealth management and portfolio tracking             |
+|       <img src="images/logo-homelable.svg" alt="Homelable logo" height="32"/>       | Homelable       | https://github.com/Pouzor/homelable             | Homelab infrastructure map with live status          |
 |        <img src="images/logo-backrest.svg" alt="Backrest logo" height="32"/>        | Backrest        | https://github.com/garethgeorge/backrest        | Web UI for restic backups (snapshots, encryption)    |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
@@ -1802,6 +1804,7 @@ ghostfolio.example.com              192.168.0.16
 goatcounter.example.com             192.168.0.16
 grafana.example.com                 192.168.0.16
 homebox.example.com                 192.168.0.16
+homelable.example.com               192.168.0.16
 lychee.example.com                  192.168.0.16
 phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
@@ -4331,6 +4334,11 @@ services:
         subtitle: "Backup solution built on top of restic"
         tag: "tool"
         url: "https://backrest.example.com"
+      - name: "Homelable"
+        logo: "assets/logos/logo-homelable.svg"
+        subtitle: "Homelab infrastructure map"
+        tag: "network"
+        url: "https://homelable.example.com"
       - name: "Pi-Hole"
         logo: "assets/logos/logo-pihole.svg"
         subtitle: "Network-wide ad blocking"
@@ -6237,11 +6245,11 @@ endpoints:
 
 The full file checks :
 
-| Group          | Services                                                                                                | How                                                 |
-|----------------|---------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                                        | ping, discovery document, TCP, DNS queries, host IP |
-| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana, Ghostfolio | container name, health endpoint when there is one   |
-| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                                            | public name through Traefik, TLS certificate expiry |
+| Group          | Services                                                                                                                              | How                                                 |
+|----------------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
+| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                                                                      | ping, discovery document, TCP, DNS queries, host IP |
+| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana, Ghostfolio, Homelable, Speedtest Tracker | container name, health endpoint when there is one   |
+| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                                                                          | public name through Traefik, TLS certificate expiry |
 
 #### Traefik routing
 
@@ -6626,6 +6634,291 @@ picks up the dynamic configuration file without restarting.
 
 The application is available at https://ghostfolio.example.com : _Sign in -> Sign in with OpenID Connect_, then
 disable the sign-up as described above.
+
+## Homelable
+
+<img src="images/logo-homelable.svg" alt="Homelable logo" height="128"/>
+
+**Homelable** draws the map of the homelab : an interactive diagram of the machines, devices and services with their
+**live status** (ping, HTTP, TCP, ...), a rack view for the physical layout, and a Markdown space to document the whole
+thing. A **network scanner** (nmap) speeds up the inventory : it finds the hosts and their open ports, and they only
+have to be placed on the canvas.
+
+It runs as two containers : a **backend** (API, scanner, status checks, SQLite database) and a **frontend** (the
+interface, whose nginx proxies `/api` to the backend). It sits on the **private** network and authenticates its users
+against [PocketID](#pocketid) with its own OIDC support, in **exclusive** mode : there is no local password at all.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style INCOMING_REQUEST fill: #205566
+    style TRAEFIK_CONTAINER fill: #663535
+    style FRONTEND_CONTAINER fill: #663535
+    style BACKEND_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
+    style PRIVATE_CONTAINER fill: #663535
+    style TRAEFIK_ROUTER fill: #806030
+    style TRAEFIK_MIDDLEWARE fill: #806030
+    style SERVER_DEVICE fill: #665555
+    style CONTAINER_ENGINE fill: #664545
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_FRONTEND_PORT{{80/tcp}}
+    DOCKER_BACKEND_PORT{{8000/tcp}}
+    DOCKER_POCKETID_PORT{{1411/tcp}}
+    DOCKER_PRIVATE_PORT{{service port}}
+    TRAEFIK_ROUTER_APP(homelable.example.com)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    LAN[Local network\n192.168.0.0/24]
+    INCOMING_REQUEST((INCOMING\nREQUEST))
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
+                    TRAEFIK_ROUTER_APP
+                end
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+            end
+
+            subgraph FRONTEND_CONTAINER[FRONTEND CONTAINER]
+                DOCKER_FRONTEND_PORT
+            end
+
+            subgraph BACKEND_CONTAINER[BACKEND CONTAINER]
+                DOCKER_BACKEND_PORT
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_PORT
+            end
+
+            subgraph PRIVATE_CONTAINER[PRIVATE SERVICES]
+                DOCKER_PRIVATE_PORT
+            end
+        end
+    end
+
+   INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT443
+   INCOMING_REQUEST --> DOCKER_TRAEFIK_PORT80
+   DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+   TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| INCOMING_REQUEST
+   DOCKER_TRAEFIK_PORT443 --> TRAEFIK_ROUTER_APP
+   TRAEFIK_ROUTER_APP --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+   TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_FRONTEND_PORT
+   DOCKER_FRONTEND_PORT -->|/api, homelable - net| DOCKER_BACKEND_PORT
+   DOCKER_BACKEND_PORT -.->|OIDC SSO,<br>through the Traefik alias| DOCKER_POCKETID_PORT
+   DOCKER_BACKEND_PORT -->|status checks, scan<br>traefik - private - net| DOCKER_PRIVATE_PORT
+   DOCKER_BACKEND_PORT -->|nmap scan| LAN
+```
+
+### Setting up
+
+Create a folder to hold the configuration :
+
+```bash
+sudo mkdir /opt/apps/homelable
+```
+
+Then :
+
+- copy the _.env_ and _docker-compose.yml_ files from this project's _homelable_ directory into the
+  _/opt/apps/homelable_ directory, generate the `SECRET_KEY` of the _.env_ file (`openssl rand -hex 32`, at least 32
+  bytes in OIDC mode), and adapt the scanned ranges (see below)
+- copy the _homelable.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- create an OIDC client in [PocketID](#pocketid) with the callback URL of the **application** :
+  `https://homelable.example.com/api/v1/auth/oidc/callback`, and **PKCE disabled**. Restrict it to your administrators
+  group (_Allowed user groups_) : this is mandatory here, Homelable has no roles, anybody PocketID lets in has a full
+  access. Then put its client ID and secret in `OIDC_CLIENT_ID` and `OIDC_CLIENT_SECRET` of the _.env_ file. No
+  middleware on the router : the application talks to PocketID itself
+- add a **local DNS record** `homelable.example.com` pointing to the mini PC (see [Pi-hole](#pi-hole)), the service is
+  not published on the internet
+
+> [!NOTE]
+> **Scanning the containers** : the containers are not on the local network but on the internal networks of Docker
+(`172.x.x.x`), behind the mini PC. A scan of `192.168.0.0/24` only finds the physical devices (and the mini PC with its
+published ports), never the containers.
+> Homelable has no Docker integration (no import through the Docker socket), the scanner can only reach the networks
+the backend is attached to. This is why `SCANNER_RANGES` also holds the subnet of `traefik-private-net`
+(`docker network inspect traefik-private-net | grep Subnet`), as a **/24** : Docker hands out the addresses from the
+start of the range, and scanning the whole /16 (65 000 addresses) would take ages.
+>
+> The **public** services (on `traefik-public-net`) and the databases (on the private network of their stack) stay out
+of reach, on purpose : the backend joining them would break the [Network segmentation](#network-segmentation). Add
+them to the map by hand, under the mini PC.
+
+> [!TIP]
+> For the **status checks** of the containers, use their **container name** (`http://grafana:3000`,
+`tcp://crowdsec:8080`, ...) rather than their IP address, which changes when the container is recreated.
+> A check on the **public URL** of a private service (`https://grafana.example.com`) answers `403` : the backend reaches
+Traefik with a Docker address, refused by `vpn-whitelist`. The public services can be checked on their public URL, their
+routers have no whitelist.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  backend:
+    image: ghcr.io/pouzor/homelable-backend:latest
+    container_name: homelable-backend
+    restart: unless-stopped
+    # Secrets, OIDC client and scanner settings (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      SQLITE_PATH: /app/data/homelab.db
+      # The browser origin only : wildcard CORS is rejected in OIDC mode
+      CORS_ORIGINS: '["https://homelable.example.com"]'
+
+      # Native OIDC authentication against PocketID, exclusive : no local password in this mode.
+      # The discovery URL is the PUBLIC one : the container resolves it to Traefik thanks to the alias on
+      # traefik-private-net, and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+      AUTH_MODE: oidc
+      OIDC_DISCOVERY_URL: https://pocketid.example.com/.well-known/openid-configuration
+      OIDC_REDIRECT_URI: https://homelable.example.com/api/v1/auth/oidc/callback
+      OIDC_SCOPES: "openid profile email"
+      OIDC_COOKIE_SECURE: "true"
+      # OIDC_CLIENT_ID / OIDC_CLIENT_SECRET come from the .env file
+    volumes:
+      # SQLite database and uploaded media (floor plans)
+      - homelable-data-vol:/app/data
+    # Raw sockets for nmap (host discovery, port scan)
+    cap_add:
+      - NET_RAW
+    networks:
+      # Reached by the frontend only
+      - homelable-net
+      # To reach PocketID through the Traefik alias, and the private services by container name for the status checks
+      - traefik-private-net
+
+  frontend:
+    image: ghcr.io/pouzor/homelable-frontend:latest
+    container_name: homelable-frontend
+    restart: unless-stopped
+    environment:
+      # nginx of the frontend proxies /api to the backend. Container name rather than the default "backend" : a service
+      # name is also resolvable on traefik-private-net, where another stack could use the same one
+      BACKEND_UPSTREAM: "homelable-backend:8000"
+    depends_on:
+      - backend
+    networks:
+      - homelable-net
+      # To be reachable by Traefik
+      - traefik-private-net
+
+  # The MCP server (AI assistants integration) is not deployed. To add it, see the official docker-compose.prebuilt.yml
+
+volumes:
+
+  homelable-data-vol:
+    name: homelable-data-vol
+
+networks:
+
+  homelable-net:
+    name: homelable-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
+```
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+# Signs the sessions, at least 32 bytes in OIDC mode : openssl rand -hex 32
+SECRET_KEY=<secret_key>
+
+# PocketID OIDC client (callback URL : https://homelable.example.com/api/v1/auth/oidc/callback)
+OIDC_CLIENT_ID=<oidc_client_id>
+OIDC_CLIENT_SECRET=<oidc_client_secret>
+
+# Scanner : JSON array of the CIDR ranges to scan. The local network, and traefik-private-net to find the private
+# containers (check its subnet with : docker network inspect traefik-private-net). A /24 only : Docker hands out the
+# addresses from the start of the range, scanning the whole /16 (65 000 addresses) would take ages
+SCANNER_RANGES=["192.168.0.0/24","172.21.0.0/24"]
+SCANNER_HTTP_RANGES=[]
+SCANNER_HTTP_PROBE_ENABLED=false
+SCANNER_HTTP_VERIFY_TLS=false
+
+# Status checker interval, in seconds
+STATUS_CHECKER_INTERVAL=60
+```
+
+#### Traefik routing
+
+:page_facing_up: _homelable.yml_ :
+
+```yaml
+http:
+  services:
+    homelable:
+      loadBalancer:
+        servers:
+          # The frontend serves the interface and proxies /api to the backend
+          - url: http://homelable-frontend:80
+
+  routers:
+    homelable:
+      rule: 'Host(`homelable.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: homelable
+      # Only the IP whitelist : the application handles the PocketID single sign-on itself (native OIDC),
+      # so no authentication middleware here, otherwise you would log in twice
+      middlewares:
+        - vpn-whitelist@file
+```
+
+Things to notice :
+
+- Traefik only reaches the **frontend**, the backend is never routed : the nginx of the frontend proxies `/api` to it
+- the backend also joins `traefik-private-net` : it needs to reach PocketID through the Traefik alias (the OIDC
+  discovery URL is the public one), and it lets the status checks reach the private services by container name
+- `BACKEND_UPSTREAM` targets the **container name** rather than the default service name `backend` : a service name is
+  resolvable on every network the container joins, another stack using the same name on `traefik-private-net` would
+  get the requests
+- the backend gets the `NET_RAW` capability only, enough for the nmap host discovery and port scans. It stays on a
+  bridge network : the scan cannot see the **MAC addresses** (layer 2), so a device that changes its IP address through
+  DHCP is not recognized. The host network would fix it, at the cost of exposing the port `8000` of the backend on the
+  local network
+- `CORS_ORIGINS` is restricted to the public URL, a wildcard is rejected in OIDC mode, and the session cookie is
+  `Secure`
+- the **MCP server** of the official Compose file (AI assistants integration) is not deployed
+- the SQLite database lives in the `homelable-data-vol` volume, part of the [Backrest](#backrest) backup like the other
+  volumes
+
+### Run
+
+Simply run the Compose file :
+
+```bash
+sudo docker-compose -f /opt/apps/homelable/docker-compose.yml up -d
+```
+
+You should end-up with two running containers, `homelable-backend` and `homelable-frontend`, and Traefik picks up the
+dynamic configuration file without restarting.
+
+The application is available at https://homelable.example.com, after the PocketID login.
+
+<img src="images/screen-homelable.png" alt="Homelable screenshot"/>
 
 ## Defrag-life
 

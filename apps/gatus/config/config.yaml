@@ -198,6 +198,15 @@ endpoints:
     alerts:
       - type: email
 
+  - name: Homelable
+    group: Private
+    url: http://homelable-frontend:80
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+    alerts:
+      - type: email
+
   - name: Speedtest Tracker
     group: Private
     url: http://speedtest-tracker:80/api/healthcheck
