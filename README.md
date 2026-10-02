@@ -199,6 +199,7 @@ It's up to you to choose the accessibility level you need for each service, you 
 your local network, some only via VPN, and others to anyone from the internet.
 
 ```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 15, "rankSpacing": 50, "padding": 8, "diagramPadding": 10, "curve": "basis", "wrappingWidth": 120, "inheritDir": false}}}%%
 flowchart TB
     style HOSTING_PROVIDER fill: #4d683b
     style DDNS_PROVIDER fill: #69587b
@@ -217,6 +218,7 @@ flowchart TB
     style VPN_CLIENT fill: #105040
     style PIHOLE_DNS_RECORDS fill: #806030
     style CROWDSEC_COMMUNITY fill: #4d683b
+    style CLIENT padding:40
     DOMAIN(example.com)
     SUBDOMAIN_WIREGUARD(wireguard.example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
@@ -227,8 +229,9 @@ flowchart TB
     ROUTER_PORT51820{{51820/udp}}
     DOCKER_WIREGUARD_PORT51820{{51820/udp}}
     DOCKER_MYAPP_PORT5000{{5000/tcp}}
-    DOCKER_PIHOLE_PORT80{{80/tcp}}
+    %%DOCKER_PIHOLE_PORT80{{80/tcp}}
     DOCKER_PIHOLE_PORT53{{53/udp}}
+    DOCKER_SABLIER_PORT10000{{10000/tcp}}
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
@@ -271,12 +274,13 @@ flowchart TB
     end
 
     subgraph SERVER_DEVICE[MINI PC]
-
-        subgraph WIREGUARD_HOST[WIREGUARD ON THE HOST]
-            DOCKER_WIREGUARD_PORT51820
-        end
         
         subgraph CONTAINER_ENGINE[DOCKER]
+
+            subgraph WIREGUARD_HOST[WIREGUARD ON THE HOST]
+                DOCKER_WIREGUARD_PORT51820
+            end
+            
             subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_TRAEFIK
@@ -305,14 +309,15 @@ flowchart TB
 
             subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
                 subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
-                    PIHOLE_DNS_TRAEFIK
-                    PIHOLE_DNS_PIHOLE
-                    PIHOLE_DNS_MYAPP
+                    PIHOLE_DNS_TRAEFIK ~~~ PIHOLE_DNS_PIHOLE ~~~ PIHOLE_DNS_MYAPP
                 end
 
-                DOCKER_PIHOLE_PORT53
-                DOCKER_PIHOLE_PORT80
-                DOCKER_PIHOLE_DNS
+                DOCKER_PIHOLE_PORT53 ~~~ DOCKER_PIHOLE_DNS
+                %%DOCKER_PIHOLE_PORT80
+            end
+
+            subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
+                CROWDSEC_ENGINE
             end
 
             subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
@@ -322,46 +327,42 @@ flowchart TB
             subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
                 DOCKER_UNBOUND_PORT53
             end
-
-            subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
-                CROWDSEC_ENGINE
-            end
         end
     end
 
-    CLIENT((User)) -.-> VPN_CLIENT
-    BROWSER((Browser)) --> HOSTING_PROVIDER
-    CLIENT -...-> BROWSER
+    CLIENT((#nbsp;#nbsp;#nbsp;User#nbsp;#nbsp;#nbsp;)) -->|with VPN| VPN_CLIENT
+    BROWSER((#nbsp;Browser#nbsp;)) --> HOSTING_PROVIDER
+    CLIENT -->|without VPN| BROWSER
     VPN_CLIENT --> BROWSER
-    WIREGUARD_CLIENT_ENDPOINT -...->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
+    WIREGUARD_CLIENT_ENDPOINT -..->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
     WIREGUARD_CLIENT_DNS --->|" Server tunnel address\n10.0.0.1 "| SERVER_DEVICE
-    ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
+    ROUTER_PORT51820 --->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 ------>|port forward| DOCKER_TRAEFIK_PORT80
     DNS_ISP ------>|Server static IP| DOCKER_PIHOLE_PORT53
     PIHOLE_DNS_MYAPP --->|Server internal IP| DOCKER_TRAEFIK_PORT443
     PIHOLE_DNS_PIHOLE --->|Server internal IP| DOCKER_TRAEFIK_PORT443
-    PIHOLE_DNS_TRAEFIK --->|Server internal IP| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_TRAEFIK ------>|Server internal IP| DOCKER_TRAEFIK_PORT443
     DOCKER_TRAEFIK_PORT443 ---> CROWDSEC_BOUNCER
-    %%REDIRECT -.->|301 to https| BROWSER
+    REDIRECT -.->|301 to https| BROWSER
     CROWDSEC_BOUNCER ----->|IP not banned| TRAEFIK_ROUTER
     DOCKER_TRAEFIK_PORT80 --> REDIRECT
     CROWDSEC_BOUNCER -..->|every request logged| ACCESS_LOG
-    ACCESS_LOG -........->|reads, detects attacks| CROWDSEC_ENGINE
+    ACCESS_LOG -...->|reads, detects attacks| CROWDSEC_ENGINE
     CROWDSEC_ENGINE -........->|decisions| CROWDSEC_BOUNCER
     CROWDSEC_ENGINE <-..->|signals / community blocklist| CROWDSEC_COMMUNITY
     TRAEFIK_ROUTER_MYAPP ----> SABLIER
     TRAEFIK_ROUTER_PIHOLE --> IP_WHITELISTING
     TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| IP_WHITELISTING
     IP_WHITELISTING --> AUTH
-    IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
+    %%IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
     SABLIER <-.->|return status| DOCKER_SABLIER_PORT10000
     SABLIER -->|not ready| WAITING_PAGE
     SABLIER -->|ready| DOCKER_MYAPP_PORT5000
     DOCKER_SABLIER_PORT10000 <-.->|check status| DOCKER_MYAPP_PORT5000
     AUTH --> DOCKER_TRAEFIK_PORT8080
-    DOCKER_PIHOLE_DNS ---> DOCKER_UNBOUND_PORT53
-    UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
+    DOCKER_PIHOLE_DNS --------> DOCKER_UNBOUND_PORT53
+    UNBOUND_CONTAINER <----------> ROOT_DNS_SERVERS
 ```
 
 Basically all services will be accessible via dedicated subdomains which will point to our local network, either through
@@ -5555,6 +5556,8 @@ Targets** page : the `ccteam-graphql` job must be **UP**.
 Then check that the metrics are **not** reachable from the internet : from a phone on mobile data (VPN turned off),
 https://ccteam.example.com/ccteam-gql/actuator/prometheus must answer `404`.
 
+<img src="images/screen-prometheus.png" alt="Prometheus screenshot"/>
+
 ## Grafana
 
 <img src="images/logo-grafana.svg" alt="Grafana logo" height="128"/>
@@ -5865,6 +5868,8 @@ restarting.
 Open https://grafana.example.com : you are redirected straight to PocketID, then back to Grafana, where the **Spring
 GraphQL** dashboard is waiting in the **Homelab** folder. Check your role in your profile : it must be **Grafana
 Admin**.
+
+<img src="images/screen-grafana.png" alt="Grafana screenshot"/>
 
 ## Gatus
 
