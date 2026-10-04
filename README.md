@@ -201,7 +201,7 @@ It's up to you to choose the accessibility level you need for each service, you 
 your local network, some only via VPN, and others to anyone from the internet.
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 15, "rankSpacing": 50, "padding": 8, "diagramPadding": 10, "curve": "basis", "wrappingWidth": 120, "inheritDir": false}}}%%
+%%{init: {"flowchart": {"nodeSpacing": 15, "rankSpacing": 50, "padding": 8, "diagramPadding": 10, "curve": "basis", "wrappingWidth": 220, "inheritDir": false}}}%%
 flowchart TB
     style HOSTING_PROVIDER fill: #4d683b
     style DDNS_PROVIDER fill: #69587b
@@ -211,7 +211,9 @@ flowchart TB
     style TRAEFIK_CONTAINER fill: #663535
     style PIHOLE_CONTAINER fill: #663535
     style UNBOUND_CONTAINER fill: #663535
-    style MYAPP_CONTAINER fill: #663535
+    style POCKETID_CONTAINER fill: #663535
+    style PUBLIC_APP_CONTAINER fill: #663535
+    style PRIVATE_APP_CONTAINER fill: #663535
     style CROWDSEC_CONTAINER fill: #663535
     style SABLIER_CONTAINER fill: #663535
     style WIREGUARD_HOST fill: #663535
@@ -223,7 +225,7 @@ flowchart TB
     style CLIENT padding:40
     DOMAIN(example.com)
     SUBDOMAIN_WIREGUARD(wireguard.example.com)
-    SUBDOMAIN_MYAPP(myapp.example.com)
+    SUBDOMAIN_MYAPP(public-app.example.com)
     DDNS(myddns.ddns.net)
     ROUTER[public IP]
     ROUTER_PORT80{{80/tcp}}
@@ -231,22 +233,20 @@ flowchart TB
     ROUTER_PORT51820{{51820/udp}}
     DOCKER_WIREGUARD_PORT51820{{51820/udp}}
     DOCKER_MYAPP_PORT5000{{5000/tcp}}
-    %%DOCKER_PIHOLE_PORT80{{80/tcp}}
+    DOCKER_PRIVATE_APP_PORT8080{{8080/tcp}}
     DOCKER_PIHOLE_PORT53{{53/udp}}
     DOCKER_SABLIER_PORT10000{{10000/tcp}}
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
-    DOCKER_TRAEFIK_PORT8080{{8080/tcp}}
     DOCKER_UNBOUND_PORT53{{53/udp}}
-    TRAEFIK_ROUTER_MYAPP(myapp)
-    TRAEFIK_ROUTER_PIHOLE(pihole)
-    TRAEFIK_ROUTER_TRAEFIK(traefik)
+    DOCKER_POCKETID_APP_PORT1411{{1411/tcp}}
+    TRAEFIK_ROUTER_MYAPP(public-app)
+    TRAEFIK_ROUTER_TRAEFIK(private-app)
     ROOT_DNS_SERVERS[Root DNS servers]
     DNS_ISP[DNS 1 & 2]
     DOCKER_PIHOLE_DNS[DNS 1 & 2]
-    PIHOLE_DNS_PIHOLE[pihole\n.example.com]
-    PIHOLE_DNS_TRAEFIK[traefik\n.example.com]
-    PIHOLE_DNS_MYAPP[myapp\n.example.com]
+    PIHOLE_DNS_TRAEFIK[private-app.example.com]
+    PIHOLE_DNS_MYAPP[public-app.example.com]
     CROWDSEC_BOUNCER(CrowdSec bouncer)
     CROWDSEC_ENGINE[Security engine\n+ local API]
     ACCESS_LOG[(access log)]
@@ -276,7 +276,7 @@ flowchart TB
     end
 
     subgraph SERVER_DEVICE[MINI PC]
-        
+
         subgraph CONTAINER_ENGINE[DOCKER]
 
             subgraph WIREGUARD_HOST[WIREGUARD ON THE HOST]
@@ -287,13 +287,11 @@ flowchart TB
                 subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTER]
                     TRAEFIK_ROUTER_TRAEFIK
                     TRAEFIK_ROUTER_MYAPP
-                    TRAEFIK_ROUTER_PIHOLE
                 end
 
                 subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARE]
                     IP_WHITELISTING(IP whitelist)
                     SABLIER(Sablier dynamic)
-                    AUTH(PocketID auth)
                 end
 
                 CROWDSEC_BOUNCER
@@ -301,7 +299,6 @@ flowchart TB
                 REDIRECT(HTTPS redirect)
                 DOCKER_TRAEFIK_PORT80
                 DOCKER_TRAEFIK_PORT443
-                DOCKER_TRAEFIK_PORT8080
             end
 
             subgraph SABLIER_CONTAINER[SABLIER CONTAINER]
@@ -311,19 +308,26 @@ flowchart TB
 
             subgraph PIHOLE_CONTAINER[PIHOLE CONTAINER]
                 subgraph PIHOLE_DNS_RECORDS[LOCAL DNS RECORDS]
-                    PIHOLE_DNS_TRAEFIK ~~~ PIHOLE_DNS_PIHOLE ~~~ PIHOLE_DNS_MYAPP
+                    PIHOLE_DNS_TRAEFIK ~~~ PIHOLE_DNS_MYAPP
                 end
 
                 DOCKER_PIHOLE_PORT53 ~~~ DOCKER_PIHOLE_DNS
-                %%DOCKER_PIHOLE_PORT80
             end
 
             subgraph CROWDSEC_CONTAINER[CROWDSEC CONTAINER]
                 CROWDSEC_ENGINE
             end
 
-            subgraph MYAPP_CONTAINER[MYAPP CONTAINER]
+            subgraph PUBLIC_APP_CONTAINER[PUBLIC APP CONTAINER]
                 DOCKER_MYAPP_PORT5000
+            end
+
+            subgraph PRIVATE_APP_CONTAINER[PRIVATE APP CONTAINER]
+                DOCKER_PRIVATE_APP_PORT8080
+            end
+
+            subgraph POCKETID_CONTAINER[POCKETID CONTAINER]
+                DOCKER_POCKETID_APP_PORT1411
             end
 
             subgraph UNBOUND_CONTAINER[UNBOUND CONTAINER]
@@ -331,22 +335,22 @@ flowchart TB
             end
         end
     end
-
+    
     CLIENT((#nbsp;#nbsp;#nbsp;User#nbsp;#nbsp;#nbsp;)) -->|with VPN| VPN_CLIENT
-    BROWSER((#nbsp;Browser#nbsp;)) --> HOSTING_PROVIDER
+    BROWSER@{ shape: docs, label: "#nbsp;Browser#nbsp;" } --> HOSTING_PROVIDER
     CLIENT -->|without VPN| BROWSER
     VPN_CLIENT --> BROWSER
-    WIREGUARD_CLIENT_ENDPOINT -..->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
-    WIREGUARD_CLIENT_DNS --->|" Server tunnel address\n10.0.0.1 "| SERVER_DEVICE
-    ROUTER_PORT51820 --->|port forward| DOCKER_WIREGUARD_PORT51820
+    WIREGUARD_CLIENT_ENDPOINT -.->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
+    WIREGUARD_CLIENT_DNS -->|" Server tunnel address\n10.0.0.1 "| SERVER_DEVICE
+    ROUTER_PORT51820 -->|port forward| DOCKER_WIREGUARD_PORT51820
     ROUTER_PORT443 ------>|port forward| DOCKER_TRAEFIK_PORT443
     ROUTER_PORT80 ------>|port forward| DOCKER_TRAEFIK_PORT80
     DNS_ISP ------>|Server static IP| DOCKER_PIHOLE_PORT53
-    PIHOLE_DNS_MYAPP --->|Server internal IP| DOCKER_TRAEFIK_PORT443
-    PIHOLE_DNS_PIHOLE --->|Server internal IP| DOCKER_TRAEFIK_PORT443
-    PIHOLE_DNS_TRAEFIK ------>|Server internal IP| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_MYAPP --->|Server internal IP\n192.168.0.16| DOCKER_TRAEFIK_PORT443
+    PIHOLE_DNS_TRAEFIK ------>|Server internal IP\n192.168.0.16| DOCKER_TRAEFIK_PORT443
+    DOCKER_PIHOLE_PORT53 --> PIHOLE_DNS_RECORDS
     DOCKER_TRAEFIK_PORT443 ---> CROWDSEC_BOUNCER
-    REDIRECT -.->|301 to https| BROWSER
+    REDIRECT -.....->|301 to https| BROWSER
     CROWDSEC_BOUNCER ----->|IP not banned| TRAEFIK_ROUTER
     DOCKER_TRAEFIK_PORT80 --> REDIRECT
     CROWDSEC_BOUNCER -..->|every request logged| ACCESS_LOG
@@ -354,17 +358,57 @@ flowchart TB
     CROWDSEC_ENGINE -........->|decisions| CROWDSEC_BOUNCER
     CROWDSEC_ENGINE <-..->|signals / community blocklist| CROWDSEC_COMMUNITY
     TRAEFIK_ROUTER_MYAPP ----> SABLIER
-    TRAEFIK_ROUTER_PIHOLE --> IP_WHITELISTING
-    TRAEFIK_ROUTER_TRAEFIK -->|Dashboard / API| IP_WHITELISTING
-    IP_WHITELISTING --> AUTH
-    %%IP_WHITELISTING --> DOCKER_PIHOLE_PORT80
+    TRAEFIK_ROUTER_TRAEFIK --> IP_WHITELISTING
     SABLIER <-.->|return status| DOCKER_SABLIER_PORT10000
     SABLIER -->|not ready| WAITING_PAGE
     SABLIER -->|ready| DOCKER_MYAPP_PORT5000
     DOCKER_SABLIER_PORT10000 <-.->|check status| DOCKER_MYAPP_PORT5000
-    AUTH --> DOCKER_TRAEFIK_PORT8080
+    IP_WHITELISTING --> DOCKER_PRIVATE_APP_PORT8080
+    PRIVATE_APP_CONTAINER <-->|OIDC| DOCKER_POCKETID_APP_PORT1411
     DOCKER_PIHOLE_DNS --------> DOCKER_UNBOUND_PORT53
-    UNBOUND_CONTAINER <----------> ROOT_DNS_SERVERS
+    UNBOUND_CONTAINER <-----------> ROOT_DNS_SERVERS
+
+    linkStyle 0 stroke-width: 3px, stroke: red
+    linkStyle 1 stroke-width: 3px, stroke: orange
+    linkStyle 2 stroke-width: 3px, stroke: red
+    linkStyle 3 stroke-width: 3px, stroke: orange
+    linkStyle 4 stroke-width: 3px, stroke: red
+    linkStyle 5 stroke-width: 3px, stroke: red
+    linkStyle 6 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 7 stroke-width: 3px, stroke: orange
+    linkStyle 8 stroke-width: 3px, stroke: orange
+    linkStyle 9 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
+    linkStyle 10 stroke-width: 3px, stroke: orange
+    linkStyle 11 stroke-width: 3px, stroke: red
+    linkStyle 12 stroke-width: 3px, stroke: red
+    linkStyle 13 stroke-width: 3px, stroke: orange
+    linkStyle 14 stroke-width: 3px, stroke: orange, stroke-dasharray: 8
+    linkStyle 15 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
+    linkStyle 16 stroke-width: 3px, stroke: orange
+    linkStyle 17 stroke-width: 3px, stroke: red
+    linkStyle 18 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 19 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
+    linkStyle 20 stroke-width: 3px, stroke: orange
+    linkStyle 21 stroke-width: 3px, stroke: orange
+    linkStyle 22 stroke-width: 3px, stroke: orange
+    linkStyle 23 stroke-width: 3px, stroke: red
+    linkStyle 24 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 25 stroke-width: 3px, stroke: red
+    linkStyle 26 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 27 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 28 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 29 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 30 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 31 stroke-width: 3px, stroke: red
+    linkStyle 32 stroke-width: 3px, stroke: orange
+    linkStyle 33 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 34 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 35 stroke-width: 3px, stroke: red
+    linkStyle 36 stroke-width: 3px, stroke: red, stroke-dasharray: 8
+    linkStyle 37 stroke-width: 3px, stroke: orange
+    linkStyle 38 stroke-width: 3px, stroke: orange, stroke-dasharray: 8
+    linkStyle 39 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
+    linkStyle 40 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
 ```
 
 Basically all services will be accessible via dedicated subdomains which will point to our local network, either through
@@ -375,11 +419,11 @@ We make the **ISP upstream DNS** (from **router** configuration or on each devic
 so that we reroute the entire traffic through **Pi-hole** and thus take advantage of its benefits,
 see [Network configuration](#network-configuration).
 
-In this example **Traefik** (_traefik.example.com_) and **Pi-Hole** (_pihole.example.com_) are only accessible through
-VPN and from the local network thanks to local DNS records and IP whitelisting, while **Myapp** (_myapp.example.com_) is
+In this example **private-app** (_private-app.example.com_) is only accessible through VPN and from the local
+network thanks to local DNS records and IP whitelisting, while **public-app** (_public-app.example.com_) is
 also accessible from the internet publicly, behind **Sablier** which start/stop the container on demand,
 see [Scale to zero with Sablier](#scale-to-zero-with-sablier).
-In addition, Traefik dashboard is behind **OIDC authentication** through **PocketID**, see [PocketID](#pocketid).
+In addition, private-app is behind **OIDC authentication** through **PocketID**, see [PocketID](#pocketid).
 
 On top of that, **CrowdSec** watches the Traefik access log and its bouncer, plugged on the HTTPS entrypoint, rejects
 the IP addresses flagged as malicious (by our own scenarios or by the community blocklist) before they reach any
