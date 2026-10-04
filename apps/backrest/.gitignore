@@ -1,0 +1,9 @@
+# Private key and generated files : never commit them
+ssh/id_*
+ssh/known_hosts
+config/
+data/
+cache/
+tmp/
+dumps/
+restore/

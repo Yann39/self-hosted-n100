@@ -1,9 +1,19 @@
 api:
   dashboard: true
 
+# Health check endpoint (/ping) for Gatus, served on the internal "traefik" entrypoint (8080), not published on the host
+ping: {}
+
 entryPoints:
   web:
     address: ':80'
+    # Every HTTP request is redirected to HTTPS, before any router : nothing is ever served on port 80
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+          permanent: true
 
   websecure:
     address: ':443'

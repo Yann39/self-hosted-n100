@@ -21,17 +21,19 @@ services:
           # Lets the containers of the private network resolve the public name of the OIDC provider to Traefik itself,
           # so that applications authenticating natively against PocketID can use its public issuer URL (see PocketID)
           - pocketid.example.com
+          # Same for the public services, so that Gatus checks them through Traefik with their real name
+          # (routing, TLS certificate, CrowdSec), without joining the public network nor depending on Pi-hole
+          - lychee.example.com
+          - quake.example.com
+          - goatcounter.example.com
+          - ccteam.example.com
       # public : services exposed to the internet
       traefik-public-net:
     env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"
 
-      # Redirect all HTTP requests to HTTPS
-      - "traefik.http.middlewares.httpsonly.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.httpsonly.redirectscheme.permanent=true"
-      - "traefik.http.routers.httpsonly.rule=HostRegexp(`{any:.*}`)"
-      - "traefik.http.routers.httpsonly.middlewares=httpsonly"
+      # The HTTP to HTTPS redirection is done on the "web" entrypoint, see traefik.yml
 
       # Configure dashboard with HTTPS
       - "traefik.http.routers.dashboard.rule=Host(`traefik.example.com`)"

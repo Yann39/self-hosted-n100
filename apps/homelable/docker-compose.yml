@@ -1,0 +1,65 @@
+services:
+
+  backend:
+    image: ghcr.io/pouzor/homelable-backend:latest
+    container_name: homelable-backend
+    restart: unless-stopped
+    # Secrets, OIDC client and scanner settings (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      SQLITE_PATH: /app/data/homelab.db
+      # The browser origin only : wildcard CORS is rejected in OIDC mode
+      CORS_ORIGINS: '["https://homelable.example.com"]'
+
+      # Native OIDC authentication against PocketID, exclusive : no local password in this mode.
+      # The discovery URL is the PUBLIC one : the container resolves it to Traefik thanks to the alias on
+      # traefik-private-net, and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+      AUTH_MODE: oidc
+      OIDC_DISCOVERY_URL: https://pocketid.example.com/.well-known/openid-configuration
+      OIDC_REDIRECT_URI: https://homelable.example.com/api/v1/auth/oidc/callback
+      OIDC_SCOPES: "openid profile email"
+      OIDC_COOKIE_SECURE: "true"
+      # OIDC_CLIENT_ID / OIDC_CLIENT_SECRET come from the .env file
+    volumes:
+      # SQLite database and uploaded media (floor plans)
+      - homelable-data-vol:/app/data
+    # Raw sockets for nmap (host discovery, port scan)
+    cap_add:
+      - NET_RAW
+    networks:
+      # Reached by the frontend only
+      - homelable-net
+      # To reach PocketID through the Traefik alias, and the private services by container name for the status checks
+      - traefik-private-net
+
+  frontend:
+    image: ghcr.io/pouzor/homelable-frontend:latest
+    container_name: homelable-frontend
+    restart: unless-stopped
+    environment:
+      # nginx of the frontend proxies /api to the backend. Container name rather than the default "backend" : a service
+      # name is also resolvable on traefik-private-net, where another stack could use the same one
+      BACKEND_UPSTREAM: "homelable-backend:8000"
+    depends_on:
+      - backend
+    networks:
+      - homelable-net
+      # To be reachable by Traefik
+      - traefik-private-net
+
+  # The MCP server (AI assistants integration) is not deployed. To add it, see the official docker-compose.prebuilt.yml
+
+volumes:
+
+  homelable-data-vol:
+    name: homelable-data-vol
+
+networks:
+
+  homelable-net:
+    name: homelable-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true

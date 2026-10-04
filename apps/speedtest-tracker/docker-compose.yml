@@ -1,0 +1,28 @@
+services:
+  speedtest-tracker:
+    image: lscr.io/linuxserver/speedtest-tracker:latest
+    restart: unless-stopped
+    container_name: speedtest-tracker
+    env_file: .env
+    environment:
+      PUID: 1000
+      PGID: 1000
+      APP_URL: https://speedtest-tracker.example.com
+      ASSET_URL: https://speedtest-tracker.example.com
+      DB_CONNECTION: sqlite
+      SPEEDTEST_SCHEDULE: "55 1-23/2 * * *"
+      DISPLAY_TIMEZONE: "Europe/Zurich"
+    volumes:
+      - ./config:/config
+    networks:
+      - speedtest-tracker-net
+      - traefik-private-net
+
+networks:
+
+  speedtest-tracker-net:
+    name: speedtest-tracker-net
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true

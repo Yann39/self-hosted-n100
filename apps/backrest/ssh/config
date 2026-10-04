@@ -1,0 +1,15 @@
+# SSH configuration used by restic (SFTP repository), mounted as /root/.ssh in the Backrest container.
+# Repository URI in Backrest : sftp:windows-pc:/D:/Backups/N100
+Host windows-pc
+    HostName 192.168.0.12
+    User backup
+    Port 22
+    IdentityFile /root/.ssh/id_ed25519
+    IdentitiesOnly yes
+    # Generated with : ssh-keyscan -H 192.168.0.12 > known_hosts
+    StrictHostKeyChecking yes
+    UserKnownHostsFile /root/.ssh/known_hosts
+    # The repository is on a mechanical drive that may need a few seconds to spin up : keep the connection alive
+    # instead of dropping it
+    ServerAliveInterval 30
+    ServerAliveCountMax 6

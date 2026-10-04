@@ -1,0 +1,55 @@
+services:
+
+  arcane:
+    image: ghcr.io/getarcaneapp/manager:latest
+    container_name: arcane
+    restart: unless-stopped
+    # Encryption key and OIDC client credentials (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      APP_URL: https://arcane.example.com
+      # X-Forwarded-* headers are only trusted from the private Traefik network. Never the 172.16.0.0/12 suggested by
+      # the documentation : that range also covers traefik-public-net. Check it with : docker network inspect traefik-private-net
+      TRUSTED_PROXIES: 172.21.0.0/16
+      ANALYTICS_DISABLED: "true"
+
+      # Native OIDC authentication against PocketID (callback URL : https://arcane.example.com/auth/oidc/callback)
+      # The issuer is the PUBLIC URL, no trailing slash : the container resolves it to Traefik thanks to the alias on
+      # traefik-private-net, and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
+      OIDC_ENABLED: "true"
+      OIDC_ISSUER_URL: https://pocketid.example.com
+      OIDC_SCOPES: openid email profile groups
+      OIDC_GROUPS_CLAIM: groups
+      OIDC_PROVIDER_NAME: PocketID
+      # Set it to "false" for the first start, until the role mapping is configured and the OIDC login validated
+      # (the local admin is needed for that), then back to "true" once the local login is disabled in Settings -> Authentication
+      OIDC_AUTO_REDIRECT_TO_PROVIDER: "true"
+      # Roles can also be mapped declaratively (role referenced by its ID, see Settings -> Roles) :
+      # OIDC_ROLE_MAPPINGS: '[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]'
+    volumes:
+      # Full access to the Docker daemon, i.e. root on the host : private network only
+      - /var/run/docker.sock:/var/run/docker.sock
+      # SQLite database, projects, settings, session signing key
+      - arcane-data:/app/data
+    # Host cgroup namespace, so that Arcane reliably detects its own container
+    cgroup: host
+    healthcheck:
+      test: [ "CMD", "./arcane", "health", "--timeout", "2s" ]
+      interval: 30s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+    networks:
+      - traefik-private-net
+
+volumes:
+
+  arcane-data:
+    name: arcane-data
+
+networks:
+
+  traefik-private-net:
+    name: traefik-private-net
+    external: true
