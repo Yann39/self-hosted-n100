@@ -203,25 +203,25 @@ your local network, some only via VPN, and others to anyone from the internet.
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 15, "rankSpacing": 50, "padding": 8, "diagramPadding": 10, "curve": "basis", "wrappingWidth": 220, "inheritDir": false}}}%%
 flowchart TB
-    style HOSTING_PROVIDER fill: #4d683b
-    style DDNS_PROVIDER fill: #69587b
-    style INTERNET_SERVICE_PROVIDER fill: #205566
-    style SERVER_DEVICE fill: #665151
-    style CONTAINER_ENGINE fill: #664343
-    style TRAEFIK_CONTAINER fill: #663535
-    style PIHOLE_CONTAINER fill: #663535
-    style UNBOUND_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style PUBLIC_APP_CONTAINER fill: #663535
-    style PRIVATE_APP_CONTAINER fill: #663535
-    style CROWDSEC_CONTAINER fill: #663535
-    style SABLIER_CONTAINER fill: #663535
-    style WIREGUARD_HOST fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style VPN_CLIENT fill: #105040
-    style PIHOLE_DNS_RECORDS fill: #806030
-    style CROWDSEC_COMMUNITY fill: #4d683b
+    style HOSTING_PROVIDER fill: #bbfd795e
+    style DDNS_PROVIDER fill: #e2b6ff6e
+    style INTERNET_SERVICE_PROVIDER fill: #45d8ff57
+    style SERVER_DEVICE fill: #febfb45e
+    style CONTAINER_ENGINE fill: #6701022d
+    style TRAEFIK_CONTAINER fill: #66010136
+    style PIHOLE_CONTAINER fill: #66010136
+    style UNBOUND_CONTAINER fill: #66010136
+    style POCKETID_CONTAINER fill: #66010136
+    style PUBLIC_APP_CONTAINER fill: #66010136
+    style PRIVATE_APP_CONTAINER fill: #66010136
+    style CROWDSEC_CONTAINER fill: #66010136
+    style SABLIER_CONTAINER fill: #66010136
+    style WIREGUARD_HOST fill: #66010136
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style VPN_CLIENT fill: #18fdb144
+    style PIHOLE_DNS_RECORDS fill: #defc1e37
+    style CROWDSEC_COMMUNITY fill: #bbfd795e
     style CLIENT padding:40
     DOMAIN(example.com)
     SUBDOMAIN_WIREGUARD(wireguard.example.com)
@@ -336,8 +336,8 @@ flowchart TB
         end
     end
     
-    CLIENT((#nbsp;#nbsp;#nbsp;User#nbsp;#nbsp;#nbsp;)) -->|with VPN| VPN_CLIENT
-    BROWSER@{ shape: docs, label: "#nbsp;Browser#nbsp;" } --> HOSTING_PROVIDER
+    CLIENT((User)) -->|with VPN| VPN_CLIENT
+    BROWSER@{ shape: docs, label: "Browser" } --> HOSTING_PROVIDER
     CLIENT -->|without VPN| BROWSER
     VPN_CLIENT --> BROWSER
     WIREGUARD_CLIENT_ENDPOINT -.->|" Server static IP\n192.168.0.16 "| SERVER_DEVICE
@@ -369,28 +369,28 @@ flowchart TB
     UNBOUND_CONTAINER <-----------> ROOT_DNS_SERVERS
 
     linkStyle 0 stroke-width: 3px, stroke: red
-    linkStyle 1 stroke-width: 3px, stroke: orange
+    linkStyle 1 stroke-width: 3px, stroke: #f08c00
     linkStyle 2 stroke-width: 3px, stroke: red
-    linkStyle 3 stroke-width: 3px, stroke: orange
+    linkStyle 3 stroke-width: 3px, stroke: #f08c00
     linkStyle 4 stroke-width: 3px, stroke: red
     linkStyle 5 stroke-width: 3px, stroke: red
     linkStyle 6 stroke-width: 3px, stroke: red, stroke-dasharray: 8
-    linkStyle 7 stroke-width: 3px, stroke: orange
-    linkStyle 8 stroke-width: 3px, stroke: orange
-    linkStyle 9 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
-    linkStyle 10 stroke-width: 3px, stroke: orange
+    linkStyle 7 stroke-width: 3px, stroke: #f08c00
+    linkStyle 8 stroke-width: 3px, stroke: #f08c00
+    linkStyle 9 stroke-width: 3px, stroke: #3b82f6, stroke-dasharray: 8
+    linkStyle 10 stroke-width: 3px, stroke: #f08c00
     linkStyle 11 stroke-width: 3px, stroke: red
     linkStyle 12 stroke-width: 3px, stroke: red
-    linkStyle 13 stroke-width: 3px, stroke: orange
-    linkStyle 14 stroke-width: 3px, stroke: orange, stroke-dasharray: 8
-    linkStyle 15 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
-    linkStyle 16 stroke-width: 3px, stroke: orange
+    linkStyle 13 stroke-width: 3px, stroke: #f08c00
+    linkStyle 14 stroke-width: 3px, stroke: #f08c00, stroke-dasharray: 8
+    linkStyle 15 stroke-width: 3px, stroke: #3b82f6, stroke-dasharray: 8
+    linkStyle 16 stroke-width: 3px, stroke: #f08c00
     linkStyle 17 stroke-width: 3px, stroke: red
     linkStyle 18 stroke-width: 3px, stroke: red, stroke-dasharray: 8
-    linkStyle 19 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
-    linkStyle 20 stroke-width: 3px, stroke: orange
-    linkStyle 21 stroke-width: 3px, stroke: orange
-    linkStyle 22 stroke-width: 3px, stroke: orange
+    linkStyle 19 stroke-width: 3px, stroke: #3b82f6, stroke-dasharray: 8
+    linkStyle 20 stroke-width: 3px, stroke: #f08c00
+    linkStyle 21 stroke-width: 3px, stroke: #f08c00
+    linkStyle 22 stroke-width: 3px, stroke: #f08c00
     linkStyle 23 stroke-width: 3px, stroke: red
     linkStyle 24 stroke-width: 3px, stroke: red, stroke-dasharray: 8
     linkStyle 25 stroke-width: 3px, stroke: red
@@ -400,15 +400,15 @@ flowchart TB
     linkStyle 29 stroke-width: 3px, stroke: red, stroke-dasharray: 8
     linkStyle 30 stroke-width: 3px, stroke: red, stroke-dasharray: 8
     linkStyle 31 stroke-width: 3px, stroke: red
-    linkStyle 32 stroke-width: 3px, stroke: orange
+    linkStyle 32 stroke-width: 3px, stroke: #f08c00
     linkStyle 33 stroke-width: 3px, stroke: red, stroke-dasharray: 8
     linkStyle 34 stroke-width: 3px, stroke: red, stroke-dasharray: 8
     linkStyle 35 stroke-width: 3px, stroke: red
     linkStyle 36 stroke-width: 3px, stroke: red, stroke-dasharray: 8
-    linkStyle 37 stroke-width: 3px, stroke: orange
-    linkStyle 38 stroke-width: 3px, stroke: orange, stroke-dasharray: 8
-    linkStyle 39 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
-    linkStyle 40 stroke-width: 3px, stroke: blue, stroke-dasharray: 8
+    linkStyle 37 stroke-width: 3px, stroke: #f08c00
+    linkStyle 38 stroke-width: 3px, stroke: #f08c00, stroke-dasharray: 8
+    linkStyle 39 stroke-width: 3px, stroke: #3b82f6, stroke-dasharray: 8
+    linkStyle 40 stroke-width: 3px, stroke: #3b82f6, stroke-dasharray: 8
 ```
 
 Basically all services will be accessible via dedicated subdomains which will point to our local network, either through
@@ -433,7 +433,11 @@ You will find more details on how all this has been implemented later in this gu
 
 # Install and prepare system
 
-<img src="images/logo-debian.svg" alt="Debian logo"/>
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/logo-debian-white.svg" height="128"/>
+    <source media="(prefers-color-scheme: light)" srcset="images/logo-debian.svg" height="128"/>
+    <img alt="Debian logo" src="images/logo-debian.svg" height="128"/>
+</picture>
 
 By default, the Mini PC came with **Windows 11**, I simply installed **Debian 12** instead (then followed version up to
 **13.4**, which is the version I use at the time of writing this guide).
@@ -655,12 +659,12 @@ rather than through the internet :
 
 ```mermaid
 flowchart LR
-    style HOSTING_PROVIDER fill: #4d683b
-    style DDNS_PROVIDER fill: #69587b
-    style INTERNET_SERVICE_PROVIDER fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APPLICATION fill: #663535
-    style SERVER_DEVICE fill: #665151
+    style HOSTING_PROVIDER fill: #bbfd795e
+    style DDNS_PROVIDER fill: #e2b6ff6e
+    style INTERNET_SERVICE_PROVIDER fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #66010159
+    style APPLICATION fill: #66010159
+    style SERVER_DEVICE fill: #febfb45e
     CLIENT((Client))
     SUBDOMAIN_MYAPP(myapp\n.example.com)
     DDNS(myddns\n.ddns.net)
@@ -704,12 +708,12 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    style VPN fill: #4d683b
-    style TRAEFIK_CONTAINER fill: #663535
-    style PI_HOLE fill: #663535
-    style APPLICATION fill: #663535
-    style WIREGUARD fill: #663535
-    style SERVER_DEVICE fill: #665151
+    style VPN fill: #bbfd795e
+    style TRAEFIK_CONTAINER fill: #66010159
+    style PI_HOLE fill: #66010159
+    style APPLICATION fill: #66010159
+    style WIREGUARD fill: #66010159
+    style SERVER_DEVICE fill: #febfb45e
     CLIENT((Client))
     VPN_CLIENT(DNS)
     VPN_ENDPOINT(Endpoint)
@@ -754,11 +758,11 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-    style INTERNET_SERVICE_PROVIDER fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style PI_HOLE fill: #663535
-    style APPLICATION fill: #663535
-    style SERVER_DEVICE fill: #665151
+    style INTERNET_SERVICE_PROVIDER fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #66010159
+    style PI_HOLE fill: #66010159
+    style APPLICATION fill: #66010159
+    style SERVER_DEVICE fill: #febfb45e
     CLIENT((Client))
     ISP_DNS(DNS)
     PIHOLE_DNS_MYAPP(myapp\n.example.com)
@@ -997,14 +1001,14 @@ Here is an overview of the network flow on our setup :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style MYAPP1_CONTAINER fill: #663535
-    style MYAPP2_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style MYAPP1_CONTAINER fill: #6601013c
+    style MYAPP2_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     INCOMING_REQUEST((INCOMING\nREQUEST))
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
@@ -1531,18 +1535,18 @@ Pi-Hole and Unbound :
 
 ```mermaid
 flowchart TB
-    style WINDOWS11 fill: #205566
-    style LAPTOP fill: #205566
-    style MOBILE fill: #205566
-    style MACOS fill: #205566
-    style WIREGUARD_SERVER fill: #764545
-    style PIHOLE fill: #663535
-    style UNBOUND fill: #562525
-    style INTERNET fill: #4d683b
-    style HOME_NETWORK fill: #263555
-    style 5G_NETWORK fill: #263555
-    style WORK_NETWORK fill: #263555
-    style MINI_PC fill: #504255
+    style WINDOWS11 fill: #01fcbf29
+    style LAPTOP fill: #01fcbf29
+    style MOBILE fill: #01fcbf29
+    style MACOS fill: #01fcbf29
+    style WIREGUARD_SERVER fill: #fd500c38
+    style PIHOLE fill: #8a200161
+    style UNBOUND fill: #5a0f0191
+    style INTERNET fill: #bbfd795e
+    style HOME_NETWORK fill: #6996fc45
+    style 5G_NETWORK fill: #6996fc45
+    style WORK_NETWORK fill: #6996fc45
+    style MINI_PC fill: #fec1f647
     WINDOWS11(Peer 1 \n Home PC - Windows 11)
     LAPTOP(Peer 2 \n Home laptop - Ubuntu 22)
     MOBILE(Peer 3 \n Phone - Android 14)
@@ -2406,16 +2410,16 @@ from your local network holding your homelab (on the left), or from any other lo
 
 ```mermaid
 flowchart TB
-    style HOSTING_PROVIDER fill: #4d683b, color: #fff
-    style DDNS_PROVIDER fill: #69587b, color: #fff
-    style INTERNET_SERVICE_PROVIDER fill: #205566, color: #fff
-    style SINGLE_BOARD_COMPUTER fill: #665151, color: #fff
-    style CONTAINER_ENGINE fill: #664343, color: #fff
-    style TRAEFIK_CONTAINER fill: #663535, color: #fff
-    style PIHOLE_CONTAINER fill: #663535, color: #fff
-    style UNBOUND_CONTAINER fill: #663535, color: #fff
-    style MYAPP_CONTAINER fill: #663535, color: #fff
-    style TRAEFIK_ROUTER fill: #806030, color: #fff
+    style HOSTING_PROVIDER fill: #bbfd795e
+    style DDNS_PROVIDER fill: #e2b6ff6e
+    style INTERNET_SERVICE_PROVIDER fill: #45d8ff57
+    style SINGLE_BOARD_COMPUTER fill: #febfb45e
+    style CONTAINER_ENGINE fill: #6701022d
+    style TRAEFIK_CONTAINER fill: #66010136
+    style PIHOLE_CONTAINER fill: #66010136
+    style UNBOUND_CONTAINER fill: #66010136
+    style MYAPP_CONTAINER fill: #66010136
+    style TRAEFIK_ROUTER fill: #defc1e37
     DOMAIN(example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
     DDNS(myddns.ddns.net)
@@ -2496,20 +2500,20 @@ flowchart TB
     UNBOUND_CONTAINER <-----> ROOT_DNS_SERVERS
     linkStyle 0 stroke-width: 4px, stroke: red
     linkStyle 1 stroke-width: 4px, stroke: red
-    linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 4 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 2 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 3 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 4 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
     linkStyle 5 stroke-width: 4px, stroke: red
     linkStyle 8 stroke-width: 4px, stroke: red
     linkStyle 9 stroke-width: 4px, stroke: red
     linkStyle 10 stroke-width: 4px, stroke: red
     linkStyle 11 stroke-width: 4px, stroke: red
     linkStyle 12 stroke-width: 4px, stroke: red
-    linkStyle 13 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 17 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 13 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 14 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 15 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 16 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 17 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
 ```
 
 </td>
@@ -2519,16 +2523,16 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    style HOSTING_PROVIDER fill: #4d683b
-    style DDNS_PROVIDER fill: #69587b
-    style INTERNET_SERVICE_PROVIDER fill: #205566
-    style INTERNET_SERVICE_PROVIDER2 fill: #205566
-    style SERVER_DEVICE fill: #665151
-    style CONTAINER_ENGINE fill: #664343
-    style TRAEFIK_CONTAINER fill: #663535
-    style MYAPP_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style DNS_RESOLVER fill: #805060
+    style HOSTING_PROVIDER fill: #bbfd795e
+    style DDNS_PROVIDER fill: #e2b6ff6e
+    style INTERNET_SERVICE_PROVIDER fill: #45d8ff57
+    style INTERNET_SERVICE_PROVIDER2 fill: #45d8ff57
+    style SERVER_DEVICE fill: #febfb45e
+    style CONTAINER_ENGINE fill: #6701022d
+    style TRAEFIK_CONTAINER fill: #66010136
+    style MYAPP_CONTAINER fill: #66010136
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style DNS_RESOLVER fill: #fd95b07a
     DOMAIN(example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
     DDNS(myddns.ddns.net)
@@ -2606,19 +2610,19 @@ flowchart TB
     CLOUDFLARE <---> ROOT_DNS_SERVERS
     linkStyle 0 stroke-width: 4px, stroke: red
     linkStyle 1 stroke-width: 4px, stroke: red
-    linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 3 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 4 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 2 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 3 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 4 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
     linkStyle 5 stroke-width: 4px, stroke: red
     linkStyle 8 stroke-width: 4px, stroke: red
     linkStyle 9 stroke-width: 4px, stroke: red
     linkStyle 10 stroke-width: 4px, stroke: red
     linkStyle 11 stroke-width: 4px, stroke: red
     linkStyle 12 stroke-width: 4px, stroke: red
-    linkStyle 13 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 14 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 15 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 16 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 13 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 14 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 15 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 16 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
 ```
 
 </td>
@@ -2639,20 +2643,20 @@ If you try to reach the service through the **WireGuard** VPN, the flow will loo
 
 ```mermaid
 flowchart TB
-    style HOSTING_PROVIDER fill: #4d683b
-    style DDNS_PROVIDER fill: #69587b
-    style INTERNET_SERVICE_PROVIDER fill: #205566
-    style SERVER_DEVICE fill: #665151
-    style CONTAINER_ENGINE fill: #664343
-    style TRAEFIK_CONTAINER fill: #663535
-    style PIHOLE_CONTAINER fill: #663535
-    style UNBOUND_CONTAINER fill: #663535
-    style WIREGUARD_HOST fill: #663535
-    style MYAPP_CONTAINER fill: #663535
-    style PIHOLE_DNS_RECORDS fill: #806030
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style VPN_CLIENT fill: #105040
+    style HOSTING_PROVIDER fill: #bbfd795e
+    style DDNS_PROVIDER fill: #e2b6ff6e
+    style INTERNET_SERVICE_PROVIDER fill: #45d8ff57
+    style SERVER_DEVICE fill: #febfb45e
+    style CONTAINER_ENGINE fill: #6701022d
+    style TRAEFIK_CONTAINER fill: #66010136
+    style PIHOLE_CONTAINER fill: #66010136
+    style UNBOUND_CONTAINER fill: #66010136
+    style WIREGUARD_HOST fill: #66010159
+    style MYAPP_CONTAINER fill: #66010136
+    style PIHOLE_DNS_RECORDS fill: #defc1e37
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style VPN_CLIENT fill: #18fdb144
     DOMAIN(example.com)
     SUBDOMAIN_MYAPP(myapp.example.com)
     SUBDOMAIN_WIREGUARD(wireguard.example.com)
@@ -2754,15 +2758,15 @@ flowchart TB
     DOCKER_PIHOLE_PORT53 <-->|DNS| DOCKER_UNBOUND_PORT53
     UNBOUND_CONTAINER <------> ROOT_DNS_SERVERS
     linkStyle 0 stroke-width: 4px, stroke: red
-    linkStyle 1 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 2 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 1 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 2 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
     linkStyle 3 stroke-width: 4px, stroke: red
     linkStyle 4 stroke-width: 4px, stroke: red
-    linkStyle 5 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 6 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 7 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 8 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 9 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 5 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 6 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 7 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 8 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 9 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
     linkStyle 10 stroke-width: 4px, stroke: red
     linkStyle 11 stroke-width: 4px, stroke: red
     linkStyle 12 stroke-width: 4px, stroke: red
@@ -2771,8 +2775,8 @@ flowchart TB
     linkStyle 15 stroke-width: 4px, stroke: red
     linkStyle 16 stroke-width: 4px, stroke: red
     linkStyle 17 stroke-width: 4px, stroke: red
-    linkStyle 19 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
-    linkStyle 20 stroke-width: 4px, stroke: yellow, stroke-dasharray: 5
+    linkStyle 19 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
+    linkStyle 20 stroke-width: 4px, stroke: #d4a017, stroke-dasharray: 5
 ```
 
 Here, first the client needs to connect to the **VPN server** through his preferred **VPN client**.
@@ -2817,14 +2821,14 @@ Here is an overview of the network flow when a service is protected by the middl
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
@@ -3191,15 +3195,15 @@ Here is an overview of the network flow (when trying to reach Lychee app) :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style CROWDSEC_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
-    style HUB fill: #4d683b
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style CROWDSEC_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
+    style HUB fill: #bbfd795e
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
@@ -3454,15 +3458,15 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style CROWDSEC_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style CROWDSEC_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3000/tcp}}
@@ -3720,14 +3724,14 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3552/tcp}}
@@ -3978,14 +3982,14 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
@@ -4155,13 +4159,13 @@ We will use it as a dashboard to list our services.
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{8080/tcp}}
@@ -4474,13 +4478,13 @@ The application will be available at https://dashboard.example.com.
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3001/tcp}}
@@ -4630,13 +4634,13 @@ It enables you to carry out various operations on photos, including uploading, o
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{80/tcp}}
@@ -4824,14 +4828,14 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{7745/tcp}}
@@ -5039,14 +5043,14 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style WEBSITE_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style WEBSITE_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{8080/tcp}}
@@ -5313,15 +5317,15 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style CCTEAM_CONTAINER fill: #663535
-    style GRAFANA_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style CCTEAM_CONTAINER fill: #6601013c
+    style GRAFANA_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{9090/tcp}}
@@ -5628,15 +5632,15 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style PROMETHEUS_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style PROMETHEUS_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3000/tcp}}
@@ -5951,17 +5955,17 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style PRIVATE_CONTAINER fill: #663535
-    style PUBLIC_CONTAINER fill: #663535
-    style DNS_CONTAINERS fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style PRIVATE_CONTAINER fill: #6601013c
+    style PUBLIC_CONTAINER fill: #6601013c
+    style DNS_CONTAINERS fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_APP_PORT{{8080/tcp}}
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
@@ -6379,16 +6383,16 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style DB_CONTAINER fill: #663535
-    style REDIS_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style DB_CONTAINER fill: #6601013c
+    style REDIS_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{3333/tcp}}
@@ -6696,16 +6700,16 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style FRONTEND_CONTAINER fill: #663535
-    style BACKEND_CONTAINER fill: #663535
-    style POCKETID_CONTAINER fill: #663535
-    style PRIVATE_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style FRONTEND_CONTAINER fill: #6601013c
+    style BACKEND_CONTAINER fill: #6601013c
+    style POCKETID_CONTAINER fill: #6601013c
+    style PRIVATE_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_FRONTEND_PORT{{80/tcp}}
@@ -6991,15 +6995,15 @@ The website also requires a **MySQL** or **MariaDB** database, we will use Maria
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style NGINX_CONTAINER fill: #663535
-    style PHP_CONTAINER fill: #663535
-    style MARIADB_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style NGINX_CONTAINER fill: #6601013c
+    style PHP_CONTAINER fill: #6601013c
+    style MARIADB_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_NGINX_PORT{{80/tcp}}
@@ -7347,16 +7351,16 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style DB_CONTAINER fill: #663535
-    style PROMETHEUS_CONTAINER fill: #663535
-    style PHPMYADMIN_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style DB_CONTAINER fill: #6601013c
+    style PROMETHEUS_CONTAINER fill: #6601013c
+    style PHPMYADMIN_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{5001/tcp\nGraphQL API}}
@@ -7518,11 +7522,11 @@ Basically here is how it works when using the dynamic strategy with Traefik :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566, color: #fff
-    style TRAEFIK_CONTAINER fill: #663535, color: #fff
-    style SABLIER_CONTAINER fill: #663535, color: #fff
-    style APP_CONTAINER fill: #663535, color: #fff
-    style TRAEFIK_MIDDLEWARE fill: #806030, color: #fff
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #fe73685e
+    style SABLIER_CONTAINER fill: #fe73685e
+    style APP_CONTAINER fill: #fe73685e
+    style TRAEFIK_MIDDLEWARE fill: #dffc1e37
     DOCKER_SABLIER_PORT{{10000/tcp}}
     DOCKER_APP_PORT{{myapp port}}
     WAITING_PAGE(waiting page)
@@ -7675,14 +7679,14 @@ We will configure Sablier for the Dashdot application as an example, but it can 
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566, color: #fff
-    style TRAEFIK_CONTAINER fill: #663535, color: #fff
-    style SABLIER_CONTAINER fill: #663535, color: #fff
-    style DASHDOT_CONTAINER fill: #663535, color: #fff
-    style TRAEFIK_ROUTER fill: #806030, color: #fff
-    style TRAEFIK_MIDDLEWARE fill: #806030, color: #fff
-    style SERVER_DEVICE fill: #665555, color: #fff
-    style CONTAINER_ENGINE fill: #664545, color: #fff
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style SABLIER_CONTAINER fill: #6601013c
+    style DASHDOT_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_SABLIER_PORT{{10000/tcp}}
@@ -7851,9 +7855,9 @@ PC, and an **off-site** copy in the cloud.
 
 ```mermaid
 flowchart LR
-    style N100 fill: #665555
-    style PC fill: #205566
-    style CLOUD fill: #4d683b
+    style N100 fill: #fec9bf5e
+    style PC fill: #45d8ff57
+    style CLOUD fill: #bbfd795e
     TIMER[systemd timer\n19:45] -->|mariadb - dump, pg_dump| DUMPS[(database dumps)]
 
     subgraph N100[MINI PC]
@@ -7912,14 +7916,14 @@ Here is an overview of the network flow :
 
 ```mermaid
 flowchart LR
-    style INCOMING_REQUEST fill: #205566
-    style TRAEFIK_CONTAINER fill: #663535
-    style APP_CONTAINER fill: #663535
-    style TRAEFIK_ROUTER fill: #806030
-    style TRAEFIK_MIDDLEWARE fill: #806030
-    style SERVER_DEVICE fill: #665555
-    style CONTAINER_ENGINE fill: #664545
-    style WINDOWS_PC fill: #205566
+    style INCOMING_REQUEST fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
+    style WINDOWS_PC fill: #45d8ff57
     DOCKER_TRAEFIK_PORT443{{443/tcp}}
     DOCKER_TRAEFIK_PORT80{{80/tcp}}
     DOCKER_APP_PORT{{9898/tcp}}
