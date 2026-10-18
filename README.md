@@ -85,8 +85,9 @@ It uses only **free** and **open source** software.
     13. [Gatus](#gatus)
     14. [Ghostfolio](#ghostfolio)
     15. [Homelable](#homelable)
-    16. [Defrag-life](#defrag-life)
-    17. [CCTeam](#ccteam)
+    16. [Medusa](#medusa)
+    17. [Defrag-life](#defrag-life)
+    18. [CCTeam](#ccteam)
 
    </details>
 5. <details>
@@ -152,6 +153,7 @@ These are the tools we are going to run :
 |           <img src="images/logo-gatus.svg" alt="Gatus logo" height="32"/>           | Gatus           | https://github.com/TwiN/gatus                   | Uptime monitoring and alerting, status page          |
 |      <img src="images/logo-ghostfolio.svg" alt="Ghostfolio logo" height="32"/>      | Ghostfolio      | https://github.com/ghostfolio/ghostfolio        | Wealth management and portfolio tracking             |
 |       <img src="images/logo-homelable.svg" alt="Homelable logo" height="32"/>       | Homelable       | https://github.com/Pouzor/homelable             | Homelab infrastructure map with live status          |
+|          <img src="images/logo-medusa.svg" alt="Medusa logo" height="32"/>          | Medusa          | https://github.com/medusajs/medusa              | Headless e-commerce platform, with a storefront      |
 |        <img src="images/logo-backrest.svg" alt="Backrest logo" height="32"/>        | Backrest        | https://github.com/garethgeorge/backrest        | Web UI for restic backups (snapshots, encryption)    |
 |     <img src="images/logo-goatcounter.svg" alt="GoatCounter logo" height="32"/>     | GoatCounter     | https://github.com/arp242/goatcounter           | Privacy-friendly web analytics, no cookies           |
 |          <img src="images/logo-lychee.png" alt="Lychee logo" height="32"/>          | Lychee          | https://github.com/LycheeOrg/Lychee             | Free photo-management tool                           |
@@ -902,6 +904,8 @@ internet :
 - `lychee.example.com` : To access the [Lychee](#lychee) website
 - `ccteam.example.com` : To access the [CCTeam](#ccteam) APIs
 - `goatcounter.example.com` : So that [GoatCounter](#goatcounter) can track the traffic on the exposed websites
+- `shop.example.com` : To access the [Medusa](#medusa) shop
+- `medusa.example.com` : For the store API of [Medusa](#medusa), called by the browsers of the shop visitors
 
 Then add corresponding **CNAME records** to point to the dynamic DNS `myddns.ddns.net` :
 
@@ -910,6 +914,8 @@ Then add corresponding **CNAME records** to point to the dynamic DNS `myddns.ddn
 - `CNAME    lychee         myddns.ddns.net`
 - `CNAME    ccteam         myddns.ddns.net`
 - `CNAME    goatcounter    myddns.ddns.net`
+- `CNAME    shop           myddns.ddns.net`
+- `CNAME    medusa         myddns.ddns.net`
 
 A **CNAME record** is just a records which points a name to another name instead of pointing to an IP address (like
 **A** records).
@@ -1252,7 +1258,7 @@ So Traefik sits on two networks, and nothing else is allowed to be on both :
 | Network               | Who                                                                                                        | Reachable from                               |
 |-----------------------|------------------------------------------------------------------------------------------------------------|----------------------------------------------|
 | `traefik-private-net` | Traefik and the **private** services : Pi-Hole, Arcane, Dashdot, Homer, PhpMyAdmin, PocketID, Sablier, ... | local network and VPN only (`vpn-whitelist`) |
-| `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, ...                            | anyone                                       |
+| `traefik-public-net`  | Traefik and the services **exposed to the internet** : Lychee, Defrag-life, Medusa, ...                    | anyone                                       |
 
 A compromised public container can then only see Traefik and the other public applications, never the private ones. A
 few rules go with it :
@@ -1399,8 +1405,14 @@ services:
           - quake.example.com
           - goatcounter.example.com
           - ccteam.example.com
+          - shop.example.com
+          - medusa.example.com
       # public : services exposed to the internet
       traefik-public-net:
+        aliases:
+          # Lets the Medusa storefront call the store API by its public name from its server-side code,
+          # through Traefik but without going out through the box (see Medusa)
+          - medusa.example.com
     env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"
@@ -1445,6 +1457,9 @@ This **Compose** file mainly :
 - gives Traefik **network aliases** on the private network : the containers of that network resolve these public names
   to Traefik itself. `pocketid.example.com` is used by the applications authenticating natively against PocketID
   (see [PocketID](#pocketid)), the public services by [Gatus](#gatus) to check them through Traefik
+- gives Traefik a network alias on the **public** network as well, `medusa.example.com` : the [Medusa](#medusa)
+  storefront calls the store API by its public name from its server side, through Traefik, without looping through
+  the router
 - loads its secrets from the _.env_ file (see [Environment variables](#environment-variables-)) : the DNS provider
   access token used to issue Let's Encrypt certificates through **DNS challenge**, and the CrowdSec bouncer key
 - defines an HTTP **router** that will match `traefik.example.com` URL on our `websecure` **entrypoint** to point to our
@@ -1854,11 +1869,13 @@ grafana.example.com                 192.168.0.16
 homebox.example.com                 192.168.0.16
 homelable.example.com               192.168.0.16
 lychee.example.com                  192.168.0.16
+medusa.example.com                  192.168.0.16
 phpmyadmin.example.com              192.168.0.16
 pihole.example.com                  192.168.0.16
 pocketid.example.com                192.168.0.16
 prometheus.example.com              192.168.0.16
 quake.example.com                   192.168.0.16
+shop.example.com                    192.168.0.16
 speedtest-tracker.example.com       192.168.0.16
 traefik.example.com                 192.168.0.16
 wgdashboard.example.com             192.168.0.16
@@ -4430,6 +4447,16 @@ services:
         subtitle: "Wealth management and portfolio tracking"
         tag: "app"
         url: "https://ghostfolio.example.com"
+      - name: "Medusa"
+        logo: "assets/logos/logo-medusa.svg"
+        subtitle: "E-commerce platform, admin dashboard"
+        tag: "app"
+        url: "https://medusa.example.com/app"
+      - name: "Medusa storefront"
+        logo: "assets/logos/logo-medusa.svg"
+        subtitle: "Online shop built on Medusa"
+        tag: "app"
+        url: "https://shop.example.com"
   - name: "Internal"
     icon: "fas fa-microchip"
     items:
@@ -6297,7 +6324,7 @@ The full file checks :
 |----------------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
 | Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                                                                      | ping, discovery document, TCP, DNS queries, host IP |
 | Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana, Ghostfolio, Homelable, Speedtest Tracker | container name, health endpoint when there is one   |
-| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API                                                                                          | public name through Traefik, TLS certificate expiry |
+| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API, Medusa API, Medusa storefront                                                           | public name through Traefik, TLS certificate expiry |
 
 #### Traefik routing
 
@@ -6338,6 +6365,9 @@ Things to notice :
   requests through, the protection silently disappears, hence the check
 - the **GoatCounter** check fetches `/count.js`, which does not record any visit. Gatus does not run the JavaScript of
   the pages it checks, so it does not pollute the statistics of the websites either
+- the **Medusa storefront** has no health endpoint, its check loads the home page. It costs little, the data of the
+  page comes from the cache of Next.js, but for the same reason it does not see an outage of the backend : the
+  **Medusa API** check does
 - the public checks also verify the **TLS certificate** : less than 10 days left means that the Let's Encrypt renewal,
   which normally happens 30 days before expiry, is broken
 - Gatus substitutes the environment variables in the **whole** configuration file (`${...}`), a literal `$` would be
@@ -6967,6 +6997,706 @@ dynamic configuration file without restarting.
 The application is available at https://homelable.example.com, after the PocketID login.
 
 <img src="images/screen-homelable.png" alt="Homelable screenshot"/>
+
+## Medusa
+
+<img src="images/logo-medusa.svg" alt="Medusa logo" height="128"/>
+
+**Medusa** is an open source **e-commerce** platform (Node.js / TypeScript) : products and variants, stock, prices per
+region and currency, carts, orders, customers, promotions, ..., managed in an **admin dashboard** and exposed through a
+**store API** to a separate **storefront**. I am evaluating it to build an online shop for a friend.
+
+Unlike the other applications of this guide, Medusa does not come as a ready-made image : a shop is a **project**, code
+that you customize, then build. The starting point is the official **DTC starter**
+(https://github.com/medusajs/dtc-starter), a monorepo holding the backend (`apps/backend`) and a **Next.js** storefront
+(`apps/storefront`), from which two images are built on the mini PC.
+
+It runs as four containers :
+
+- the **backend** : the store API, the admin dashboard (served under `/app`) and its API, and the background jobs
+  (events, scheduled jobs, workflows), in a single process
+- the **storefront** : the shop itself, a Next.js server
+- a **PostgreSQL** database
+- **Redis** : event bus, workflow engine, locks and sessions of the dashboard
+
+The shop is **exposed to the internet**, on the **public** network, with two hosts : `shop.example.com` for the
+storefront and `medusa.example.com` for the backend. The store API has to be public, the browsers of the visitors call
+it directly (search, product images), but the **administration** part of the same host (`/app`, `/admin`, `/auth/user`)
+is restricted to the local network and the VPN by a second router.
+
+Here is an overview of the network flow :
+
+```mermaid
+flowchart LR
+    style VISITOR fill: #45d8ff57
+    style ADMINISTRATOR fill: #45d8ff57
+    style TRAEFIK_CONTAINER fill: #6601013c
+    style STOREFRONT_CONTAINER fill: #6601013c
+    style APP_CONTAINER fill: #6601013c
+    style DB_CONTAINER fill: #6601013c
+    style REDIS_CONTAINER fill: #6601013c
+    style TRAEFIK_ROUTER fill: #defc1e37
+    style TRAEFIK_MIDDLEWARE fill: #defc1e37
+    style SERVER_DEVICE fill: #fec9bf5e
+    style CONTAINER_ENGINE fill: #67010030
+    DOCKER_TRAEFIK_PORT443{{443/tcp}}
+    DOCKER_TRAEFIK_PORT80{{80/tcp}}
+    DOCKER_STOREFRONT_PORT{{8000/tcp}}
+    DOCKER_APP_PORT{{9000/tcp}}
+    DOCKER_DB_PORT{{5432/tcp}}
+    DOCKER_REDIS_PORT{{6379/tcp}}
+    TRAEFIK_ROUTER_STOREFRONT(shop)
+    TRAEFIK_ROUTER_API(medusa\n/store, /static, /hooks, ...)
+    TRAEFIK_ROUTER_ADMIN(medusa\n/app, /admin, /auth/user)
+    TRAEFIK_MIDDLEWARE_REDIRECT(HTTPS redirect on<br>the web entrypoint)
+    TRAEFIK_MIDDLEWARE_CROWDSEC(CrowdSec bouncer on<br>the websecure entrypoint)
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST(IP whitelist)
+    VISITOR((VISITOR))
+    ADMINISTRATOR((ADMINISTRATOR\nLAN or VPN))
+
+    subgraph SERVER_DEVICE[MINI PC]
+        subgraph CONTAINER_ENGINE[DOCKER]
+            subgraph TRAEFIK_CONTAINER[TRAEFIK CONTAINER]
+                DOCKER_TRAEFIK_PORT443
+                DOCKER_TRAEFIK_PORT80
+
+                subgraph TRAEFIK_MIDDLEWARE[TRAEFIK MIDDLEWARES]
+                    TRAEFIK_MIDDLEWARE_REDIRECT
+                    TRAEFIK_MIDDLEWARE_CROWDSEC
+                    TRAEFIK_MIDDLEWARE_IP_WHITELIST
+                end
+
+                subgraph TRAEFIK_ROUTER[TRAEFIK HTTP ROUTERS]
+                    TRAEFIK_ROUTER_STOREFRONT
+                    TRAEFIK_ROUTER_API
+                    TRAEFIK_ROUTER_ADMIN
+                end
+            end
+
+            subgraph STOREFRONT_CONTAINER[STOREFRONT CONTAINER]
+                DOCKER_STOREFRONT_PORT
+            end
+
+            subgraph APP_CONTAINER[MEDUSA CONTAINER]
+                DOCKER_APP_PORT
+            end
+
+            subgraph DB_CONTAINER[POSTGRESQL CONTAINER]
+                DOCKER_DB_PORT
+            end
+
+            subgraph REDIS_CONTAINER[REDIS CONTAINER]
+                DOCKER_REDIS_PORT
+            end
+        end
+    end
+
+    VISITOR -->|pages, search,<br>product images| DOCKER_TRAEFIK_PORT443
+    VISITOR --> DOCKER_TRAEFIK_PORT80
+    ADMINISTRATOR -->|dashboard| DOCKER_TRAEFIK_PORT443
+    DOCKER_TRAEFIK_PORT80 --> TRAEFIK_MIDDLEWARE_REDIRECT
+    TRAEFIK_MIDDLEWARE_REDIRECT -.->|301 to https| VISITOR
+    DOCKER_TRAEFIK_PORT443 --> TRAEFIK_MIDDLEWARE_CROWDSEC
+    TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER_STOREFRONT
+    TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER_API
+    TRAEFIK_MIDDLEWARE_CROWDSEC --> TRAEFIK_ROUTER_ADMIN
+    TRAEFIK_ROUTER_STOREFRONT -->|traefik - public - net| DOCKER_STOREFRONT_PORT
+    TRAEFIK_ROUTER_API -->|traefik - public - net| DOCKER_APP_PORT
+    TRAEFIK_ROUTER_ADMIN --> TRAEFIK_MIDDLEWARE_IP_WHITELIST
+    TRAEFIK_MIDDLEWARE_IP_WHITELIST --> DOCKER_APP_PORT
+    DOCKER_STOREFRONT_PORT -.->|store API calls of the server<br>side, through the Traefik alias| DOCKER_TRAEFIK_PORT443
+    DOCKER_APP_PORT -->|medusa - net| DOCKER_DB_PORT
+    DOCKER_APP_PORT -->|medusa - net| DOCKER_REDIS_PORT
+```
+
+### Setting up
+
+Create a folder to hold the configuration, and clone the project into its _src_ subfolder :
+
+```bash
+sudo mkdir /opt/apps/medusa
+sudo git clone --depth 1 https://github.com/medusajs/dtc-starter.git /opt/apps/medusa/src
+```
+
+Then :
+
+- copy the _.env_, _.dockerignore_, _docker-compose.yml_, _backend.Dockerfile_, _storefront.Dockerfile_ and
+  _medusa-config.ts_ files from this project's _medusa_ directory into the _/opt/apps/medusa_ directory, and generate
+  every secret of the _.env_ file with `openssl rand -hex 32` (hexadecimal on purpose : the passwords go into the
+  `DATABASE_URL` and the `REDIS_URL`, special characters would have to be URL-encoded). Leave `MEDUSA_PUBLISHABLE_KEY`
+  aside for now, it is created by the first start of the backend (see [Run](#run-17))
+- replace the configuration of the backend in the project with the production one
+  (see [Backend configuration](#backend-configuration)) :
+
+  ```bash
+  sudo cp /opt/apps/medusa/medusa-config.ts /opt/apps/medusa/src/apps/backend/medusa-config.ts
+  ```
+
+- copy the _medusa.yml_ file from this project's _traefik/dynamic_ directory into the _/opt/apps/traefik/dynamic_
+  directory
+- add `medusa.example.com` to the **network aliases** of Traefik on `traefik-public-net`, for the storefront, and
+  `shop.example.com` and `medusa.example.com` to its aliases on `traefik-private-net`, for [Gatus](#gatus)
+  (see [Configuration files details](#configuration-files-details)), then recreate the Traefik container
+- add **public** DNS records for `shop.example.com` and `medusa.example.com` (a `CNAME` to your dynamic DNS, like the
+  other public services, see [Domain and subdomains](#domain-and-subdomains)), **and** local DNS records pointing to the
+  mini PC (see [Pi-hole](#pi-hole)) : without them, the dashboard is reached through the NAT loopback of the router and
+  rejected by the IP whitelist
+- add the `/sources/volumes/medusa-db-vol` and `/sources/volumes/medusa-redis-vol` excludes to the backup plan
+  (see [Backup plan](#backup-plan)) : the database is dumped every evening, the `medusa-db` container is part of the
+  list of the dump script (see [Database dumps](#database-dumps))
+
+> [!NOTE]
+> The _src_ folder holds the **project**, it is not part of this repository (_medusa/.gitignore_). For a real shop it
+becomes a **fork** of the starter, with its own customizations (theme, pages, modules, and the _medusa-config.ts_
+above), cloned there instead of the starter.
+
+### Details
+
+#### Service definition
+
+:page_facing_up: _docker-compose.yml_ :
+
+```yaml
+services:
+
+  # Backend : store API, admin dashboard (/app) and background jobs, built from the project cloned in ./src
+  medusa:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: medusa
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Database and Redis credentials, secrets (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      NODE_ENV: production
+      MEDUSA_DISABLE_TELEMETRY: "true"
+      # Public URL of the backend, used to build the URL of the uploaded files (see medusa-config.ts)
+      MEDUSA_BACKEND_URL: https://medusa.example.com
+      # A single process serves the API and runs the background jobs, enough for a small shop
+      MEDUSA_WORKER_MODE: shared
+      # Origins allowed to call the API from a browser : the storefront for the store API, the dashboard for the admin API
+      STORE_CORS: https://shop.example.com
+      ADMIN_CORS: https://medusa.example.com
+      AUTH_CORS: https://shop.example.com,https://medusa.example.com
+    depends_on:
+      medusa-db:
+        condition: service_healthy
+      medusa-redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:9000/health || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # The migrations run before the server starts, the first ones also seed the store (regions, publishable key, ...)
+      start_period: 180s
+    volumes:
+      # Uploaded files (product images, ...), served by the backend under /static
+      - medusa-static-vol:/server/static
+    networks:
+      - medusa-net
+      - traefik-public-net
+
+  # Storefront : the Next.js shop of the project. It only talks to the backend through its public URL
+  # (from the visitors' browsers and from its own server-side code), so it does not join the private network of the stack
+  medusa-storefront:
+    build:
+      context: .
+      dockerfile: storefront.Dockerfile
+      # The NEXT_PUBLIC_ variables are written into the code at build time : changing one means rebuilding the image
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://medusa.example.com
+        NEXT_PUBLIC_BASE_URL: https://shop.example.com
+        # Country used when the visitor's one is not part of any region, must belong to a region of the store
+        NEXT_PUBLIC_DEFAULT_REGION: fr
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY}
+    container_name: medusa-storefront
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: "Europe/Zurich"
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Also checked when the server starts (next.config.js), not only at build time
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY}
+    depends_on:
+      medusa:
+        condition: service_healthy
+    healthcheck:
+      # A static file : the pages themselves depend on the backend
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8000/favicon.ico || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - traefik-public-net
+
+  medusa-db:
+    # Major version pinned : a new major version of PostgreSQL cannot start on the data of the previous one,
+    # the upgrade (dump and restore) is done on purpose, never by a pull
+    image: docker.io/library/postgres:17-alpine
+    container_name: medusa-db
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d \"$${POSTGRES_DB}\" -U $${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - medusa-db-vol:/var/lib/postgresql/data
+    networks:
+      - medusa-net
+
+  # Event bus, workflow engine, locks and admin sessions : jobs in progress are kept on disk so that they survive a restart
+  medusa-redis:
+    image: docker.io/library/redis:alpine
+    container_name: medusa-redis
+    restart: unless-stopped
+    user: "999:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli --pass \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - medusa-redis-vol:/data
+    networks:
+      - medusa-net
+
+volumes:
+
+  medusa-db-vol:
+    name: medusa-db-vol
+
+  medusa-redis-vol:
+    name: medusa-redis-vol
+
+  medusa-static-vol:
+    name: medusa-static-vol
+
+networks:
+
+  # The database and Redis stay on the private network of the stack, never on a Traefik network
+  medusa-net:
+    name: medusa-net
+
+  traefik-public-net:
+    name: traefik-public-net
+    external: true
+```
+
+#### Images
+
+:page_facing_up: _backend.Dockerfile_ :
+
+```dockerfile
+# Medusa backend (API + admin dashboard), built from the project cloned in ./src (pnpm monorepo of the DTC starter)
+
+FROM node:22-alpine AS build
+
+# pnpm, at the version pinned by the "packageManager" field of the project
+RUN corepack enable
+
+WORKDIR /app
+COPY src/ ./
+
+# Dependencies of the backend only, at the versions of the lockfile
+RUN pnpm install --frozen-lockfile --filter ./apps/backend
+
+# Compiles the backend and the admin dashboard into apps/backend/.medusa/server
+WORKDIR /app/apps/backend
+RUN pnpm build
+
+
+FROM node:22-alpine
+
+# The application files belong to the runtime user : the migrations write into node_modules
+# (they create an empty "migrations" folder in every module that has none)
+WORKDIR /server
+RUN chown node:node /server
+USER node
+
+COPY --from=build --chown=node:node /app/apps/backend/.medusa/server ./
+
+# Production dependencies of the compiled application
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+
+# Directory of the uploaded files (volume)
+RUN mkdir static
+
+EXPOSE 9000
+
+# The pending migrations are applied at every start (the first ones also seed the store), then the server starts
+CMD [ "sh", "-c", "npx medusa db:migrate && exec npx medusa start" ]
+```
+
+:page_facing_up: _storefront.Dockerfile_ :
+
+```dockerfile
+# Next.js storefront, built from the project cloned in ./src (pnpm monorepo of the DTC starter)
+
+FROM node:22-alpine AS build
+
+# pnpm, at the version pinned by the "packageManager" field of the project
+RUN corepack enable
+
+WORKDIR /app
+COPY src/ ./
+
+# Dependencies of the storefront only, at the versions of the lockfile
+RUN pnpm install --frozen-lockfile --filter ./apps/storefront
+
+# The NEXT_PUBLIC_ variables are written into the code by the build (see docker-compose.yml)
+ARG NEXT_PUBLIC_MEDUSA_BACKEND_URL
+ARG NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_BASE_URL
+ARG NEXT_PUBLIC_DEFAULT_REGION
+ENV NEXT_PUBLIC_MEDUSA_BACKEND_URL=$NEXT_PUBLIC_MEDUSA_BACKEND_URL \
+    NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=$NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY \
+    NEXT_PUBLIC_BASE_URL=$NEXT_PUBLIC_BASE_URL \
+    NEXT_PUBLIC_DEFAULT_REGION=$NEXT_PUBLIC_DEFAULT_REGION \
+    NEXT_TELEMETRY_DISABLED=1
+
+WORKDIR /app/apps/storefront
+RUN pnpm build
+
+
+FROM node:22-alpine
+
+ENV NODE_ENV=production
+
+# The whole workspace : "next start" reads next.config.js, which needs some development dependencies of the starter.
+# Owned by the runtime user, Next.js writes its cache into .next
+COPY --from=build --chown=node:node /app /app
+
+WORKDIR /app/apps/storefront
+USER node
+EXPOSE 8000
+
+CMD [ "node_modules/.bin/next", "start", "-p", "8000" ]
+```
+
+:page_facing_up: _.dockerignore_ :
+
+```
+# Only the sources of the project go into the images, never what was installed or built outside of Docker, nor the secrets
+.env
+**/.env
+**/.env.*
+**/node_modules
+**/.next
+**/.medusa
+**/.turbo
+**/.git
+```
+
+#### Backend configuration
+
+:page_facing_up: _medusa-config.ts_ :
+
+```typescript
+import { loadEnv, defineConfig } from '@medusajs/framework/utils'
+
+loadEnv(process.env.NODE_ENV || 'development', process.cwd())
+
+// Production configuration of the backend : copy this file over apps/backend/medusa-config.ts in the project.
+// Everything comes from the environment variables (see docker-compose.yml and .env)
+module.exports = defineConfig({
+  projectConfig: {
+    databaseUrl: process.env.DATABASE_URL,
+    // Sessions of the admin dashboard, kept in Redis instead of memory
+    redisUrl: process.env.REDIS_URL,
+    // shared : one process for the API and the background jobs ; server / worker to run them in two containers
+    workerMode: process.env.MEDUSA_WORKER_MODE as 'shared' | 'worker' | 'server',
+    http: {
+      storeCors: process.env.STORE_CORS!,
+      adminCors: process.env.ADMIN_CORS!,
+      authCors: process.env.AUTH_CORS!,
+      jwtSecret: process.env.JWT_SECRET,
+      cookieSecret: process.env.COOKIE_SECRET,
+    },
+  },
+  modules: [
+    // Redis versions of the infrastructure modules : the default ones keep the events, the workflows in progress
+    // and the locks in memory, lost at every restart (development only)
+    {
+      resolve: '@medusajs/medusa/event-bus-redis',
+      options: {
+        redisUrl: process.env.REDIS_URL,
+      },
+    },
+    {
+      resolve: '@medusajs/medusa/workflow-engine-redis',
+      options: {
+        redis: {
+          redisUrl: process.env.REDIS_URL,
+        },
+      },
+    },
+    {
+      resolve: '@medusajs/medusa/locking',
+      options: {
+        providers: [
+          {
+            resolve: '@medusajs/medusa/locking-redis',
+            id: 'locking-redis',
+            is_default: true,
+            options: {
+              redisUrl: process.env.REDIS_URL,
+            },
+          },
+        ],
+      },
+    },
+    // Uploaded files stored on disk (a volume) and served by the backend under /static.
+    // backend_url must be the PUBLIC address : it is saved as is in the database and loaded by the visitors' browsers
+    // (the default one, http://localhost:9000/static, only works on a development machine)
+    {
+      resolve: '@medusajs/medusa/file',
+      options: {
+        providers: [
+          {
+            resolve: '@medusajs/medusa/file-local',
+            id: 'local',
+            options: {
+              upload_dir: 'static',
+              backend_url: `${process.env.MEDUSA_BACKEND_URL}/static`,
+            },
+          },
+        ],
+      },
+    },
+  ],
+})
+```
+
+#### Environment variables
+
+:page_facing_up: _.env_ :
+
+```shell
+# Generate every secret with : openssl rand -hex 32
+# (hexadecimal on purpose : the passwords go into URLs, special characters would have to be URL-encoded)
+
+# PostgreSQL
+POSTGRES_DB=medusa
+POSTGRES_USER=medusa
+POSTGRES_PASSWORD=<postgres_password>
+# sslmode=disable is required : Medusa turns SSL on by itself for any database that is not on localhost,
+# and the database of the stack has none (private network). Without it the migrations hang, then time out
+DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@medusa-db:5432/${POSTGRES_DB}?sslmode=disable
+
+# Redis
+REDIS_PASSWORD=<redis_password>
+REDIS_URL=redis://:${REDIS_PASSWORD}@medusa-redis:6379
+
+# Secrets of the backend (signature of the tokens and of the session cookies)
+JWT_SECRET=<random_string>
+COOKIE_SECRET=<random_string>
+
+# Publishable API key of the storefront (pk_...), created by the first start of the backend :
+# copy it from the admin dashboard (Settings > Publishable API Keys), then build the storefront.
+# Only read by docker-compose.yml (build argument of the storefront)
+MEDUSA_PUBLISHABLE_KEY=<publishable_key>
+```
+
+#### Traefik routing
+
+:page_facing_up: _medusa.yml_ :
+
+```yaml
+http:
+  services:
+    medusa:
+      loadBalancer:
+        servers:
+          - url: http://medusa:9000
+
+    medusa-storefront:
+      loadBalancer:
+        servers:
+          - url: http://medusa-storefront:8000
+
+  routers:
+    # The shop itself
+    medusa-storefront:
+      rule: 'Host(`shop.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: medusa-storefront
+
+    # Administration part of the backend : the dashboard (/app), its API (/admin) and the login of the administrators (/auth/user),
+    # from the local network or through the VPN only. The dashboard keeps its own login on top of it.
+    # The higher priority makes this router win over the one below, which matches the whole host.
+    medusa-admin:
+      rule: 'Host(`medusa.example.com`) && (PathPrefix(`/app`) || PathPrefix(`/admin`) || PathPrefix(`/auth/user`))'
+      priority: 100
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: medusa
+      middlewares:
+        - vpn-whitelist@file
+
+    # Everything else is public : the store API (/store), the customer login (/auth/customer, /auth/session, /auth/token),
+    # the uploaded files (/static) and the webhooks of the payment providers (/hooks). It is called by the visitors' browsers
+    # (search, product images) and by the storefront's server-side code.
+    # Excluding the administration paths rather than listing the public ones : Medusa keeps all of them under the three prefixes above,
+    # whereas a forgotten public path would silently break the shop (customer login, password reset, payment).
+    medusa-api:
+      rule: 'Host(`medusa.example.com`)'
+      priority: 1
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: medusa
+```
+
+Things to notice :
+
+- the **images are built** on the mini PC from the project in _src_ (`build` instead of `image`), in two stages : the
+  first one installs the dependencies at the versions of the lockfile and compiles, the second one only keeps what
+  runs. The backend is compiled with its admin dashboard into _.medusa/server_, where its production dependencies are
+  then installed. The _.dockerignore_ keeps out of the images what may have been installed or built outside of Docker
+  in _src_, and every _.env_ file
+- the backend applies the pending **migrations** at every start, before the server starts. The first ones also run the
+  seed script of the starter (_src/migration-scripts_) : a region _Europe_ in EUR (no Switzerland, no CHF), a few
+  products, a stock location, shipping options, and the **publishable API key** the storefront needs
+- the `NEXT_PUBLIC_` variables of the storefront are written into its code at **build time** (build arguments) : the
+  storefront must be rebuilt when one of them changes. The publishable key is also checked when the server starts,
+  hence the same variable in `environment`
+- the storefront calls the store API by its **public** URL, from the browsers of the visitors and from its own server
+  side rendering. Inside its container, `medusa.example.com` resolves to Traefik thanks to its network **alias** on
+  `traefik-public-net` : the requests stay on the mini PC instead of looping through the router, and the storefront
+  does not need to join `medusa-net`
+- **two routers** share `medusa.example.com` : `medusa-admin` (priority `100`, IP whitelist) takes the administration
+  paths, `medusa-api` (priority `1`) everything else. Here the administration paths are listed rather than the public
+  ones (unlike [GoatCounter](#goatcounter)) : Medusa keeps all of them under three prefixes, while the public side is
+  wider (customer login and password reset, files, webhooks of the payment providers, ...) and a forgotten path would
+  silently break the shop
+- the dashboard keeps its own login behind the IP whitelist, no PocketID : the administrators are Medusa users, with
+  their own roles
+- the database and Redis only join `medusa-net`, only the backend reaches them
+- **Redis** writes its data to disk (`--appendonly yes`), the events not handled yet and the workflows in progress
+  survive a restart. Its volume is excluded from the backup though : restored next to an older dump of the database, it
+  would replay jobs that no longer match the data
+- the uploaded files (product images, ...) are stored in the `medusa-static-vol` volume and served by the backend under
+  `/static`, with their **public** URL saved in the database (`backend_url` in _medusa-config.ts_, the default one
+  points to `localhost`). The volume is part of the backup like the other volumes
+- the `shared` worker mode runs the API and the background jobs in the same process, enough for a small shop. A busier
+  one splits them into two containers of the same image (`MEDUSA_WORKER_MODE` set to `server` and `worker`), see the
+  deployment documentation of Medusa
+- the **major version** of PostgreSQL is pinned (`17-alpine`), as for [Ghostfolio](#ghostfolio)
+- no Linux capability and no privilege escalation, the backend and the storefront run as the non-root `node` user. The
+  files of the backend belong to that user : the migrations write into _node_modules_ (an empty _migrations_ folder in
+  every module that has none) and fail with `EACCES` otherwise
+- the telemetry of Medusa and Next.js is disabled (`MEDUSA_DISABLE_TELEMETRY`, `NEXT_TELEMETRY_DISABLED`). Medusa still
+  prints its banner about it at startup, but sends nothing
+- [Gatus](#gatus) checks `https://medusa.example.com/health`, which answers `OK`, and the home page of the shop
+
+> [!IMPORTANT]
+> `?sslmode=disable` is required at the end of `DATABASE_URL` : Medusa turns **SSL on** by itself for any database that
+is not on `localhost`, and the PostgreSQL of the stack has no TLS (it never leaves `medusa-net`). Without it the
+migrations hang, then fail after 10 seconds with _Could not connect to the database while running migrations_.
+
+> [!WARNING]
+> All the server side requests of the storefront reach Traefik from **one address**, the one of its container, and go
+through [CrowdSec](#crowdsec) like any visitor. A scenario triggered by that traffic (a crawler browsing the whole shop,
+for instance) would ban the **storefront itself**, and the shop goes down for everybody.
+> Before opening a real shop, make the server side of the storefront call the backend directly, on `medusa-net`
+(`http://medusa:9000`), the browsers keeping the public URL : a small change in the project, where the backend URL is
+read (_apps/storefront/src/lib/config.ts_ and _apps/storefront/src/middleware.ts_).
+
+> [!NOTE]
+> Also missing before a real shop :
+>
+> - **payments** : the storefront handles Stripe (`NEXT_PUBLIC_STRIPE_KEY`), the Stripe provider has to be added to the
+    payment module of the backend
+> - **e-mails** : Medusa sends none by default (order confirmation, password reset, ...), a notification provider has to
+    be added
+> - **Switzerland** : create a region in CHF with the `ch` country, set `NEXT_PUBLIC_DEFAULT_REGION` to `ch` and rebuild
+    the storefront. The search index of the starter only holds prices in EUR and USD : add `chf` to `PRICE_CURRENCIES`
+    (_apps/backend/src/search/helpers/pricing.ts_) and to `SEARCH_PRICE_CURRENCIES`
+    (_apps/storefront/src/lib/search-client.ts_)
+> - **administration** : the dashboard is only reachable from the local network and the VPN, the shop owner needs a VPN
+    access, or the administration routes have to be opened to the internet
+
+### Run
+
+The storefront needs the publishable key created by the first start of the backend : start the backend alone first,
+its database and Redis come with it :
+
+```bash
+sudo docker-compose -f /opt/apps/medusa/docker-compose.yml up -d --build medusa
+```
+
+The first build takes a few minutes, then the backend applies the migrations and seeds the store : wait for
+_Server is ready on port: 9000_ in `sudo docker logs -f medusa`.
+
+Create the administrator account :
+
+```bash
+sudo docker exec medusa npx medusa user -e you@example.com -p <password>
+```
+
+The dashboard is available at https://medusa.example.com/app.
+
+Copy the **publishable API key** (`pk_...`) from _Settings -> Publishable API Keys_, or straight from the database :
+
+```bash
+sudo docker exec medusa-db psql -U medusa -d medusa -tAc "select token from api_key where type = 'publishable'"
+```
+
+Put it in `MEDUSA_PUBLISHABLE_KEY` in the _.env_ file, then build and start the storefront :
+
+```bash
+sudo docker-compose -f /opt/apps/medusa/docker-compose.yml up -d --build medusa-storefront
+```
+
+You should end-up with four running containers, `medusa`, `medusa-storefront`, `medusa-db` and `medusa-redis`, and
+Traefik picks up the dynamic configuration file without restarting.
+
+The shop is available at https://shop.example.com.
+
+After a change in the project (or to update Medusa : `git pull` in _src_), rebuild the images :
+
+```bash
+sudo docker-compose -f /opt/apps/medusa/docker-compose.yml up -d --build
+```
 
 ## Defrag-life
 
@@ -7846,8 +8576,8 @@ So there are three things we have to worry about in terms of backup :
 - the content of the _/opt/apps_ directory, holding services configuration and containers bound data (including the
   secrets : _.env_ files, _acme.json_, the PocketID encryption key, ...)
 - the content of the _/var/lib/docker/volumes_, holding the Docker container named volumes data
-- the **databases** (MariaDB for CCTeam, Lychee and Defrag-life, PostgreSQL for Ghostfolio) : copying the files of a
-  running database gives an inconsistent copy, they must be **dumped** first
+- the **databases** (MariaDB for CCTeam, Lychee and Defrag-life, PostgreSQL for Ghostfolio and Medusa) : copying the
+  files of a running database gives an inconsistent copy, they must be **dumped** first
 
 The backups are done by [Backrest](#backrest) every evening, to a **Windows PC** on the local network, which then
 synchronizes them to a cloud. That gives the classic **3-2-1** rule : the data on the mini PC, a copy on the Windows
@@ -8142,12 +8872,13 @@ Then the **plan** :
 - retention : 7 daily, 4 weekly, 6 monthly
 - excludes :
 
-  | Exclude                                                                                                                                         | Why                                                                                     |
-  |-------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|
-  | `/sources/apps/backrest/cache`, `/sources/apps/backrest/tmp`, `/sources/apps/backrest/restore`                                                  | cache and temporary files of Backrest itself, restored files                            |
-  | `/sources/volumes/ccteam-db-vol`, `/sources/volumes/lychee-db-vol`, `/sources/volumes/defrag-life-db-vol`, `/sources/volumes/ghostfolio-db-vol` | raw database files, inconsistent when copied hot : the **dumps** are what gets restored |
-  | `/sources/volumes/*prometheus-data*`                                                                                                            | Prometheus time series, inconsistent when copied hot, and only metrics                  |
-  | `/sources/volumes/metadata.db`, `/sources/volumes/backingFsBlockDev`                                                                            | internal files of Docker, not volumes                                                   |
+  | Exclude                                                                                                                                                                           | Why                                                                                                             |
+  |-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------|
+  | `/sources/apps/backrest/cache`, `/sources/apps/backrest/tmp`, `/sources/apps/backrest/restore`                                                                                    | cache and temporary files of Backrest itself, restored files                                                    |
+  | `/sources/volumes/ccteam-db-vol`, `/sources/volumes/lychee-db-vol`, `/sources/volumes/defrag-life-db-vol`, `/sources/volumes/ghostfolio-db-vol`, `/sources/volumes/medusa-db-vol` | raw database files, inconsistent when copied hot : the **dumps** are what gets restored                         |
+  | `/sources/volumes/medusa-redis-vol`                                                                                                                                               | events and jobs of Medusa : restored next to an older dump, they would be replayed on data that no longer match |
+  | `/sources/volumes/*prometheus-data*`                                                                                                                                              | Prometheus time series, inconsistent when copied hot, and only metrics                                          |
+  | `/sources/volumes/metadata.db`, `/sources/volumes/backingFsBlockDev`                                                                                                              | internal files of Docker, not volumes                                                                           |
 
 - a **hook** on `CONDITION_ANY_ERROR`, of type **Shoutrrr**, to be notified of a failed backup (the PC was switched off,
   for instance), for instance by e-mail with the same SMTP account as [Gatus](#gatus) :
@@ -8242,7 +8973,7 @@ set -uo pipefail
 
 DUMP_DIR=/opt/apps/backrest/dumps
 MARIADB_CONTAINERS=(ccteam-db lychee-db defrag-life-db)
-POSTGRES_CONTAINERS=(ghostfolio-db)
+POSTGRES_CONTAINERS=(ghostfolio-db medusa-db)
 
 # The password goes through MYSQL_PWD rather than the command line, the MYSQL_* names are the legacy aliases used by
 # some of the stacks
