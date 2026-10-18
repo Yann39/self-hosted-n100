@@ -11,7 +11,7 @@ set -uo pipefail
 
 DUMP_DIR=/opt/apps/backrest/dumps
 MARIADB_CONTAINERS=(ccteam-db lychee-db defrag-life-db)
-POSTGRES_CONTAINERS=(ghostfolio-db)
+POSTGRES_CONTAINERS=(ghostfolio-db medusa-db)
 
 # The password goes through MYSQL_PWD rather than the command line, the MYSQL_* names are the legacy aliases used by
 # some of the stacks

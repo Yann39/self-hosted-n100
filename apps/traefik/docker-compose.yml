@@ -27,6 +27,8 @@ services:
           - quake.example.com
           - goatcounter.example.com
           - ccteam.example.com
+          - shop.example.com
+          - medusa.example.com
       # public : services exposed to the internet
       traefik-public-net:
         aliases:

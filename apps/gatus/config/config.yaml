@@ -277,3 +277,28 @@ endpoints:
       - "[CERTIFICATE_EXPIRATION] > 240h"
     alerts:
       - type: email
+
+  # Public part of the backend (the administration paths are LAN/VPN only) : the body is "OK" once the server is ready
+  - name: Medusa API
+    group: Public
+    url: https://medusa.example.com/health
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[BODY] == OK"
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
+
+  # Home page of the shop (no health endpoint in the storefront), redirected to the default country : checks that the
+  # pages are routed and rendered. Cheap : the data of the page comes from the Next.js cache, the store API is not called
+  # at every check, which is also why a backend failure shows up on the check above, not on this one
+  - name: Medusa storefront
+    group: Public
+    url: https://shop.example.com
+    interval: 1m
+    conditions:
+      - "[STATUS] == 200"
+      - "[CERTIFICATE_EXPIRATION] > 240h"
+    alerts:
+      - type: email
