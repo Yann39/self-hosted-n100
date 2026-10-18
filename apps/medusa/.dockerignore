@@ -1,0 +1,9 @@
+# Only the sources of the project go into the images, never what was installed or built outside of Docker, nor the secrets
+.env
+**/.env
+**/.env.*
+**/node_modules
+**/.next
+**/.medusa
+**/.turbo
+**/.git

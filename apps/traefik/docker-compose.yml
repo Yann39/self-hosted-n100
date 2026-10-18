@@ -29,6 +29,10 @@ services:
           - ccteam.example.com
       # public : services exposed to the internet
       traefik-public-net:
+        aliases:
+          # Lets the Medusa storefront call the store API by its public name from its server-side code,
+          # through Traefik but without going out through the box (see Medusa)
+          - medusa.example.com
     env_file: .env    # DNS provider token for the DNS challenge, CrowdSec bouncer key
     labels:
       - "traefik.enable=true"

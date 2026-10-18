@@ -1,0 +1,49 @@
+http:
+  services:
+    medusa:
+      loadBalancer:
+        servers:
+          - url: http://medusa:9000
+
+    medusa-storefront:
+      loadBalancer:
+        servers:
+          - url: http://medusa-storefront:8000
+
+  routers:
+    # The shop itself
+    medusa-storefront:
+      rule: 'Host(`shop.example.com`)'
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: medusa-storefront
+
+    # Administration part of the backend : the dashboard (/app), its API (/admin) and the login of the administrators (/auth/user),
+    # from the local network or through the VPN only. The dashboard keeps its own login on top of it.
+    # The higher priority makes this router win over the one below, which matches the whole host.
+    medusa-admin:
+      rule: 'Host(`medusa.example.com`) && (PathPrefix(`/app`) || PathPrefix(`/admin`) || PathPrefix(`/auth/user`))'
+      priority: 100
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: medusa
+      middlewares:
+        - vpn-whitelist@file
+
+    # Everything else is public : the store API (/store), the customer login (/auth/customer, /auth/session, /auth/token),
+    # the uploaded files (/static) and the webhooks of the payment providers (/hooks). It is called by the visitors' browsers
+    # (search, product images) and by the storefront's server-side code.
+    # Excluding the administration paths rather than listing the public ones : Medusa keeps all of them under the three prefixes above,
+    # whereas a forgotten public path would silently break the shop (customer login, password reset, payment).
+    medusa-api:
+      rule: 'Host(`medusa.example.com`)'
+      priority: 1
+      entryPoints:
+        - websecure
+      tls:
+        certResolver: default
+      service: medusa

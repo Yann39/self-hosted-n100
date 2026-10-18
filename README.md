@@ -201,7 +201,7 @@ It's up to you to choose the accessibility level you need for each service, you 
 your local network, some only via VPN, and others to anyone from the internet.
 
 ```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 15, "rankSpacing": 50, "padding": 8, "diagramPadding": 10, "curve": "basis", "wrappingWidth": 220, "inheritDir": false}}}%%
+%%{init: {"look": "classic", "flowchart": {"nodeSpacing": 15, "rankSpacing": 50, "padding": 8, "diagramPadding": 10, "curve": "basis", "wrappingWidth": 220, "inheritDir": false}}}%%
 flowchart TB
     style HOSTING_PROVIDER fill: #bbfd795e
     style DDNS_PROVIDER fill: #e2b6ff6e

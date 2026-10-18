@@ -1,0 +1,156 @@
+services:
+
+  # Backend : store API, admin dashboard (/app) and background jobs, built from the project cloned in ./src
+  medusa:
+    build:
+      context: .
+      dockerfile: backend.Dockerfile
+    container_name: medusa
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # Database and Redis credentials, secrets (see .env)
+    env_file: .env
+    environment:
+      TZ: "Europe/Zurich"
+      NODE_ENV: production
+      MEDUSA_DISABLE_TELEMETRY: "true"
+      # Public URL of the backend, used to build the URL of the uploaded files (see medusa-config.ts)
+      MEDUSA_BACKEND_URL: https://medusa.example.com
+      # A single process serves the API and runs the background jobs, enough for a small shop
+      MEDUSA_WORKER_MODE: shared
+      # Origins allowed to call the API from a browser : the storefront for the store API, the dashboard for the admin API
+      STORE_CORS: https://shop.example.com
+      ADMIN_CORS: https://medusa.example.com
+      AUTH_CORS: https://shop.example.com,https://medusa.example.com
+    depends_on:
+      medusa-db:
+        condition: service_healthy
+      medusa-redis:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:9000/health || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      # The migrations run before the server starts, the first ones also seed the store (regions, publishable key, ...)
+      start_period: 180s
+    volumes:
+      # Uploaded files (product images, ...), served by the backend under /static
+      - medusa-static-vol:/server/static
+    networks:
+      - medusa-net
+      - traefik-public-net
+
+  # Storefront : the Next.js shop of the project. It only talks to the backend through its public URL
+  # (from the visitors' browsers and from its own server-side code), so it does not join the private network of the stack
+  medusa-storefront:
+    build:
+      context: .
+      dockerfile: storefront.Dockerfile
+      # The NEXT_PUBLIC_ variables are written into the code at build time : changing one means rebuilding the image
+      args:
+        NEXT_PUBLIC_MEDUSA_BACKEND_URL: https://medusa.example.com
+        NEXT_PUBLIC_BASE_URL: https://shop.example.com
+        # Country used when the visitor's one is not part of any region, must belong to a region of the store
+        NEXT_PUBLIC_DEFAULT_REGION: fr
+        NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY}
+    container_name: medusa-storefront
+    restart: unless-stopped
+    init: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      TZ: "Europe/Zurich"
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Also checked when the server starts (next.config.js), not only at build time
+      NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY: ${MEDUSA_PUBLISHABLE_KEY}
+    depends_on:
+      medusa:
+        condition: service_healthy
+    healthcheck:
+      # A static file : the pages themselves depend on the backend
+      test: [ "CMD-SHELL", "wget -qO /dev/null http://127.0.0.1:8000/favicon.ico || exit 1" ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - traefik-public-net
+
+  medusa-db:
+    # Major version pinned : a new major version of PostgreSQL cannot start on the data of the previous one,
+    # the upgrade (dump and restore) is done on purpose, never by a pull
+    image: docker.io/library/postgres:17-alpine
+    container_name: medusa-db
+    restart: unless-stopped
+    cap_drop:
+      - ALL
+    cap_add:
+      - CHOWN
+      - DAC_READ_SEARCH
+      - FOWNER
+      - SETGID
+      - SETUID
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d \"$${POSTGRES_DB}\" -U $${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - medusa-db-vol:/var/lib/postgresql/data
+    networks:
+      - medusa-net
+
+  # Event bus, workflow engine, locks and admin sessions : jobs in progress are kept on disk so that they survive a restart
+  medusa-redis:
+    image: docker.io/library/redis:alpine
+    container_name: medusa-redis
+    restart: unless-stopped
+    user: "999:1000"
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    env_file: .env
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --appendonly yes --requirepass "$${REDIS_PASSWORD:?REDIS_PASSWORD variable is not set}"
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli --pass \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - medusa-redis-vol:/data
+    networks:
+      - medusa-net
+
+volumes:
+
+  medusa-db-vol:
+    name: medusa-db-vol
+
+  medusa-redis-vol:
+    name: medusa-redis-vol
+
+  medusa-static-vol:
+    name: medusa-static-vol
+
+networks:
+
+  # The database and Redis stay on the private network of the stack, never on a Traefik network
+  medusa-net:
+    name: medusa-net
+
+  traefik-public-net:
+    name: traefik-public-net
+    external: true
