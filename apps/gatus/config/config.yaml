@@ -115,9 +115,11 @@ endpoints:
   # Private services : checked by container name on traefik-private-net (Traefik is checked separately above)
   # ------------------------------------------------------------------------------------------------------------------
 
+  # Except Pi-hole, reached by its fixed IP address on pihole-net : without a password, FTL 6.8+ answers a 403 to any
+  # name it does not know (it only accepts an IP address, localhost, pi.hole, webserver.domain or its hostname)
   - name: Pi-hole
     group: Private
-    url: http://pihole:80/admin/
+    url: http://10.2.0.100/admin/
     interval: 1m
     conditions:
       - "[STATUS] == 200"

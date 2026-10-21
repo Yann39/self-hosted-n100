@@ -1844,12 +1844,14 @@ the internet. The image generates a random password at first start, remove it (o
 sudo docker exec -it pihole pihole setpassword
 ```
 
-Since FTL v6.8, a Pi-Hole **without password** only answers the browser requests sent to a name it knows (an IP
-address, `localhost`, `pi.hole`, its hostname or `webserver.domain`), so that no website can use its API through your
-browser ([GHSA-322h-f873-hp54](https://github.com/pi-hole/FTL/security/advisories/GHSA-322h-f873-hp54)). Behind
-Traefik the browser sends `pihole.example.com`, which is none of these, and gets a `403 Forbidden` : the Compose file
-declares that name with `FTLCONF_webserver_domain: 'pihole.example.com'` (see
-[pi-hole/FTL#3268](https://github.com/pi-hole/FTL/issues/3268)).
+Since FTL v6.8, a Pi-Hole **without password** refuses every request, from a browser or not, sent to a name it does not
+know (it only accepts an IP address, `localhost`, `pi.hole`, its hostname or `webserver.domain`), as well as the
+requests a browser sends on behalf of another website. This way no website can use its API through your browser, not
+even with DNS rebinding ([GHSA-322h-f873-hp54](https://github.com/pi-hole/FTL/security/advisories/GHSA-322h-f873-hp54)).
+Behind Traefik, the requests are addressed to `pihole.example.com`, which is none of these names, and get a
+`403 Forbidden` : the Compose file declares it with `FTLCONF_webserver_domain: 'pihole.example.com'` (see
+[pi-hole/FTL#3268](https://github.com/pi-hole/FTL/issues/3268)). The container name `pihole` is not accepted either (the
+hostname of the container is its ID), that's why [Gatus](#gatus) checks Pi-Hole by its IP address.
 
 In _Settings -> DNS_, untick every public upstream and add **Unbound** as custom upstream DNS server : `10.2.0.200#53`
 (its static address in the `pihole-net` Docker network, see [Services definition](#services-definition)).
@@ -6364,11 +6366,11 @@ endpoints:
 
 The full file checks :
 
-| Group          | Services                                                                                                                              | How                                                 |
-|----------------|---------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------|
-| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                                                                      | ping, discovery document, TCP, DNS queries, host IP |
-| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana, Ghostfolio, Homelable, Speedtest Tracker | container name, health endpoint when there is one   |
-| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API, Medusa API, Medusa storefront                                                           | public name through Traefik, TLS certificate expiry |
+| Group          | Services                                                                                                                              | How                                                                        |
+|----------------|---------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| Infrastructure | Traefik, PocketID, CrowdSec, Pi-hole (DNS), Unbound, WGDashboard                                                                      | ping, discovery document, TCP, DNS queries, host IP                        |
+| Private        | Pi-hole, Arcane, Backrest, CrowdSec Web UI, PhpMyAdmin, Homer, Homebox, Prometheus, Grafana, Ghostfolio, Homelable, Speedtest Tracker | container name (IP address for Pi-hole), health endpoint when there is one |
+| Public         | Lychee, Defrag-life, GoatCounter, CCTeam API, Medusa API, Medusa storefront                                                           | public name through Traefik, TLS certificate expiry                        |
 
 #### Traefik routing
 
