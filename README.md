@@ -7860,7 +7860,7 @@ directory.
 :page_facing_up: _Dockerfile_ :
 
 ```dockerfile
-FROM php:8.2-fpm-alpine
+FROM php:8.5.12-fpm-alpine
 
 LABEL maintainer="Yann39"
 
@@ -8028,8 +8028,8 @@ It simply set environment variable values (used in the `mariadb` service in the 
 ; Unix user/group of the child processes.
 user = www-data
 group = www-data
-; The address on which to accept FastCGI requests.
-listen = 127.0.0.1:9000
+; The address on which to accept FastCGI requests (all interfaces, as Nginx runs in another container).
+listen = 9000
 ; Choose how the process manager will control the number of child processes.
 pm = dynamic
 pm.max_children = 5
