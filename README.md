@@ -1844,6 +1844,13 @@ the internet. The image generates a random password at first start, remove it (o
 sudo docker exec -it pihole pihole setpassword
 ```
 
+Since FTL v6.8, a Pi-Hole **without password** only answers the browser requests sent to a name it knows (an IP
+address, `localhost`, `pi.hole`, its hostname or `webserver.domain`), so that no website can use its API through your
+browser ([GHSA-322h-f873-hp54](https://github.com/pi-hole/FTL/security/advisories/GHSA-322h-f873-hp54)). Behind
+Traefik the browser sends `pihole.example.com`, which is none of these, and gets a `403 Forbidden` : the Compose file
+declares that name with `FTLCONF_webserver_domain: 'pihole.example.com'` (see
+[pi-hole/FTL#3268](https://github.com/pi-hole/FTL/issues/3268)).
+
 In _Settings -> DNS_, untick every public upstream and add **Unbound** as custom upstream DNS server : `10.2.0.200#53`
 (its static address in the `pihole-net` Docker network, see [Services definition](#services-definition)).
 
@@ -1994,6 +2001,7 @@ services:
     environment:
       TZ: "Europe/Zurich"
       FTLCONF_dns_listeningMode: 'all'
+      FTLCONF_webserver_domain: 'pihole.example.com'
     networks:
       pihole-net:
         ipv4_address: 10.2.0.100
@@ -2050,7 +2058,7 @@ This **Compose** file :
 - defines the `pihole` service :
     - publishes port `53` (TCP and UDP) on **every address of the host**, which is what makes Pi-Hole reachable from the
       LAN (`192.168.0.16`) and from the VPN peers (`10.0.0.1`) without any extra rule
-    - sets the timezone and `FTLCONF_dns_listeningMode: 'all'` (see [Pi-hole](#pi-hole))
+    - sets the timezone, `FTLCONF_dns_listeningMode: 'all'` and `FTLCONF_webserver_domain` (see [Pi-hole](#pi-hole))
     - assigns the **static IP address** `10.2.0.100`
     - binds the _/etc/pihole_ folder to keep the configuration and the databases
     - adds the `NET_ADMIN`, `SYS_TIME` and `SYS_NICE` capabilities recommended by the Pi-Hole image (DHCP server, time

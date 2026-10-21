@@ -10,6 +10,7 @@ services:
     environment:
       TZ: "Europe/Zurich"
       FTLCONF_dns_listeningMode: 'all'
+      FTLCONF_webserver_domain: 'pihole.example.com'
     networks:
       pihole-net:
         ipv4_address: 10.2.0.100
