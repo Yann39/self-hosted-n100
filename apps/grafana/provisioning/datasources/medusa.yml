@@ -1,0 +1,23 @@
+apiVersion: 1
+
+datasources:
+  # Database of the Medusa shop, through a read-only account that only sees the orders, the carts and the creation
+  # date of the customer accounts (see medusa/grafana-reader.sql). Reached on grafana-medusa-net
+  - name: Medusa
+    uid: medusa
+    type: grafana-postgresql-datasource
+    access: proxy
+    url: medusa-db:5432
+    user: grafana_reader
+    secureJsonData:
+      password: $MEDUSA_DB_READER_PASSWORD
+    jsonData:
+      database: medusa
+      # The database never leaves the private Docker network, it has no TLS
+      sslmode: disable
+      # A small shop : a couple of connections are enough, and it keeps the database free for the shop itself
+      maxOpenConns: 2
+      maxIdleConns: 2
+      connMaxLifetime: 14400
+      timescaledb: false
+    editable: false

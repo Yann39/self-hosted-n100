@@ -108,6 +108,9 @@ services:
       - medusa-db-vol:/var/lib/postgresql/data
     networks:
       - medusa-net
+      # Read by Grafana for the statistics of the shop (read-only account, see grafana-reader.sql),
+      # shared with Grafana only (not with the backend)
+      - grafana-medusa-net
 
   # Event bus, workflow engine, locks and admin sessions : jobs in progress are kept on disk so that they survive a restart
   medusa-redis:
@@ -153,4 +156,8 @@ networks:
 
   traefik-public-net:
     name: traefik-public-net
+    external: true
+
+  grafana-medusa-net:
+    name: grafana-medusa-net
     external: true

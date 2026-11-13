@@ -1,0 +1,685 @@
+{
+  "uid": "medusa-shop",
+  "title": "Medusa shop",
+  "description": "Sales of the Medusa shop, read from its database (read-only account)",
+  "tags": [
+    "medusa",
+    "e-commerce"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5m",
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "currency",
+        "label": "Currency",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "medusa"
+        },
+        "query": "SELECT currency_code FROM \"order\" WHERE deleted_at IS NULL AND NOT is_draft_order\nUNION\nSELECT currency_code FROM cart WHERE deleted_at IS NULL\nORDER BY 1",
+        "definition": "currencies of the orders and of the carts",
+        "refresh": 2,
+        "sort": 1,
+        "includeAll": false,
+        "multi": false
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "row",
+      "title": "Sales",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Orders",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT count(*) AS \"Orders\"\nFROM orders"
+        }
+      ],
+      "description": "Orders placed over the selected time range, drafts and canceled orders excluded.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Items sold",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 4,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT coalesce(sum(i.quantity), 0) AS \"Items sold\"\nFROM orders o\nJOIN order_item i ON i.order_id = o.id AND i.version = o.version AND i.deleted_at IS NULL"
+        }
+      ],
+      "description": "Number of items in the orders placed over the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Revenue ($currency)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT coalesce(sum(total), 0) AS \"Revenue\"\nFROM orders"
+        }
+      ],
+      "description": "Sum of the current totals of the orders (items, shipping, taxes, after discounts), refunds not deducted.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Average basket ($currency)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT avg(total) AS \"Average basket\"\nFROM orders"
+        }
+      ],
+      "description": "Average total of an order over the selected time range.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Carts converted",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(completed_at)::float / nullif(count(*), 0) AS \"Carts converted\"\nFROM cart\nWHERE deleted_at IS NULL\n  AND currency_code = '$currency'\n  AND $__timeFilter(created_at)"
+        }
+      ],
+      "description": "Share of the carts created over the selected time range that became an order. The storefront creates a cart when a visitor adds a first product.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "New customer accounts",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 20,
+        "y": 1,
+        "w": 4,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT count(*) AS \"New accounts\"\nFROM customer\nWHERE deleted_at IS NULL\n  AND has_account\n  AND $__timeFilter(created_at)"
+        }
+      ],
+      "description": "Customer accounts registered over the selected time range (guest checkouts are not accounts).",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "fixed",
+            "fixedColor": "text"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Orders per day",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT $__timeGroupAlias(created_at, '1d', 0), count(*) AS \"Orders\"\nFROM orders\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "barAlignment": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Revenue per day ($currency)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT $__timeGroupAlias(created_at, '1d', 0), sum(total) AS \"Revenue\"\nFROM orders\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "barAlignment": 0
+          },
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Carts per day",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "time_series",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "SELECT $__timeGroupAlias(created_at, '1d', 0), count(*) AS \"Carts created\", count(completed_at) AS \"Carts converted\"\nFROM cart\nWHERE deleted_at IS NULL\n  AND currency_code = '$currency'\n  AND $__timeFilter(created_at)\nGROUP BY 1\nORDER BY 1"
+        }
+      ],
+      "description": "Carts created each day, and how many of them became an order.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1,
+            "barAlignment": 0
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        }
+      }
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Orders by country (shipping address)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 13,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT upper(coalesce(a.country_code, '?')) AS \"Country\", count(*) AS \"Orders\"\nFROM orders o\nLEFT JOIN order_address a ON a.id = o.shipping_address_id\nGROUP BY 1\nORDER BY 2 DESC"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "color": {
+            "mode": "continuous-BlPu"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "values": true,
+          "fields": "/^Orders$/"
+        }
+      }
+    },
+    {
+      "id": 12,
+      "type": "row",
+      "title": "Products and orders",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 21,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 13,
+      "type": "table",
+      "title": "Best-selling products (selected time range)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT coalesce(li.product_title, li.title) AS \"Product\",\n       sum(i.quantity) AS \"Quantity\",\n       sum(i.quantity * coalesce(i.unit_price, li.unit_price)) AS \"Amount\"\nFROM orders o\nJOIN order_item i ON i.order_id = o.id AND i.version = o.version AND i.deleted_at IS NULL\nJOIN order_line_item li ON li.id = i.item_id AND li.deleted_at IS NULL\nGROUP BY 1\nORDER BY 2 DESC, 3 DESC\nLIMIT 15"
+        }
+      ],
+      "description": "Quantity sold per product, and amount (unit price x quantity, before discounts and taxes).",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Amount"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    },
+    {
+      "id": 14,
+      "type": "table",
+      "title": "Latest orders (selected time range)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "medusa"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "medusa"
+          },
+          "refId": "A",
+          "format": "table",
+          "rawQuery": true,
+          "editorMode": "code",
+          "rawSql": "WITH orders AS (\n  SELECT o.id, o.version, o.display_id, o.status, o.created_at, o.shipping_address_id,\n         (s.totals ->> 'current_order_total')::numeric AS total\n  FROM \"order\" o\n  JOIN order_summary s ON s.order_id = o.id AND s.version = o.version AND s.deleted_at IS NULL\n  WHERE o.deleted_at IS NULL\n    AND NOT o.is_draft_order\n    AND o.status <> 'canceled'\n    AND o.currency_code = '$currency'\n    AND $__timeFilter(o.created_at)\n)\nSELECT o.display_id AS \"Order\", o.created_at AS \"Date\", o.status AS \"Status\", o.total AS \"Total\",\n       upper(a.country_code) AS \"Country\"\nFROM orders o\nLEFT JOIN order_address a ON a.id = o.shipping_address_id\nORDER BY o.created_at DESC\nLIMIT 20"
+        }
+      ],
+      "description": "No personal data : the customer details stay in the admin dashboard of Medusa.",
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Total"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Date"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "dateTimeAsLocal"
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm"
+      }
+    }
+  ]
+}

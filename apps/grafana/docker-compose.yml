@@ -36,6 +36,9 @@ services:
       GF_AUTH_DISABLE_LOGIN_FORM: "true"
       GF_AUTH_BASIC_ENABLED: "false"
       GF_AUTH_OAUTH_AUTO_LOGIN: "true"
+
+      # Password of the read-only account of the Medusa database, read by provisioning/datasources/medusa.yml
+      MEDUSA_DB_READER_PASSWORD: ${MEDUSA_DB_READER_PASSWORD:-}
     volumes:
       - ./provisioning:/etc/grafana/provisioning:ro
       - ./dashboards:/var/lib/grafana/dashboards:ro
@@ -45,6 +48,8 @@ services:
       - prometheus-net
       # To be reachable by Traefik, and to reach PocketID
       - traefik-private-net
+      # To read the statistics of the Medusa shop, shared with its database only (not with its backend)
+      - grafana-medusa-net
 
 networks:
 
@@ -55,6 +60,10 @@ networks:
   traefik-private-net:
     name: traefik-private-net
     external: true
+
+  # Created by this stack, the medusa stack joins it with its database : start Grafana first
+  grafana-medusa-net:
+    name: grafana-medusa-net
 
 volumes:
 
