@@ -5,6 +5,7 @@
 ![Version](https://img.shields.io/badge/Version-1.6.0-2AAB92)
 ![Last update](https://img.shields.io/badge/Last_update-19_Oct_2026-blue)
 ![License](https://img.shields.io/badge/Free_&_Open_source-Apache_2.0-green)
+[![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/Yann39/badge.svg)](https://hub.xerj.org/contributors/Yann39)
 
 <table>
    <tr>
