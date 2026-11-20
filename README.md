@@ -2,8 +2,8 @@
 
 # Personal self-hosting guide
 
-![Version](https://img.shields.io/badge/Version-1.6.1-2AAB92)
-![Last update](https://img.shields.io/badge/Last_update-13_Nov_2026-blue)
+![Version](https://img.shields.io/badge/Version-1.6.2-2AAB92)
+![Last update](https://img.shields.io/badge/Last_update-20_Nov_2026-blue)
 ![License](https://img.shields.io/badge/Free_&_Open_source-Apache_2.0-green)
 [![XERJ Corpus Hub contributor](https://hub.xerj.org/contributors/Yann39/badge.svg)](https://hub.xerj.org/contributors/Yann39)
 
@@ -3876,25 +3876,25 @@ services:
     env_file: .env
     environment:
       TZ: "Europe/Zurich"
-      APP_URL: https://arcane.example.com
+      ARCANE_APP_URL: https://arcane.example.com
       # X-Forwarded-* headers are only trusted from the private Traefik network. Never the 172.16.0.0/12 suggested by
       # the documentation : that range also covers traefik-public-net. Check it with : docker network inspect traefik-private-net
-      TRUSTED_PROXIES: 172.21.0.0/16
-      ANALYTICS_DISABLED: "true"
+      ARCANE_TRUSTED_PROXIES: 172.21.0.0/16
+      ARCANE_ANALYTICS_DISABLED: "true"
 
       # Native OIDC authentication against PocketID (callback URL : https://arcane.example.com/auth/oidc/callback)
       # The issuer is the PUBLIC URL, no trailing slash : the container resolves it to Traefik thanks to the alias on
       # traefik-private-net, and Traefik lets it through with the pocketid-whitelist middleware (see PocketID)
-      OIDC_ENABLED: "true"
-      OIDC_ISSUER_URL: https://pocketid.example.com
-      OIDC_SCOPES: openid email profile groups
-      OIDC_GROUPS_CLAIM: groups
-      OIDC_PROVIDER_NAME: PocketID
+      ARCANE_OIDC_ENABLED: "true"
+      ARCANE_OIDC_ISSUER_URL: https://pocketid.example.com
+      ARCANE_OIDC_SCOPES: openid email profile groups
+      ARCANE_OIDC_GROUPS_CLAIM: groups
+      ARCANE_OIDC_PROVIDER_NAME: PocketID
       # Set it to "false" for the first start, until the role mapping is configured and the OIDC login validated
       # (the local admin is needed for that), then back to "true" once the local login is disabled in Settings -> Authentication
-      OIDC_AUTO_REDIRECT_TO_PROVIDER: "true"
+      ARCANE_OIDC_AUTO_REDIRECT_TO_PROVIDER: "true"
       # Roles can also be mapped declaratively (role referenced by its ID, see Settings -> Roles) :
-      # OIDC_ROLE_MAPPINGS: '[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]'
+      # ARCANE_OIDC_ROLE_MAPPINGS: '[{"claimValue":"super_admins","roleId":"<admin_role_id>"}]'
     volumes:
       # Full access to the Docker daemon, i.e. root on the host : private network only
       - /var/run/docker.sock:/var/run/docker.sock
