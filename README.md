@@ -1651,8 +1651,6 @@ Address = 10.0.0.1/24
 ListenPort = 51820
 MTU = 1420
 PrivateKey = <server private key>
-PostUp = iptables -N DOCKER-USER 2>/dev/null || true; iptables -C DOCKER-USER -i %i -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER 1 -i %i -j ACCEPT; iptables -C DOCKER-USER -o %i -j ACCEPT 2>/dev/null || iptables -I DOCKER-USER 2 -o %i -j ACCEPT; iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -C POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE 2>/dev/null || iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE; iptables -t mangle -C FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu 2>/dev/null || iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu; iptables -t raw -C PREROUTING -i enp1s0 -p udp --dport 51820 -j NOTRACK 2>/dev/null || iptables -t raw -A PREROUTING -i enp1s0 -p udp --dport 51820 -j NOTRACK; iptables -t raw -C OUTPUT -o enp1s0 -p udp --sport 51820 -j NOTRACK 2>/dev/null || iptables -t raw -A OUTPUT -o enp1s0 -p udp --sport 51820 -j NOTRACK; tc qdisc replace dev %i root cake bandwidth 860mbit besteffort || true
-PostDown = iptables -D DOCKER-USER -i %i -j ACCEPT || true; iptables -D DOCKER-USER -o %i -j ACCEPT || true; iptables -D FORWARD -i %i -j ACCEPT || true; iptables -D FORWARD -o %i -j ACCEPT || true; iptables -t nat -D POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE || true; iptables -t mangle -D FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu || true; iptables -t raw -D PREROUTING -i enp1s0 -p udp --dport 51820 -j NOTRACK || true; iptables -t raw -D OUTPUT -o enp1s0 -p udp --sport 51820 -j NOTRACK || true
 
 [Peer]
 # desktop-home
@@ -1672,27 +1670,29 @@ sudo chmod 600 /etc/wireguard/wg0.conf
 sudo systemctl enable --now wg-quick@wg0
 ```
 
-The `PostUp` line looks scary, but each piece has a reason (and `wg-quick` runs the hooks with `set -e`, so anything
-that may legitimately fail has to be guarded with `|| true` or a `-C` check, else the interface is torn down) :
-
-- `DOCKER-USER` **fast path** : Docker sets the `FORWARD` policy to `DROP` and inserts about a hundred rules (four per
-  bridge network) that **every relayed packet** walks through.
-  The `DOCKER-USER` chain is evaluated first and is never flushed by Docker, so accepting the tunnel traffic there
-  short-circuits the whole chain.
-  The plain `FORWARD` rules are a fallback in case `wg0` comes up before Docker at boot.
-- **NAT** : the peers' traffic leaves with the mini PC address (on my machine the rule was already set globally, keeping
-  it here makes the file self-contained).
-- **TCPMSS clamp** : TCP inside the tunnel can carry `1380` bytes per segment at most, clamping the MSS on the SYN
-  packets prevents fragmentation and black holes for the relayed connections.
-- `NOTRACK` : connection tracking is useless for the encrypted UDP flow (WireGuard authenticates every packet itself),
-  this saves a lookup per packet.
-- `cake` : gives every flow inside the tunnel its own queue and keeps the latency low. Without it, the `fq_codel` queue
-  of the physical interface sees the whole tunnel as a **single flow**, so a big download can starve a video stream or a
-  call. `860mbit` is what a gigabit link carries once the tunnel overhead is added, it costs nothing measurable.
-
 The **DNS** pushed to the peers is the tunnel address of the server, `10.0.0.1` : Docker publishes Pi-Hole's port `53`
 on **every** address of the host, including this one, so the peers reach Pi-Hole (then Unbound) without any extra route,
 and it also works in split tunnel mode since the address is inside the tunnel subnet.
+
+We don't use `PostUp`/`PostDown` scripts (to automatically add/remove firewall rules on tunnel start/stop) as WireGuard
+runs on the host : the routing and firewall rules are set directly in the host configuration.
+Here are the iptables rules to run (adapt interface names to your setup) :
+
+```shell
+# 1. Allow all packets to be forwarded from the VPN to the Internet
+sudo iptables -A FORWARD -i wg0 -j ACCEPT
+sudo iptables -A FORWARD -o wg0 -j ACCEPT
+
+# 2. Force MSS Clamping to the very top of the stack
+sudo iptables -t mangle -I FORWARD 1 -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
+
+# 3. Enable MASQUERADE so that packets are sent out correctly via the network card
+sudo iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -o enp1s0 -j MASQUERADE
+```
+
+> [!NOTE]
+> **TCPMSS clamp** : TCP inside the tunnel can carry `1380` bytes per segment at most, clamping the MSS on the SYN
+> packets prevents fragmentation and black holes for the relayed connections.
 
 ##### Peers configuration
 
